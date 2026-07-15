@@ -1,0 +1,9 @@
+{
+  "emby": {
+    "command": "uv",
+    "args": ["run", "--script", "${CLAUDE_PLUGIN_ROOT}/mcp/emby_server.py"],
+    "env": {
+      "EMBY_CONFIG": "${CLAUDE_PLUGIN_ROOT}/config.local.json"
+    }
+  }
+}
