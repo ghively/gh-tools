@@ -1,0 +1,11 @@
+{
+  "_comment": "Copy this file to config.local.json and fill in your RomM server details. config.local.json is git-ignored so your API key never gets committed. Every field can also be supplied via environment variables (ROMM_HOST, ROMM_PORT, ROMM_HTTPS, ROMM_API_KEY, ROMM_USERNAME, ROMM_PASSWORD, ROMM_VERIFY_SSL, ROMM_TIMEOUT), which override the file. Create an API key in the RomM web UI (Settings > API Keys) — grant it the scopes you want Claude to have. username/password are OPTIONAL and only needed for romm_scan: RomM triggers library scans over Socket.IO authenticated by a session cookie, which an API key cannot mint; every other tool works with just the API key.",
+  "host": "192.168.0.214",
+  "port": 8095,
+  "https": false,
+  "api_key": "rmm_your-api-key-here",
+  "username": "",
+  "password": "",
+  "verify_ssl": true,
+  "timeout": 60
+}
