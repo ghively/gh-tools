@@ -318,6 +318,7 @@ def romm_call(
     file_path: str = "",
     file_field: str = "file",
     extra_headers: Optional[dict] = None,
+    multipart: bool = False,
     confirm: bool = False,
 ) -> str:
     """Generic passthrough: call ANY RomM REST endpoint.
@@ -331,16 +332,21 @@ def romm_call(
         query_params: query string parameters.
         json_body: JSON request body (Content-Type: application/json).
         form_body: form-encoded body. Sent as multipart/form-data when
-            file_path is set, x-www-form-urlencoded otherwise.
+            file_path is set or multipart=True, x-www-form-urlencoded
+            otherwise.
         file_path: local file to attach as a multipart upload.
         file_field: multipart field name for the file (default "file").
         extra_headers: additional request headers (e.g. x-upload-*).
+        multipart: force multipart/form-data encoding for form_body even
+            without a file (endpoints like PUT /api/roms/{id} declare
+            multipart for text-only edits).
         confirm: required True for any non-GET/HEAD method.
     """
     m = method.upper()
     if m not in ("GET", "HEAD"):
         _require_confirm(confirm, f"execute a write ({m} {path}) against RomM")
     files = None
+    form = form_body
     fh = None
     try:
         if file_path:
@@ -350,11 +356,14 @@ def romm_call(
             ctype = mimetypes.guess_type(p.name)[0] or "application/octet-stream"
             fh = open(p, "rb")
             files = {file_field: (p.name, fh, ctype)}
+        elif multipart and form_body:
+            files = _as_multipart(form_body)
+            form = None
         result = _req(
             m, path,
             params=query_params,
             json_body=json_body,
-            form=form_body,
+            form=form,
             files=files,
             headers=extra_headers,
             expect_json=False,
