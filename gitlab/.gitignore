@@ -1,0 +1,9 @@
+# Never commit real credentials
+config.local.json
+*.local.json
+.env
+
+# Python / uv
+__pycache__/
+*.pyc
+.venv/

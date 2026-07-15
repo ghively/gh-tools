@@ -1,0 +1,9 @@
+{
+  "synology": {
+    "command": "uv",
+    "args": ["run", "--script", "${CLAUDE_PLUGIN_ROOT}/mcp/synology_server.py"],
+    "env": {
+      "SYNOLOGY_CONFIG": "${CLAUDE_PLUGIN_ROOT}/config.local.json"
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "_comment": "Copy this file to config.local.json and fill in your GitLab details. config.local.json is git-ignored so your token never gets committed. Every field can also be supplied via environment variables (GITLAB_URL, GITLAB_TOKEN, GITLAB_VERIFY_SSL, GITLAB_TIMEOUT), which override the file. The token should be a Personal Access Token with the 'api' scope (admin user recommended for full instance control).",
+  "base_url": "https://gitlab.example.com",
+  "token": "glpat-your-token-here",
+  "verify_ssl": true,
+  "timeout": 30
+}
