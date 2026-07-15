@@ -1,0 +1,33 @@
+{
+  "name": "gh-tools",
+  "description": "Local marketplace: the synology-nas control plugin plus the deep-integration-builder methodology used to create it.",
+  "owner": {
+    "name": "poomonkey405"
+  },
+  "plugins": [
+    {
+      "name": "synology-nas",
+      "source": "./",
+      "description": "Full control of a Synology DiskStation (DSM 7.x) — MCP server reaching all ~870 DSM Web APIs plus curated tools, a control skill, and workflow commands.",
+      "category": "infrastructure"
+    },
+    {
+      "name": "deep-integration-builder",
+      "source": "./deep-integration-builder",
+      "description": "Methodology skill + command for building comprehensive, deeply-tested control integrations (MCP + skill + workflows) for any system with an API. Captures the discover-first, generic+curated, live-verify, honest-gap-taxonomy, reverse-engineer-from-UI-traffic workflow.",
+      "category": "development"
+    },
+    {
+      "name": "gitlab",
+      "source": "./gitlab",
+      "description": "Full control of a self-hosted GitLab CE instance (verified on 19.0.0) — MCP server with generic REST+GraphQL passthrough reaching all ~170 API domains, ~35 curated tools (projects, repos, MRs, issues, CI/CD, runners, admin), a control skill, and workflow commands.",
+      "category": "development"
+    },
+    {
+      "name": "unifi-network",
+      "source": "./unifi",
+      "description": "Full control of a Ubiquiti UniFi console (UniFi OS) — MCP server reaching every Network endpoint across the classic v1, modern v2, and UniFi OS host APIs, plus ~30 curated tools for health, devices, clients, wireless, firewall, port-forwarding, traffic rules, events and statistics, a control skill, and workflow commands. Tested against a UniFi Dream Router 7.",
+      "category": "infrastructure"
+    }
+  ]
+}

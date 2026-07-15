@@ -1,0 +1,11 @@
+{
+  "name": "synology-nas",
+  "description": "Full control of a Synology DiskStation (DSM 7.x) from Claude Code. Bundles an MCP server that authenticates to the DSM Web API and exposes both a generic passthrough reaching every SYNO.* API (~870 on a DS1817+) and curated tools for system health, storage, files, downloads, packages, users, shares and services — plus a control skill and slash-command workflows.",
+  "version": "0.1.0",
+  "author": {
+    "name": "poomonkey405"
+  },
+  "keywords": ["synology", "dsm", "nas", "diskstation", "ds1817+", "mcp", "homelab", "storage"],
+  "skills": "./skills/",
+  "commands": "./commands/"
+}

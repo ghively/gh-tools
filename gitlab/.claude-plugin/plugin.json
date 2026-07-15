@@ -1,0 +1,8 @@
+{
+  "name": "gitlab",
+  "description": "Full control of a self-hosted GitLab CE instance (verified on 19.0.0) — MCP server with a generic REST+GraphQL passthrough reaching all ~170 API domains, ~35 curated tools for daily jobs (projects, repo files, MRs, issues, CI/CD, runners, users/admin, groups), a control skill, and workflow commands.",
+  "version": "0.1.0",
+  "author": {
+    "name": "poomonkey405"
+  }
+}

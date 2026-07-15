@@ -1,0 +1,9 @@
+{
+  "gitlab": {
+    "command": "uv",
+    "args": ["run", "--script", "${CLAUDE_PLUGIN_ROOT}/mcp/gitlab_server.py"],
+    "env": {
+      "GITLAB_CONFIG": "${CLAUDE_PLUGIN_ROOT}/config.local.json"
+    }
+  }
+}

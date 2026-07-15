@@ -1,0 +1,9 @@
+{
+  "unifi": {
+    "command": "uv",
+    "args": ["run", "--script", "${CLAUDE_PLUGIN_ROOT}/mcp/unifi_server.py"],
+    "env": {
+      "UNIFI_CONFIG": "${CLAUDE_PLUGIN_ROOT}/config.local.json"
+    }
+  }
+}
