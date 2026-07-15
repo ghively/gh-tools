@@ -11,6 +11,9 @@ import os
 import sys
 from pathlib import Path
 
+# RomM log/scan output contains emoji; Windows consoles default to cp1252.
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 os.environ.setdefault(
     "ROMM_CONFIG",
     str(Path(__file__).resolve().parent.parent / "config.local.json"),
