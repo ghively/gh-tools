@@ -30,6 +30,12 @@
       "category": "media"
     },
     {
+      "name": "romm",
+      "source": "./romm",
+      "description": "Full control of a RomM ROM-library server (verified on 5.0.0) — MCP server with a generic passthrough reaching all ~189 REST operations (self-discovered from the live OpenAPI spec), ~50 curated tools (platforms, ROM search & metadata matching, collections, users & permissions, saves/states, firmware, tasks, feeds, exports, chunked uploads), a Socket.IO scan trigger, a control skill, and workflow commands.",
+      "category": "media"
+    },
+    {
       "name": "unifi-network",
       "source": "./unifi",
       "description": "Full control of a Ubiquiti UniFi console (UniFi OS) — MCP server reaching every Network endpoint across the classic v1, modern v2, and UniFi OS host APIs, plus ~30 curated tools for health, devices, clients, wireless, firewall, port-forwarding, traffic rules, events and statistics, a control skill, and workflow commands. Tested against a UniFi Dream Router 7.",
