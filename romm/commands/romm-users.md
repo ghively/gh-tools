@@ -1,6 +1,6 @@
 ---
 description: Manage RomM users, roles, permission groups, and invite links
-argument-hint: e.g. "add viewer account for the kids" or "audit access"
+argument-hint: e.g. "add an account for the kids" or "audit access"
 ---
 
 # RomM user & access management
@@ -16,12 +16,17 @@ change and get the user's go-ahead before passing `confirm=True`.
    (`romm_user_create(username, email, password, role, confirm=True)`) or,
    better for humans, mint an invite link
    (`romm_user_invite(role=..., confirm=True)`) and hand the URL to the user.
-   Roles: **viewer** (browse/play), **editor** (+library edits), **admin**
-   (everything).
-3. **Change access** — `romm_user_update(id, fields_json='{"role": "editor"}'
+   Roles on RomM 5.x are ONLY **user** and **admin** (verified live — the
+   server silently ignores anything else, e.g. the old viewer/editor).
+   Everything finer-grained lives in **permission groups**.
+3. **Change access** — `romm_user_update(id, fields_json='{"role": "admin"}'
    , confirm=True)`; disable instead of delete when in doubt
-   (`'{"enabled": false}'`). Fine-grained grants beyond roles live in
-   permission groups: inspect via `romm_permissions`, manage via
+   (`'{"enabled": false}'`). Non-admin access is shaped by permission
+   groups: inspect via `romm_permissions(scope="groups")` (built-ins
+   include a "Viewer (legacy)" and "Editor (legacy)" group); check a user's
+   effective grants with `romm_permissions(scope="user", user_id=N)` and
+   change them via `romm_call("PUT", "/api/permissions/users/{user_id}",
+   ..., confirm=True)` (see `romm_schema` for the body); manage groups via
    `romm_call("POST"/"PUT", "/api/permissions/groups...", confirm=True)`.
 4. **RetroAchievements** — link a user's RA account with
    `romm_user_update(id, fields_json='{"ra_username": "..."}')`; refresh their
