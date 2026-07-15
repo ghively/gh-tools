@@ -85,6 +85,36 @@ Two layers of tools:
 | Folder-name → platform mapping | `romm_config_platform_binding`; exclusions via `romm_config_exclude` |
 | Server logs | `romm_logs` |
 
+## Full domain map (all 27 API tags — nothing outside this list exists)
+
+Every tag from the server's OpenAPI spec, with its primary handle. Tags
+marked (passthrough) have no curated tool — reach them with
+`romm_endpoints(tag=...)` → `romm_schema` → `romm_call`.
+
+| Tag | Handle |
+|---|---|
+| system, stats, logs | `romm_status`, `romm_stats`, `romm_logs` |
+| platforms | `romm_platforms` / `_platform*` / `romm_supported_platforms` |
+| roms, upload | `romm_roms`, `romm_rom*`, `romm_upload_rom`, `romm_download_rom` |
+| search | `romm_match_search` (cover search needs SGDB server-side) |
+| collections | `romm_collections` / `_collection*` / `romm_smart_collection_create` |
+| users, permissions | `romm_users` / `_user*`, `romm_permissions` |
+| client-tokens | `romm_api_keys` |
+| saves, states | `romm_saves` / `romm_states` (+ `_delete`; upload via `romm_call` with `file_path`) |
+| screenshots | list via `romm_rom` detail; CRUD via passthrough |
+| firmware | `romm_firmware` / `_firmware_upload` / `_firmware_delete` |
+| tasks | `romm_tasks` / `romm_task_run`; scans via `romm_scan` (Socket.IO) |
+| config | `romm_config` / `_config_exclude` / `_config_platform_binding` |
+| devices | `romm_devices` / `romm_device_delete`; register/update via passthrough |
+| activity, play-sessions | `romm_activity`, `romm_play_sessions` |
+| music | `romm_music` |
+| feeds | `romm_feeds` |
+| export | `romm_export` |
+| auth | login/logout/token via passthrough (session flows; Basic creds) |
+| device-auth | (passthrough) interactive client-pairing flow for emulator apps — approve/deny pending requests via `romm_call` |
+| sync | (passthrough) device save-sync sessions: `GET /api/sync/sessions`, push-pull per device |
+| netplay | (passthrough) `GET /api/netplay/list?game_id=` ; sessions are emulator-client Socket.IO flows |
+
 ## Library structure & scanning
 
 RomM indexes a filesystem library. Two supported layouts (this server
