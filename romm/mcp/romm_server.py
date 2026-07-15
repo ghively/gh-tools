@@ -1068,26 +1068,29 @@ def romm_export(fmt: str, platform_ids: list[int], local_export: bool = False,
                 confirm: bool = False) -> str:
     """Export library metadata as gamelist.xml (EmulationStation) or Pegasus.
 
+    IMPORTANT (verified live on 5.0.0): this ALWAYS writes the export files
+    into the platform directories on the server's disk — nothing is
+    returned for download. `local_export` only controls whether the XML
+    references local file paths (True) or RomM URLs (False).
+
     Args:
         fmt: "gamelist-xml" or "pegasus".
         platform_ids: platforms to export.
-        local_export: write the export next to the ROMs on the server's disk
-            instead of returning a download.
-        confirm: required True when local_export writes files server-side.
+        local_export: reference local paths instead of URLs in the output.
+        confirm: must be True — writes files into the server's ROM folders.
     """
     if fmt not in ("gamelist-xml", "pegasus"):
         raise RommError("fmt must be gamelist-xml or pegasus")
-    if local_export:
-        _require_confirm(confirm, "write export files into the server's ROM folders")
+    _require_confirm(
+        confirm,
+        f"write {fmt} export files into the server's platform folder(s) "
+        f"for platforms {platform_ids}",
+    )
     r = _req("POST", f"/api/export/{fmt}",
-             params={"platform_ids": platform_ids, "local_export": local_export},
-             expect_json=False)
-    if isinstance(r, dict):
-        return _dump(r)
-    ctype = r.headers.get("content-type", "")
-    if "json" in ctype:
-        return _dump(r.json())
-    return r.text[:60000]
+             params={"platform_ids": platform_ids, "local_export": local_export})
+    return _dump({"result": r,
+                  "note": "export files were written next to the ROMs on the "
+                          "server (e.g. gamelist.xml in each platform folder)"})
 
 
 # --------------------------------------------------------------------------- #
@@ -1178,7 +1181,10 @@ def romm_collection_update(
         confirm: must be True — modifies the collection.
     """
     _require_confirm(confirm, f"update collection {collection_id}")
-    form = {}
+    # PUT requires rom_ids (full membership, as a JSON array string) —
+    # omitting it 422s, so round-trip the current membership.
+    current = _req("GET", f"/api/collections/{collection_id}")
+    form = {"rom_ids": json.dumps(current.get("rom_ids", []))}
     if name:
         form["name"] = name
     if description:
@@ -1281,7 +1287,7 @@ def romm_user(user_id: int) -> str:
 
 @mcp.tool()
 @_tool_error
-def romm_user_create(username: str, email: str, password: str, role: str = "viewer",
+def romm_user_create(username: str, email: str, password: str, role: str = "user",
                      confirm: bool = False) -> str:
     """Create a user (admin only).
 
@@ -1289,9 +1295,15 @@ def romm_user_create(username: str, email: str, password: str, role: str = "view
         username: login name.
         email: email address.
         password: initial password.
-        role: viewer | editor | admin.
+        role: "user" or "admin" — RomM 5.x has ONLY these two (the old
+            viewer/editor split moved into permission groups; the server
+            silently ignores unknown roles). Fine-grained access =
+            permission groups via romm_permissions.
         confirm: must be True — creates an account.
     """
+    if role not in ("user", "admin"):
+        raise RommError("role must be 'user' or 'admin' on RomM 5.x — "
+                        "use permission groups for finer access control")
     _require_confirm(confirm, f"create user '{username}' with role {role}")
     return _dump(_req("POST", "/api/users",
                       json_body={"username": username, "email": email,
@@ -1305,11 +1317,17 @@ def romm_user_update(user_id: int, fields_json: str, confirm: bool = False) -> s
 
     Args:
         user_id: user id.
-        fields_json: JSON of fields, e.g. '{"role": "editor", "enabled": true}'.
+        fields_json: JSON of fields, e.g. '{"role": "admin", "enabled": true}'.
+            Valid roles on 5.x: "user" | "admin" only (invalid values are
+            SILENTLY ignored by the server — verified live).
         confirm: must be True — modifies an account.
     """
+    fields = json.loads(fields_json)
+    if "role" in fields and fields["role"] not in ("user", "admin"):
+        raise RommError("role must be 'user' or 'admin' on RomM 5.x — the "
+                        "server silently ignores anything else")
     _require_confirm(confirm, f"update user {user_id}")
-    return _dump(_req("PUT", f"/api/users/{user_id}", form=json.loads(fields_json)))
+    return _dump(_req("PUT", f"/api/users/{user_id}", form=fields))
 
 
 @mcp.tool()
@@ -1327,15 +1345,17 @@ def romm_user_delete(user_id: int, confirm: bool = False) -> str:
 
 @mcp.tool()
 @_tool_error
-def romm_user_invite(role: str = "viewer", expiration: Optional[int] = None,
+def romm_user_invite(role: str = "user", expiration: Optional[int] = None,
                      confirm: bool = False) -> str:
     """Generate a one-time invite link for a new user.
 
     Args:
-        role: viewer | editor | admin for the invited account.
+        role: "user" or "admin" (RomM 5.x role vocabulary).
         expiration: link lifetime in minutes (server default if omitted).
         confirm: must be True — mints a usable registration credential.
     """
+    if role not in ("user", "admin"):
+        raise RommError("role must be 'user' or 'admin' on RomM 5.x")
     _require_confirm(confirm, f"create an invite link with role {role}")
     return _dump(_req("POST", "/api/users/invite-link",
                       params={"role": role, "expiration": expiration}))

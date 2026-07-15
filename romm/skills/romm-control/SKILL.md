@@ -179,3 +179,13 @@ server's environment — `romm_status` shows which are live.
 - `GET /api/search/roms` and `/api/search/cover` return 500 (not an empty
   list) when no text-search metadata provider (IGDB/SS/Moby) or SteamGridDB
   is configured — that's a server-config dependency, not an auth problem.
+- Roles are ONLY `user` | `admin` — the server SILENTLY ignores unknown
+  values (e.g. the pre-5.x viewer/editor), so a bad role "succeeds" without
+  changing anything. The user tools validate client-side.
+- `PUT /api/collections/{id}` requires the FULL `rom_ids` membership as a
+  JSON-array string — omitting it 422s. `romm_collection_update` round-trips
+  the current membership automatically.
+- `POST /api/export/*` ALWAYS writes files into the server's platform
+  folders (empty 200 back; `local_export` only switches paths-vs-URLs
+  inside the XML). There is no download-to-client export. `romm_export` is
+  confirm-gated for this reason.
