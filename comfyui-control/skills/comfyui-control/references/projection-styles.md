@@ -35,6 +35,29 @@ NOTE: no tunnel/infinite-zoom LoRA exists — that's an animation-layer effect.
 3. **Juggernaut XL** — photoreal base; use for structural/facade content.
 `sd_xl_base_1.0` (installed) works — finetunes mostly buy color punch + coherence.
 
+## Style families beyond neon/scifi (prompt recipes — all on the black-bg cluster)
+The bright-on-black physics is style-agnostic: swap neon for gold, fire, ink,
+or glass and it projects just as well. Verified/no-LoRA-needed recipes (SDXL
+renders these natively; SD3.5 takes the same ideas as sentences):
+
+| Family | Prompt core (+ keyword bible) | LoRA when installed |
+|---|---|---|
+| Ornamental gold | `ornate golden baroque filigree ornament, glowing gold on black, intricate scrollwork` | Baroque Fantasy Realism / Gold Filigree `dskgold_filigree` |
+| Fire & embers | `swirling flames and rising embers, orange and gold fire on black background` | (none needed — native) |
+| Ink & sumi-e | `black ink wash blooming in water, white background inverted OR glowing white ink on black` | Ink wash `ink-style, ink_wash_painting` |
+| Water/fluid | `flowing liquid ribbons, caustic light patterns, deep blue and cyan on black` | Liquid Water Flow `watce` |
+| Stained glass | `stained glass window panel, glowing jewel tones, black leading` — projection makes it LITERALLY glow | Stained Glass `Stained Glass` |
+| Botanical | `time-lapse blooming flowers, bioluminescent petals, glowing vines on black` | (native; vines/growth read great on facades) |
+| Art nouveau | `art nouveau ornament, flowing organic curves, gold and emerald on black` | Art Nouveau `ArsMJStyle, Art Nouveau` |
+| Dissolve/decay | `figure dissolving into glowing particles` — transition loops | Dissolve `ral-dissolve` (26k dl — the community favorite) |
+| Aurora/atmosphere | `aurora borealis ribbons, ethereal light curtains, green and violet on black` | (native) |
+| Kaleidoscope | `symmetrical kaleidoscope pattern, radial symmetry` + sacred-geometry LoRA | `sacred geometry` (installed) |
+
+Motion vocabulary per family (LTXV): gold ornament *grows/unfurls*; fire
+*flickers and rises*; ink *blooms and disperses*; water *flows and ripples*;
+flowers *bloom in time-lapse*; glass *light shifts through panes*; dissolve
+*disintegrates upward*. Always static camera + one cyclical motion.
+
 ## The keyword bible (black-background/high-contrast cluster)
 Load-bearing positives: **`black background`** (belt-and-suspenders:
 `fully black background, background hex 000000`) · **`OLED wallpaper` /
