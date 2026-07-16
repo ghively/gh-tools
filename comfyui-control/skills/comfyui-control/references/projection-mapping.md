@@ -103,9 +103,10 @@ inpaint the visible seam cross with `comfy_inpaint`, offset back.
   `comfy_loop_video` — pure t2v produces flowing, texture-like, ambient
   motion (fields, billows, washes). The owner explicitly likes this
   aesthetic; it is the right tool for mood/atmosphere content. The full
-  100-clip vibe-library was made this way — every prompt+seed is preserved
-  in `/tank/projection-mapping/demos/manifest.json` for direct reference or
-  regeneration.
+  100-clip vibe-library was made this way — the COMPLETE recipe (templates,
+  100 subject+palette pairs, seeds) ships with the plugin in
+  `references/v1-vibe-recipes.md`; the on-host record is
+  `/tank/projection-mapping/demos/manifest.json`.
 - **Composed subjects (FLF)**: SDXL still (LoRA+palette) →
   `comfy_img2video(loop=True)` — a *thing* with strong composition
   (a stag, a medallion, a stained-glass owl) in a mathematically closed
