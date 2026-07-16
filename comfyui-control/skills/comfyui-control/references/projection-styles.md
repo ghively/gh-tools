@@ -59,10 +59,22 @@ renders these natively; SD3.5 takes the same ideas as sentences):
 | Aurora/atmosphere | `aurora borealis ribbons, ethereal light curtains, green and violet on black` | (native) |
 | Kaleidoscope | `symmetrical kaleidoscope pattern, radial symmetry` + sacred-geometry LoRA | `sacred geometry` (installed) |
 
-Motion vocabulary per family (LTXV): gold ornament *grows/unfurls*; fire
-*flickers and rises*; ink *blooms and disperses*; water *flows and ripples*;
-flowers *bloom in time-lapse*; glass *light shifts through panes*; dissolve
-*disintegrates upward*. Always static camera + one cyclical motion.
+**Motion rule for loops (learned the hard way 2026-07-16): STEADY-STATE ONLY.**
+Progressive verbs (unfold, grow, bloom, disperse, disintegrate, reveal) make
+the end frame structurally different from the start — no crossfade can hide
+it. Phrase motion as a held cycle: "rotates in place", "breathes gently",
+"circulates in a constant current", "light travels along the curves in a
+continuous cycle", "continuously sheds sparks while the form holds steady".
+Per family: gold *light travels along scrollwork*; fire *flickers in constant
+rhythm*; ink *billows and curls in place*; water *circulates steadily*; glass
+*light sweeps across panes*; dissolve *sheds particles while the form holds*.
+Always static camera + one cyclical motion.
+
+**Color rule (owner feedback): vary palettes per clip, never per style.** A
+fixed style palette (cyan+magenta everywhere) reads as monotone purple across
+a set. Assign each clip its own palette from the full wheel — including
+unexpected ones (blue flame, emerald fire, ruby-and-gold filigree) — and say
+"vivid saturated" explicitly; LTXV desaturates timid color language.
 
 ## The keyword bible (black-background/high-contrast cluster)
 Load-bearing positives: **`black background`** (belt-and-suspenders:
