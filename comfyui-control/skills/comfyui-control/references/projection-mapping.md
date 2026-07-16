@@ -60,6 +60,23 @@ noise, film grain`
    `comfy_to_gif(mp4, fps=15, width=960, palindrome=True)`.
 4. Drop results where the mapping rig picks them up (e.g. /tank/projection-mapping).
 
+## Tagging + the vpt9 media library (verified live 2026-07-16)
+The vpt9 control-plane library (`http://192.168.0.214:8080/api/media`) stores
+tags **inside the files** as XMP `dc:Subject` — embed keywords BEFORE upload
+and the server reads them automatically (verified round-trip):
+```bash
+exiftool -overwrite_original -XMP-dc:Subject=neon -XMP-dc:Subject=loop file.gif
+curl -X POST http://192.168.0.214:8080/api/media \
+     -H "X-File-Name: neon-loop.gif" --data-binary @file.gif
+```
+(python: `subprocess.run(["exiftool","-overwrite_original",*[f"-XMP-dc:Subject={t}" for t in tags],path])`)
+- Alternative: skip exiftool and pass `-H "X-Media-Tags: neon, loop"` — the
+  server writes them into the file for you. DELETE `/api/media/{id}` removes.
+- Tag convention used for the demo set: `<style>, <subject>, loop, demo`.
+- **The library rejects PNG** — convert stills to jpg before upload
+  (`ffmpeg -i in.png -q:v 2 out.jpg`); webm tags stay index-only. Embed into
+  BOTH the gif and mp4 on disk so the tank copies stay portable.
+
 Sources: [HeavyM video-mapping loops](https://www.heavym.net/video-mapping-loops/),
 [Chameleon Interactive content tips](https://chameleon-interactive.com/2024/10/31/how-projection-mapping-and-led-screens-handle-content-tips-for-creating-eye-catching-visuals/),
 [crazyartist VJ formats/FPS](https://crazyartist.net/en/fps-resolution-and-formats-everything-you-need-to-know-about-vj-loops/),

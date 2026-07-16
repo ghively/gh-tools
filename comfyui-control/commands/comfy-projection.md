@@ -23,9 +23,11 @@ sacred-geometry, psychedelic) and use its trigger word + the keyword bible
    (768×512, 97 frames, cfg 3.0, static-camera seamless-motion prompt from the
    reference), then `comfy_to_gif(mp4, fps=15, width=960, palindrome=True)`
    for a seamless boomerang GIF. Offer full-res mp4 for quality-critical use.
-5. **Finish**: offer to 4x-upscale the winning stills (1080p master) and to
-   copy the final set to the projection content location
-   (`/tank/projection-mapping` on gh-nvidia) — ask before copying.
+5. **Finish**: offer to 4x-upscale the winning stills (1080p master), copy the
+   final set to `/tank/projection-mapping`, and tag + upload to the vpt9 media
+   library per projection-mapping.md's tagging section (exiftool XMP
+   `dc:Subject` embed → POST /api/media; stills must be converted png→jpg
+   first). Ask before copying/uploading.
 
 Report every local path, seed, and which variants loop seamlessly vs merely
 repeat.
