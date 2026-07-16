@@ -98,11 +98,25 @@ No core node guarantees seamless spatial tiling. Either use
 construction), or verify/repair: wrap-offset the image by 50% in both axes,
 inpaint the visible seam cross with `comfy_inpaint`, offset back.
 
+## Two loop pipelines — pick by INTENT, not by "better" (owner doctrine)
+- **Painterly/abstract washes ("v1 vibe")**: `comfy_txt2video` +
+  `comfy_loop_video` — pure t2v produces flowing, texture-like, ambient
+  motion (fields, billows, washes). The owner explicitly likes this
+  aesthetic; it is the right tool for mood/atmosphere content. The full
+  100-clip vibe-library was made this way — every prompt+seed is preserved
+  in `/tank/projection-mapping/demos/manifest.json` for direct reference or
+  regeneration.
+- **Composed subjects (FLF)**: SDXL still (LoRA+palette) →
+  `comfy_img2video(loop=True)` — a *thing* with strong composition
+  (a stag, a medallion, a stained-glass owl) in a mathematically closed
+  cycle. Demos in `/tank/projection-mapping/demos-flf/`, library tag `flf`.
+A good show programs BOTH: t2v washes as the ambient floor, FLF subjects as
+the peaks (see the energy-ladder doctrine in projection-styles.md).
+
 ## Batch workflow (the /comfy-projection command automates this)
 1. `comfy_batch(prompt, count=4-8, width=1344, height=768)` — seed variations.
 2. Review; `comfy_master_still` winners (4x upscale + exact 1080p jpg).
-3. For loops: SDXL still → `comfy_img2video(loop=True)` → seamless mp4
-   (preferred), or `comfy_txt2video` + `comfy_loop_video` for pure t2v.
+3. For loops: pick the pipeline by intent (above).
 4. Auto-deliver winners to the vpt9 library (below); /tank copies ask-first.
 
 ## Tagging + the vpt9 media library (rules v2, verified live 2026-07-16)
