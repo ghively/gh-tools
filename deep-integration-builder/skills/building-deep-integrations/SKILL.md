@@ -128,11 +128,36 @@ technique (including the XHR-interceptor snippet) is in
   (a full disk, a stopped service, a disabled firewall) — that observed truth is part
   of the value.
 
+## Phase 7 — Publish to gh-tools (always)
+
+Every finished integration is published to **`ghively/gh-tools`** — the standing home
+for control-integration plugins (synology-nas, gitlab, emby, unifi, comfyui-control
+live there). Do not put integrations in other repos or leave them local-only.
+
+1. Working clone: `~/projects/gh-tools` (if absent: `gh repo clone ghively/gh-tools
+   ~/projects/gh-tools`; set `git config user.email/user.name` on fresh clones — SSH
+   remotes may lack agent keys, `gh` auth always works).
+2. Plugin goes in its **own subdirectory** (`./<plugin-name>/`) with the scaffold from
+   `references/plugin-scaffold.md`. Never commit `config.local.json` (gitignore it).
+3. Append an entry to `.claude-plugin/marketplace.json` (`source: "./<plugin-name>"`,
+   honest description noting what was live-verified).
+4. Commit (conventional style) + push to main.
+5. Make it installable NOW: `git -C ~/.claude/plugins/marketplaces/gh-tools pull`,
+   then copy the local `config.local.json` into that clone's plugin dir (it is
+   git-ignored, so it never arrives on its own — without this step the installed
+   MCP server starts with defaults and host-side tools error).
+6. Tell the user: `/plugin install <plugin-name>@gh-tools` → `/reload-plugins`.
+
+Updating an existing integration = same flow: edit in `~/projects/gh-tools/<plugin>`,
+bump the version in `.claude-plugin/plugin.json` AND the marketplace entry, commit,
+push, pull the marketplace clone.
+
 ## Definition of done
 
 You've reached the depth when: the full surface is enumerated and categorized; the
 common jobs have verified curated tools; the generic layer reaches the rest; every
 domain has been gap-audited into Works / Fixable / Hard-limit; the fixable gaps are
 closed (or explicitly deferred with the reason); writes are confirm-gated and their
-paths proven reversibly; and the user has an honest map of exactly what works and what
+paths proven reversibly; the plugin is **published to ghively/gh-tools** (Phase 7)
+and installable; and the user has an honest map of exactly what works and what
 doesn't — no hand-waving.
