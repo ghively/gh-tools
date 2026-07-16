@@ -61,22 +61,29 @@ noise, film grain`
    `comfy_to_gif(mp4, fps=15, width=960)` (crossfade loop).
 4. Drop results where the mapping rig picks them up (e.g. /tank/projection-mapping).
 
-## Tagging + the vpt9 media library (verified live 2026-07-16)
+## Tagging + the vpt9 media library (rules v2, verified live 2026-07-16)
 The vpt9 control-plane library (`http://192.168.0.214:8080/api/media`) stores
-tags **inside the files** as XMP `dc:Subject` — embed keywords BEFORE upload
-and the server reads them automatically (verified round-trip):
+ALL metadata **inside the files** as XMP `dc:Subject` keywords. Two kinds:
+1. **Collections** — keywords prefixed exactly `collection:` (lowercase prefix,
+   Title Case 1-2 word name, e.g. `collection:Stained Glass`). These become
+   FOLDERS in the library UI. **Every file MUST have ≥1 collection.** Reuse
+   existing collections; list them first:
+   `curl -s http://192.168.0.214:8080/state | jq '[.media[].tags[]? | select(startswith("collection:"))] | unique'`
+2. **Loose tags** — 2–5 plain descriptors for filtering ("loop", "calm", "gold").
+
 ```bash
-exiftool -overwrite_original -XMP-dc:Subject=neon -XMP-dc:Subject=loop file.gif
+exiftool -overwrite_original -XMP-dc:Subject="collection:Fire" \
+  -XMP-dc:Subject=warm -XMP-dc:Subject=loop file.gif
 curl -X POST http://192.168.0.214:8080/api/media \
-     -H "X-File-Name: neon-loop.gif" --data-binary @file.gif
+     -H "X-File-Name: blue-flame-loop.gif" --data-binary @file.gif
 ```
-(python: `subprocess.run(["exiftool","-overwrite_original",*[f"-XMP-dc:Subject={t}" for t in tags],path])`)
-- Alternative: skip exiftool and pass `-H "X-Media-Tags: neon, loop"` — the
-  server writes them into the file for you. DELETE `/api/media/{id}` removes.
-- Tag convention used for the demo set: `<style>, <subject>, loop, demo`.
-- **The library rejects PNG** — convert stills to jpg before upload
-  (`ffmpeg -i in.png -q:v 2 out.jpg`); webm tags stay index-only. Embed into
-  BOTH the gif and mp4 on disk so the tank copies stay portable.
+- Formats: **only mp4 (H.264 yuv420p), gif, jpg** — never PNG or WebM.
+- `X-File-Name` is the display name — make it descriptive, not `output_003`.
+- Use `curl --data-binary` (busybox wget --post-file corrupts uploads).
+- No exiftool? `-H "X-Media-Tags: collection:Fire, warm, loop"` — the server
+  embeds into the file for you (verified). DELETE `/api/media/{id}` removes.
+- Demo-set convention: `collection:Vibe Library` + `collection:<Style>` +
+  loose `[mood, color(s), motion, loop]`. Embed into BOTH gif and mp4 on disk.
 
 Sources: [HeavyM video-mapping loops](https://www.heavym.net/video-mapping-loops/),
 [Chameleon Interactive content tips](https://chameleon-interactive.com/2024/10/31/how-projection-mapping-and-led-screens-handle-content-tips-for-creating-eye-catching-visuals/),
