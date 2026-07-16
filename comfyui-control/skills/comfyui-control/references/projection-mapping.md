@@ -2,6 +2,9 @@
 
 Guidance for batch-generating stills and GIF/video loops to feed a projection
 rig (Gene's: vpt9 control-panel, 1080p projector, gh-nvidia renders).
+Read together with `projection-styles.md` (style arsenal + motion map) and
+`texture-research.md` (the owner's methodology doc: sampler matrix, anti-trope
+prompting, loop taxonomy, Electric Sheep lore).
 
 ## The physics that drive every choice
 A projector ADDS light — **pure black = the projector is off on that surface**.
@@ -21,12 +24,16 @@ bright, bold motion on black.
 
 ## Delivery specs (1080p rig)
 - Deliver at the projector's EXACT resolution — **1920×1080** — to avoid
-  resampling artifacts. Generate at an SDXL 16:9-ish bucket (**1344×768**),
-  then 4x-upscale and downscale/crop to 1920×1080, or let the mapping
-  software scale the 4x master.
+  resampling artifacts. `comfy_master_still(image)` does the whole finishing
+  pass: 4x upscale → scale-to-cover + center-crop to exactly 1920×1080 → jpg
+  (library-ready). Generate at an SDXL 16:9-ish bucket (**1344×768**) first;
+  `hires_scale=1.5-2.0` on comfy_txt2img adds the latent-space hires-fix
+  (upscale latent → low-denoise re-sample → tiled decode) when the master
+  needs more real detail rather than just pixels.
 - Loops: VJ standard is **10–60s seamless**; 30fps video, or 12–18fps GIF.
-- Prefer mp4/h264 for the player when possible; GIFs when the tool/workflow
-  wants them (vpt9 accepts both).
+- **mp4-first**: `comfy_loop_video(mp4)` → seamless forward-only loop as
+  h264 yuv420p (~40x smaller than GIF, the library's required pixel format);
+  gif only when the workflow wants it (`format="both"`).
 
 ## Why black-on-bright content is ALSO the ideal GIF payload
 GIF = 256 colors/frame. Smooth gradients dither and band; but bold saturated
@@ -54,36 +61,80 @@ noise, film grain`
 > Static camera, seamless looping motion, high contrast, bold graphic
 > shapes, VJ projection visual, sharp and clean.
 
+## Seamless cycles: comfy_img2video (FLF) — the loop workhorse
+`comfy_img2video(image, prompt, loop=True)` pins the input still as BOTH the
+first and last frame via LTXV keyframe guides — a mathematically closed cycle,
+no crossfade ghosting. This unlocks the best style-control pipeline:
+**SDXL still (checkpoint + LoRA + palette) → img2video → seamless mp4.**
+- Prompt rule (the Cassidy Curtis / Electric Sheep lesson — loops must match
+  velocity, not just position): describe motion that is MID-CYCLE at start
+  and end — "rotates continuously", "circulates in a constant current" —
+  never "begins to…" or progressive verbs (unfold/grow/bloom break closure).
+- `strength` 0.7–1.0 tunes guide anchoring (1.0 can over-anchor → near
+  static; default 0.9). If a cycle won't converge: `loop=False` +
+  `comfy_loop_video` crossfade is the honest fallback.
+
+## Parametric motion: comfy_animate_still (no GPU)
+Turns any still into an exactly-looping clip by driving one parameter around
+a closed cycle (frame N ≡ frame 0 by construction): rotate/rotate_ccw (full
+revolutions), zoom_in/zoom_out (breathing log-zoom), drift (mirror-tile
+scroll — doubles as a seamless-tiling texture generator), pulse
+(brightness/saturation breathe), kaleido (mirror symmetry + spin), tunnel
+(perpetual zoom, crossfade-wrapped — SELF-SIMILAR sources only). Motion↔style
+map in projection-styles.md. Never re-crossfade these outputs.
+
+## Multi-face texture sets (the /comfy-texture-set command)
+For a "3D effect" on mapped objects (cube faces, facade zones): generate ONE
+master texture field, then derive faces as `comfy_img2img(master, base
+prompt + per-face modifier, denoise≈0.5)` — a coherent family with distinct
+faces (master-canvas + crops keeps grain/stroke/motion language consistent).
+Finish each face with `comfy_master_still` (square for cubes, 16:9 for
+facades). **Phase-lock**: animate every face with the same duration+fps →
+identical frame count → the faces loop in sync on the rig.
+
+## Tiling seams
+No core node guarantees seamless spatial tiling. Either use
+`comfy_animate_still(motion="drift")`'s mirror tile (seamless by
+construction), or verify/repair: wrap-offset the image by 50% in both axes,
+inpaint the visible seam cross with `comfy_inpaint`, offset back.
+
 ## Batch workflow (the /comfy-projection command automates this)
 1. `comfy_batch(prompt, count=4-8, width=1344, height=768)` — seed variations.
-2. Review; `comfy_upscale` winners (→ 5376×3072 master, downscale to 1080p).
-3. For loops: `comfy_txt2video(768×512 or 704×448, 97-121f)` per theme, then
-   `comfy_to_gif(mp4, fps=15, width=960)` (crossfade loop).
-4. Drop results where the mapping rig picks them up (e.g. /tank/projection-mapping).
+2. Review; `comfy_master_still` winners (4x upscale + exact 1080p jpg).
+3. For loops: SDXL still → `comfy_img2video(loop=True)` → seamless mp4
+   (preferred), or `comfy_txt2video` + `comfy_loop_video` for pure t2v.
+4. Auto-deliver winners to the vpt9 library (below); /tank copies ask-first.
 
 ## Tagging + the vpt9 media library (rules v2, verified live 2026-07-16)
-The vpt9 control-plane library (`http://192.168.0.214:8080/api/media`) stores
-ALL metadata **inside the files** as XMP `dc:Subject` keywords. Two kinds:
-1. **Collections** — keywords prefixed exactly `collection:` (lowercase prefix,
-   Title Case 1-2 word name, e.g. `collection:Stained Glass`). These become
-   FOLDERS in the library UI. **Every file MUST have ≥1 collection.** Reuse
-   existing collections; list them first:
-   `curl -s http://192.168.0.214:8080/state | jq '[.media[].tags[]? | select(startswith("collection:"))] | unique'`
-2. **Loose tags** — 2–5 plain descriptors for filtering ("loop", "calm", "gold").
+The vpt9 control-plane library (`library_url` in config, currently
+`http://192.168.0.214:8080`) stores ALL metadata **inside the files** as XMP
+`dc:Subject` keywords. **Use the curated tools:**
+- `comfy_library_collections()` — existing collections + counts + top loose
+  tags. Always check first; REUSE collections.
+- `comfy_library_upload(file, collection, tags, name)` — validates format,
+  normalizes the collection name, sends `X-File-Name` + `X-Media-Tags` (the
+  server embeds the XMP itself — no exiftool needed). Returns the media id.
+- `comfy_library_delete(media_ids, confirm=True)` — one confirmed call
+  reverses a whole batch.
 
-```bash
-exiftool -overwrite_original -XMP-dc:Subject="collection:Fire" \
-  -XMP-dc:Subject=warm -XMP-dc:Subject=loop file.gif
-curl -X POST http://192.168.0.214:8080/api/media \
-     -H "X-File-Name: blue-flame-loop.gif" --data-binary @file.gif
-```
+Rules the tools enforce (and you must respect when naming):
+1. **Collections** — `collection:` prefix + Title Case **1-2 word** name
+   (e.g. `collection:Stained Glass`) → FOLDERS in the library UI. Every file
+   needs ≥1 collection.
+2. **Loose tags** — 2–5 plain descriptors ("loop", "calm", "gold").
+   Demo-set convention: `collection:Vibe Library` + `collection:<Style>` +
+   loose `[mood, color(s), motion, loop]`.
 - Formats: **only mp4 (H.264 yuv420p), gif, jpg** — never PNG or WebM.
-- `X-File-Name` is the display name — make it descriptive, not `output_003`.
-- Use `curl --data-binary` (busybox wget --post-file corrupts uploads).
-- No exiftool? `-H "X-Media-Tags: collection:Fire, warm, loop"` — the server
-  embeds into the file for you (verified). DELETE `/api/media/{id}` removes.
-- Demo-set convention: `collection:Vibe Library` + `collection:<Style>` +
-  loose `[mood, color(s), motion, loop]`. Embed into BOTH gif and mp4 on disk.
+  comfy_master_still makes the jpg; comfy_loop_video makes the mp4.
+- Display names descriptive, never `output_003`.
+- Uploads are reversible → batch uploads may run WITHOUT asking (print a
+  manifest of files/collection/tags first, report media ids after); deletes
+  stay confirm-gated.
+
+Manual fallback (no MCP): `exiftool -XMP-dc:Subject="collection:Fire" ...`
+then `curl -X POST .../api/media -H "X-File-Name: name.gif" --data-binary
+@file` (busybox wget corrupts uploads), or skip exiftool with
+`-H "X-Media-Tags: collection:Fire, warm, loop"`.
 
 Sources: [HeavyM video-mapping loops](https://www.heavym.net/video-mapping-loops/),
 [Chameleon Interactive content tips](https://chameleon-interactive.com/2024/10/31/how-projection-mapping-and-led-screens-handle-content-tips-for-creating-eye-catching-visuals/),

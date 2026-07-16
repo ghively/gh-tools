@@ -59,7 +59,20 @@ live 2026-07-15. 46 HTTP routes + websocket. Every route is reachable via
   **websocket_image_save**. 828 node classes total. Node packs add classes,
   not HTTP routes.
 - Checkpoints: `sd3.5_medium`, `sd_xl_base_1.0`, `ltx-video-2b-v0.9.5`.
-  LoRAs: 3 SDXL icon packs. Upscaler: `4x-UltraSharpV2`. Encoders:
-  clip_g / clip_l / t5xxl_fp8. Host store: `/mnt/NVME/ai-models/comfyui/models`
+  LoRAs: 15 SDXL (12 style + 3 icon — see projection-styles.md). Upscaler:
+  `4x-UltraSharpV2`. Encoders: clip_g / clip_l / t5xxl_fp8. Host store:
+  `/mnt/NVME/ai-models/comfyui/models`
   (comfy_model_download writes here; new files visible without restart —
   only COMBO dropdown caches may lag).
+
+## vpt9 media-library service (separate host service, `library_url` :8080)
+Not part of ComfyUI — the projection rig's media library. Curated tools:
+`comfy_library_collections` / `comfy_library_upload` / `comfy_library_delete`.
+| Route | Notes |
+|---|---|
+| GET /state | full library state; media[].tags[] carries `collection:` + loose XMP keywords |
+| POST /api/media | body = raw file bytes; headers `X-File-Name` (display name) + `X-Media-Tags` (server embeds XMP dc:Subject itself) |
+| DELETE /api/media/{id} | remove one media item (confirm-gated in the tool) |
+Formats: mp4 (h264 yuv420p) / gif / jpg only. POST response shape is
+version-dependent — the upload tool parses the id defensively (falls back to
+a /state diff).
