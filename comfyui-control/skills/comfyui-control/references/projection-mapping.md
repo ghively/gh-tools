@@ -33,8 +33,9 @@ GIF = 256 colors/frame. Smooth gradients dither and band; but bold saturated
 shapes on flat black use a tiny palette — sharp result, small file. Rules:
 - 12–15fps is plenty for abstract loops; bayer dithering (the comfy_to_gif
   default) beats error-diffusion for flat-color content.
-- **Seamlessness**: `comfy_to_gif(..., palindrome=True)` turns ANY clip into a
-  boomerang loop — the standard trick when the motion isn't naturally cyclic.
+- **Seamlessness**: `comfy_to_gif(...)` (crossfade default) makes ANY clip a
+  forward-only seamless loop — the tail blends into the head, no reversal
+  (owner preference: never boomerang/palindrome).
   Prompting "seamless looping motion, static camera" helps the raw clip too.
 - GIF at full 1920 wide gets heavy (tens of MB); 960×540 GIFs scale fine on a
   1080p projector for abstract content. Go full-res mp4 when quality matters.
@@ -57,7 +58,7 @@ noise, film grain`
 1. `comfy_batch(prompt, count=4-8, width=1344, height=768)` — seed variations.
 2. Review; `comfy_upscale` winners (→ 5376×3072 master, downscale to 1080p).
 3. For loops: `comfy_txt2video(768×512 or 704×448, 97-121f)` per theme, then
-   `comfy_to_gif(mp4, fps=15, width=960, palindrome=True)`.
+   `comfy_to_gif(mp4, fps=15, width=960)` (crossfade loop).
 4. Drop results where the mapping rig picks them up (e.g. /tank/projection-mapping).
 
 ## Tagging + the vpt9 media library (verified live 2026-07-16)

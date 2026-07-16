@@ -81,13 +81,17 @@ with `vector art, flat design, clean lines, minimalist`.
   literally + chronologically ("the ribbons rotate clockwise, slowly
   accelerating" — never "gracefully/hypnotically"); ≤200 words; ~1 action per
   2–3s; 768×512 is its sweet spot.
-- **Seamless loops, best → good**:
-  1. *FLF2V*: image-to-video with the SAME still as first and last frame +
+- **Seamless loops — OWNER PREFERENCE (2026-07-16): forward-only, never
+  boomerang.** Best → good:
+  1. *Crossfade* (the default, verified): `comfy_to_gif(mp4)` — plays forward,
+     the last ~0.8s blends into the first ~0.8s so it wraps invisibly; output
+     shortens by the fade. Pure ffmpeg, works on any clip.
+  2. *FLF2V*: image-to-video with the SAME still as first and last frame +
      cyclical motion prompt (explore `LTXVAddGuide`/`LTXVImgToVideo` via
-     comfy_nodes — not yet live-tested here).
-  2. *Palindrome*: `comfy_to_gif(mp4, palindrome=True)` — verified, works on
-     anything, doubles length.
+     comfy_nodes — not yet live-tested here). True cycle, no fade ghosting.
   3. Prompt-only ("seamless looping motion") — helps, doesn't guarantee.
+  Palindrome (`loop="palindrome"`) exists but the owner dislikes the
+  forward-backward look — don't use it unless asked.
 - **Pipeline that beats txt2video for style control**: SDXL still (checkpoint
   + LoRA stack, 1216×832) → LTXV image-to-video → palindrome GIF/mp4.
 - File-size reality (measured): 4s loop = **1.2MB mp4 vs 46MB GIF** at 960px.
