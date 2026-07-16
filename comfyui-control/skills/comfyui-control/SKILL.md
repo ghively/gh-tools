@@ -14,7 +14,11 @@ RTX 3060 12GB, `--lowvram`, no auth on the trusted LAN).
 differ a lot), `references/models-guide.md` (encyclopedia of image/video model
 families: what fits this 12GB card, what to download, loader wiring),
 `references/optimization.md` (3060 timings, VRAM/RAM rules, the OOM
-signature), `references/video.md` (LTXV + GIF), `references/api-map.md`
+signature), `references/video.md` (LTXV + GIF), `references/projection-mapping.md`
+(research-backed specs + prompt templates for projection/VJ content — REQUIRED
+before any projection-mapping job), `references/projection-styles.md` (the
+style ARSENAL: installed LoRAs + triggers, ranked checkpoints, keyword bible,
+loop recipes — read together with projection-mapping.md), `references/api-map.md`
 (all 46 routes), `references/conventions.md`, `references/common-tasks.md`.
 
 ## Tool map
@@ -31,7 +35,8 @@ signature), `references/video.md` (LTXV + GIF), `references/api-map.md`
 | 4x upscale | `comfy_upscale` (4x-UltraSharpV2 installed) |
 | N seed-variations of one prompt | `comfy_batch(prompt, count)` |
 | Text→video (LTX-Video) | `comfy_txt2video(..., gif=True for GIF)` |
-| Any video file → animated GIF | `comfy_to_gif` |
+| Any video file → animated GIF | `comfy_to_gif` (`palindrome=True` = seamless boomerang loop) |
+| Projection-mapping content batch | `/comfy-projection` workflow (stills + seamless loops) |
 | Any custom workflow graph | `comfy_generate(workflow_json)` |
 | Extract recipe from a ComfyUI PNG | `comfy_png_workflow(png_path)` |
 | Remix/re-run a PNG's workflow | `comfy_rerun(png_path, seed/prompt/overrides)` |

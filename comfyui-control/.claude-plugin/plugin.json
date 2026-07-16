@@ -1,7 +1,7 @@
 {
   "name": "comfyui-control",
   "description": "Deep ComfyUI control v2: full API passthrough + generation suite (txt2img/img2img/inpaint/upscale/LoRA/batch), LTX-Video + animated GIFs, HuggingFace/Civitai model management, PNG workflow extraction & remix, custom-node installs, websocket per-node progress.",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "author": {
     "name": "Gene Hively"
   }

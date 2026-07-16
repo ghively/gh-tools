@@ -491,25 +491,36 @@ def comfy_generate(workflow_json: str, wait_timeout: int = 240) -> str:
 
 # --------------------------------------------------------------- video
 
-def _to_gif(video_path: str, fps: int = 12, width: int = 480) -> str:
-    """High-quality mp4 -> GIF via ffmpeg two-pass palette."""
+def _to_gif(video_path: str, fps: int = 12, width: int = 480,
+            palindrome: bool = False) -> str:
+    """High-quality mp4 -> GIF via ffmpeg two-pass palette. palindrome=True
+    appends the reversed clip (boomerang) so any footage loops seamlessly —
+    the standard trick for VJ/projection-mapping loops."""
     src = Path(video_path)
     gif = src.with_suffix(".gif")
     vf = f"fps={fps},scale={width}:-1:flags=lanczos"
+    if palindrome:
+        chain = (f"[0:v]{vf},split[a][b];[b]reverse[r];[a][r]concat=n=2:v=1,"
+                 f"split[s0][s1];[s0]palettegen=stats_mode=diff[p];"
+                 f"[s1][p]paletteuse=dither=bayer:bayer_scale=4")
+    else:
+        chain = (f"[0:v]{vf},split[s0][s1];[s0]palettegen=stats_mode=diff[p];"
+                 f"[s1][p]paletteuse=dither=bayer:bayer_scale=4")
     subprocess.run(
         ["ffmpeg", "-y", "-v", "error", "-i", str(src),
-         "-vf", f"{vf},split[s0][s1];[s0]palettegen=stats_mode=diff[p];"
-                f"[s1][p]paletteuse=dither=bayer:bayer_scale=4",
-         str(gif)], check=True, capture_output=True, timeout=300)
+         "-filter_complex", chain, str(gif)],
+        check=True, capture_output=True, timeout=600)
     return str(gif)
 
 
 @mcp.tool()
-def comfy_to_gif(video_path: str, fps: int = 12, width: int = 480) -> str:
+def comfy_to_gif(video_path: str, fps: int = 12, width: int = 480,
+                 palindrome: bool = False) -> str:
     """Convert any local video file (e.g. a comfy_txt2video mp4) into an
-    animated GIF (ffmpeg two-pass palette — sharp colors, sane size)."""
+    animated GIF (ffmpeg two-pass palette — sharp colors, sane size).
+    palindrome=True makes it a seamless boomerang loop (projection/VJ use)."""
     try:
-        return _to_gif(str(Path(video_path).expanduser()), fps, width)
+        return _to_gif(str(Path(video_path).expanduser()), fps, width, palindrome)
     except subprocess.CalledProcessError as e:
         return f"ffmpeg failed: {e.stderr.decode()[-400:]}"
 
@@ -606,8 +617,16 @@ def comfy_model_download(folder: str, url: str = "", hf_repo: str = "",
     dest_dir.mkdir(parents=True, exist_ok=True)
     filename = filename or Path(httpx.URL(url).path).name or "model.safetensors"
     dest = dest_dir / filename
-    x = httpx.Client(timeout=httpx.Timeout(30, read=120), follow_redirects=True)
+    headers = {}
+    if "civitai.com" in url and CFG.get("civitai_token"):
+        headers["Authorization"] = f"Bearer {CFG['civitai_token']}"
+    x = httpx.Client(timeout=httpx.Timeout(30, read=120), follow_redirects=True,
+                     headers=headers)
     with x.stream("GET", url) as r:
+        if r.status_code == 401 and "civitai.com" in url:
+            return ("HTTP 401 — this Civitai file requires an API token: add "
+                    '"civitai_token": "<key from civitai.com/user/account>" '
+                    "to config.local.json")
         if r.status_code != 200:
             return f"HTTP {r.status_code} from {url}"
         total = int(r.headers.get("content-length", 0))
