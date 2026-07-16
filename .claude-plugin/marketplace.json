@@ -40,7 +40,7 @@
       "source": "./comfyui-control",
       "description": "Deep ComfyUI control v2 (built with deep-integration-builder, live-verified on ComfyUI 0.26.0): generation suite (txt2img/img2img/inpaint/upscale/LoRA/batch), LTX-Video + animated GIFs, HF/Civitai model management, PNG workflow remix, custom-node installs, websocket per-node progress, projection-mapping batch workflow (seamless palindrome GIF loops), full 46-route API passthrough, and a skill with per-model prompt engineering + a model encyclopedia.",
       "category": "infrastructure",
-      "version": "2.3.0"
+      "version": "2.5.0"
     }
   ]
 }

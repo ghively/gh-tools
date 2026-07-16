@@ -19,10 +19,13 @@ signature), `references/video.md` (LTXV + GIF), `references/projection-mapping.m
 before any projection-mapping job), `references/projection-styles.md` (the
 style ARSENAL: installed LoRAs + triggers, ranked checkpoints, keyword bible,
 loop recipes, motion↔style map, organic/mood families — read together with
-projection-mapping.md), `references/texture-research.md` (the owner's texture
-methodology: sampler matrix, anti-trope prompting, loop taxonomy, Electric
-Sheep loop lore), `references/api-map.md` (all 46 routes + the vpt9 library
-API), `references/conventions.md`, `references/common-tasks.md`.
+projection-mapping.md), `references/v1-vibe-recipes.md` (the owner-canonized
+"v1 vibe" — the COMPLETE pure-t2v painterly recipe set: all 10 templates,
+100 subject+palette pairs WITH seeds; the owner's referenceable ambient
+aesthetic — reproduce/extend it from any machine), `references/texture-research.md`
+(the owner's texture methodology: sampler matrix, anti-trope prompting, loop
+taxonomy, Electric Sheep loop lore), `references/api-map.md` (all 46 routes +
+the vpt9 library API), `references/conventions.md`, `references/common-tasks.md`.
 
 ## Tool map
 
