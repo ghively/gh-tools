@@ -33,7 +33,12 @@ Neon Outline `ral-neotlns` · Glitch Style `ral-glydch` · Aether Glitch (VHS,
 "light particles"; also covers SD3.5) · Dissolve `dissolve` · Smoke `dvr-smoke`
 / `Smoke_XL` · Line Art + Flat Colors (`lineart, flat colors`, w 1.0–2.0) and
 Minimalist Vector Art (`ArsMJStyle`, w 1.2–1.5) for clean vector output.
-NOTE: no tunnel/infinite-zoom LoRA exists — that's an animation-layer effect.
+From the owner's texture research (texture-research.md has the comparison
+table): add-detail-xl (detail dial, ± weights) · Controllable Vector Art XL
+(`vector` + control terms) · Papercut SDXL (`papercut`) · Stylized
+Silhouette XL · Negative XL (negative-strength).
+NOTE: no tunnel/infinite-zoom LoRA exists — use
+`comfy_animate_still(motion="tunnel")` on a self-similar still instead.
 
 ## Checkpoints ranked for this work (none installed yet — comfy_model_search)
 1. **DreamShaper XL** — the abstract/surreal workhorse (corroborated twice).
@@ -58,6 +63,35 @@ renders these natively; SD3.5 takes the same ideas as sentences):
 | Dissolve/decay | `figure dissolving into glowing particles` — transition loops | Dissolve `ral-dissolve` (26k dl — the community favorite) |
 | Aurora/atmosphere | `aurora borealis ribbons, ethereal light curtains, green and violet on black` | (native) |
 | Kaleidoscope | `symmetrical kaleidoscope pattern, radial symmetry` + sacred-geometry LoRA | `sacred geometry` (installed) |
+| Fractal flame | `luminous twisting elastic filaments, wispy glowing smoke tendrils, self-similar curling ribbons of light, soft glow falloff, no clipped highlights, structural color gradients on pure black` — the Electric Sheep look (texture-research.md appendix); motions: rotate/drift/tunnel | `ral-frctlgmtry` (installed) |
+
+## Organic textures & mood/scene-setting (2026-07-16)
+The bright-on-black physics extends to organic matter — these families SET
+SCENES AND MOODS rather than punch (cross-ref texture-research.md's photoreal
+pipeline for lit-surface material plates: stone, plaster, bark, moss,
+oxidized metal — DPM++ 2M, add-detail-xl low weight, "texture plate, no
+focal object", low-denoise refinement):
+
+| Family | Prompt core (+ keyword bible) | Motion (steady-state) | LoRA |
+|---|---|---|---|
+| Smoke & incense | `curling incense smoke, soft volumetric wisps on black` | billows and curls in place | dvr-smoke/Smoke_XL (download) |
+| Cloud / nebula | `deep space nebula, billowing cloud banks, volumetric light` | drifts in a constant current | (native; pair with drift motion) |
+| Water caustics | `underwater caustic light patterns, god rays, rippling refractions` | ripples in a continuous cycle | `watce` (installed) |
+| Bioluminescent flora | `glowing mushrooms and vines, bioluminescent forest floor` | pulses gently in rhythm | (native) |
+| Mycelium / network | `branching mycelium network, glowing filament web spreading held steady` | light travels along the threads | `ais-particlez` (installed) |
+| Jellyfish / deep sea | `translucent jellyfish drifting, trailing luminous tendrils` | drifts and undulates in place | (native) |
+| Silk / fabric | `flowing silk ribbons suspended, soft sheen` | undulates in a constant wave | (native) |
+| Murmuration | `starling murmuration, thousands of particles flowing as one form` | circulates in a closed orbit | `ais-particlez` |
+| Growth held steady | `frost crystals / vines / coral, fully grown, glinting` | light sweeps across the structure | (native — never prompt "growing": progressive verbs break loops) |
+
+**Mood doctrine**: ambient scene loops are the opposite energy pole from peak
+VJ hits — slow motion rates, `comfy_animate_still` intensity 0.3–0.6, longer
+durations (20–60s), drift/pulse over zoom/rotate. Palette psychology: warm
+ember = intimate; deep blue/teal = calm/underwater; violet+green aurora =
+otherworldly; gold filigree = sacred/ornate; desaturate toward jewel tones
+for calm, saturate for energy. Program a set as an **energy ladder** —
+ambient wash → breathing accent → pulse → peak — so the rig can build a show
+arc, not play disconnected clips.
 
 **Motion rule for loops (learned the hard way 2026-07-16): STEADY-STATE ONLY.**
 Progressive verbs (unfold, grow, bloom, disperse, disintegrate, reveal) make
@@ -95,17 +129,39 @@ with `vector art, flat design, clean lines, minimalist`.
   2–3s; 768×512 is its sweet spot.
 - **Seamless loops — OWNER PREFERENCE (2026-07-16): forward-only, never
   boomerang.** Best → good:
-  1. *Crossfade* (the default, verified): `comfy_to_gif(mp4)` — plays forward,
-     the last ~0.8s blends into the first ~0.8s so it wraps invisibly; output
-     shortens by the fade. Pure ffmpeg, works on any clip.
-  2. *FLF2V*: image-to-video with the SAME still as first and last frame +
-     cyclical motion prompt (explore `LTXVAddGuide`/`LTXVImgToVideo` via
-     comfy_nodes — not yet live-tested here). True cycle, no fade ghosting.
-  3. Prompt-only ("seamless looping motion") — helps, doesn't guarantee.
+  1. *FLF true cycle* (IMPLEMENTED): `comfy_img2video(image, prompt,
+     loop=True)` pins the still as BOTH first and last frame via LTXV
+     keyframe guides — a real cycle, no fade ghosting. Steady-state motion
+     prompt required (motion mid-cycle at start/end, never "begins to...").
+  2. *Parametric* (IMPLEMENTED): `comfy_animate_still` — mathematically
+     exact loops from any still, no GPU (see motion table below).
+  3. *Crossfade* (the default for arbitrary clips): `comfy_loop_video(mp4)`
+     → seamless yuv420p mp4 (+gif on request); `comfy_to_gif(mp4)` for
+     GIF-only. Tail blends into head; output shortens by the fade.
+     `interpolate_fps=` adds loop-aware cadence smoothing (slow).
+  4. Prompt-only ("seamless looping motion") — helps, doesn't guarantee.
   Palindrome (`loop="palindrome"`) exists but the owner dislikes the
-  forward-backward look — don't use it unless asked.
-- **Pipeline that beats txt2video for style control**: SDXL still (checkpoint
-  + LoRA stack, 1216×832) → LTXV image-to-video → palindrome GIF/mp4.
+  forward-backward look — don't use it unless asked. NEVER re-crossfade a
+  true cycle (img2video loop=True / animate_still): use
+  comfy_to_gif(loop="none") on those.
+- **Pipeline that beats txt2video for style control** (IMPLEMENTED): SDXL
+  still (checkpoint + LoRA stack, 1216×832) → `comfy_img2video(loop=True)`
+  → seamless mp4.
+- **Parametric motion ↔ style family map** (`comfy_animate_still`; all loops
+  exact-cycle except tunnel):
+
+| Motion | Best content | Notes |
+|---|---|---|
+| tunnel | sacred-geometry / mandala / fractal flame | closes the "no tunnel LoRA" gap — crossfade-wrapped, SELF-SIMILAR sources only (generic images ghost) |
+| drift | nebula, clouds, water, smoke, texture fields | mirror-tile scroll — also makes any texture seamless-tiling |
+| rotate / rotate_ccw | radial/kaleidoscopic compositions, mandalas | integer revolutions |
+| kaleido | anything — instant symmetry | mirror tile + spin |
+| zoom_in / zoom_out | centered glowing subjects | breathing log-zoom, closed cycle |
+| pulse | neon, fire, bioluminescence | brightness/saturation breathe — the ambient workhorse |
+
+  Steady-state FLF prompt lines that work: "the pattern breathes and returns
+  to its original arrangement", "light completes one full circuit along the
+  curves", "filaments swirl in one continuous cycle".
 - File-size reality (measured): 4s loop = **1.2MB mp4 vs 46MB GIF** at 960px.
   GIF only when the workflow needs it; mp4 (h264) otherwise.
 - Real-time AI VJ (TouchDesigner + StreamDiffusion) wants a 3090/4090 —
