@@ -29,12 +29,31 @@ CheckpointLoaderSimple(ltx) → CLIPLoader(t5xxl, ltxv) → CLIPTextEncode ×2 �
 LTXVConditioning(frame_rate) → EmptyLTXVLatentVideo → LTXVScheduler(sigmas) →
 SamplerCustom(euler) → VAEDecode → CreateVideo(fps) → SaveVideo(mp4/h264).
 
-Image-to-video exists too: `LTXVImgToVideo` replaces the empty latent — wire
-via comfy_generate with a LoadImage feeding it (see comfy_nodes
-node_class=LTXVImgToVideo for exact inputs).
+## comfy_img2video (image-to-video, FLF seamless cycles)
+`comfy_img2video(image, prompt, loop=True)` — the curated i2v path. Graph
+(verified against 0.26.0 nodes_lt.py): LoadImage → LTXVPreprocess
+(jpeg-degrade to match LTXV training) → the txt2video trunk with
+`LTXVAddGuide(frame_idx=0)` pinning the still as frame one and, with
+loop=True, a second `LTXVAddGuide(frame_idx=-1)` (negative = from the end)
+pinning the SAME image as the last frame → `LTXVCropGuides` after the
+sampler strips the guide latents (mandatory) → VAEDecode → mp4.
+- True seamless cycle — no crossfade. Write STEADY-STATE motion prompts
+  (mid-cycle at start/end); progressive verbs break closure.
+- `strength` 0.7–1.0 (default 0.9; 1.0 can over-anchor to near-static).
+- Best style control: SDXL still w/ checkpoint+LoRA stack → img2video.
+- Same VRAM footprint class as txt2video; the cgroup-OOM signature
+  (optimization.md §4) applies.
 
-## Animated GIFs
-- Any local video → `comfy_to_gif(video_path, fps=12, width=480)`.
+## Loops & GIFs
+- Seamless loop from ANY clip: `comfy_loop_video(mp4)` → forward-only
+  crossfade wrap as h264 **yuv420p** mp4 (vpt9-ready; ~40x smaller than
+  GIF); `format="both"` adds a GIF; `interpolate_fps=` = loop-aware motion
+  interpolation (slow), applied after the wrap.
+- GIF-only: `comfy_to_gif(video_path, fps=12, width=480)`.
+- True cycles (img2video loop=True, comfy_animate_still) must NOT be
+  re-crossfaded — `comfy_to_gif(..., loop="none")`.
+- Parametric motion from stills (no GPU): `comfy_animate_still` — see
+  projection-mapping.md.
 - Server-side alternatives: `SaveAnimatedWEBP` / `SaveAnimatedPNG` nodes
   (no native GIF node in core) — swap for SaveVideo in a custom graph when a
   browser-friendly loop beats an mp4.
