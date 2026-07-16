@@ -21,7 +21,7 @@ sacred-geometry, psychedelic) and use its trigger word + the keyword bible
    prompting guide. Show thumbnails/paths + seeds.
 4. **Loops**: for each of 2–3 motion variants of the theme, `comfy_txt2video`
    (768×512, 97 frames, cfg 3.0, static-camera seamless-motion prompt from the
-   reference), then `comfy_to_gif(mp4, fps=15, width=960, palindrome=True)`
+   reference), then `comfy_to_gif(mp4, fps=15, width=960)` (forward-only crossfade)
    for a seamless boomerang GIF. Offer full-res mp4 for quality-critical use.
 5. **Finish**: offer to 4x-upscale the winning stills (1080p master), copy the
    final set to `/tank/projection-mapping`, and tag + upload to the vpt9 media

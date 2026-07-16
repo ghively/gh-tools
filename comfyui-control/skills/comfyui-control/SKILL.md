@@ -35,7 +35,7 @@ loop recipes — read together with projection-mapping.md), `references/api-map.
 | 4x upscale | `comfy_upscale` (4x-UltraSharpV2 installed) |
 | N seed-variations of one prompt | `comfy_batch(prompt, count)` |
 | Text→video (LTX-Video) | `comfy_txt2video(..., gif=True for GIF)` |
-| Any video file → animated GIF | `comfy_to_gif` (`palindrome=True` = seamless boomerang loop) |
+| Any video file → animated GIF | `comfy_to_gif` (crossfade = forward-only seamless loop, the default) |
 | Projection-mapping content batch | `/comfy-projection` workflow (stills + seamless loops) |
 | Any custom workflow graph | `comfy_generate(workflow_json)` |
 | Extract recipe from a ComfyUI PNG | `comfy_png_workflow(png_path)` |

@@ -491,21 +491,38 @@ def comfy_generate(workflow_json: str, wait_timeout: int = 240) -> str:
 
 # --------------------------------------------------------------- video
 
+def _duration(path: Path) -> float:
+    out = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+         "-of", "csv=p=0", str(path)], capture_output=True, text=True,
+        check=True, timeout=60)
+    return float(out.stdout.strip())
+
+
 def _to_gif(video_path: str, fps: int = 12, width: int = 480,
-            palindrome: bool = False) -> str:
-    """High-quality mp4 -> GIF via ffmpeg two-pass palette. palindrome=True
-    appends the reversed clip (boomerang) so any footage loops seamlessly —
-    the standard trick for VJ/projection-mapping loops."""
+            loop: str = "crossfade", fade: float = 0.8) -> str:
+    """High-quality mp4 -> GIF via ffmpeg two-pass palette.
+    loop modes: 'crossfade' (DEFAULT — forward-only playback, the tail blends
+    into the head so it wraps invisibly; output shortens by `fade` seconds),
+    'palindrome' (forward-then-reverse boomerang), 'none' (plain cut)."""
     src = Path(video_path)
     gif = src.with_suffix(".gif")
     vf = f"fps={fps},scale={width}:-1:flags=lanczos"
-    if palindrome:
+    palette = (f"split[s0][s1];[s0]palettegen=stats_mode=diff[p];"
+               f"[s1][p]paletteuse=dither=bayer:bayer_scale=4")
+    if loop == "crossfade":
+        d = _duration(src)
+        if d <= 2 * fade + 0.2:
+            fade = max(0.2, d / 4)
+        chain = (f"[0:v]trim=start={fade},setpts=PTS-STARTPTS[main];"
+                 f"[0:v]trim=duration={fade},setpts=PTS-STARTPTS[head];"
+                 f"[main][head]xfade=transition=fade:duration={fade}:"
+                 f"offset={d - 2 * fade},{vf},{palette}")
+    elif loop == "palindrome":
         chain = (f"[0:v]{vf},split[a][b];[b]reverse[r];[a][r]concat=n=2:v=1,"
-                 f"split[s0][s1];[s0]palettegen=stats_mode=diff[p];"
-                 f"[s1][p]paletteuse=dither=bayer:bayer_scale=4")
+                 f"{palette}")
     else:
-        chain = (f"[0:v]{vf},split[s0][s1];[s0]palettegen=stats_mode=diff[p];"
-                 f"[s1][p]paletteuse=dither=bayer:bayer_scale=4")
+        chain = f"[0:v]{vf},{palette}"
     subprocess.run(
         ["ffmpeg", "-y", "-v", "error", "-i", str(src),
          "-filter_complex", chain, str(gif)],
@@ -515,12 +532,13 @@ def _to_gif(video_path: str, fps: int = 12, width: int = 480,
 
 @mcp.tool()
 def comfy_to_gif(video_path: str, fps: int = 12, width: int = 480,
-                 palindrome: bool = False) -> str:
+                 loop: str = "crossfade", fade: float = 0.8) -> str:
     """Convert any local video file (e.g. a comfy_txt2video mp4) into an
     animated GIF (ffmpeg two-pass palette — sharp colors, sane size).
-    palindrome=True makes it a seamless boomerang loop (projection/VJ use)."""
+    loop='crossfade' (default) = forward-only seamless wrap (owner-preferred);
+    'palindrome' = boomerang; 'none' = plain. fade = crossfade seconds."""
     try:
-        return _to_gif(str(Path(video_path).expanduser()), fps, width, palindrome)
+        return _to_gif(str(Path(video_path).expanduser()), fps, width, loop, fade)
     except subprocess.CalledProcessError as e:
         return f"ffmpeg failed: {e.stderr.decode()[-400:]}"
 
