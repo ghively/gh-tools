@@ -25,6 +25,12 @@ Follow the skill's phases in order — do not skip to coding:
 6. **Reverse-engineer undocumented parts** from the UI's own traffic when guessing fails.
 7. **Safety** — confirm-gate writes; never self-run live writes; verify writes reversibly
    with the user's go-ahead; report honestly (built vs. verified vs. hard limit).
+8. **Publish to gh-tools** — every finished integration ships to the
+   `ghively/gh-tools` repo (see the skill's "Publishing" section): plugin in its
+   own subdirectory, entry in `.claude-plugin/marketplace.json`, commit + push,
+   refresh the local marketplace clone, and hand-place the git-ignored
+   `config.local.json` into the installed plugin root. Do NOT scatter
+   integrations into other repos or leave them unpublished.
 
 Remember the core principle: **"covered" means the operation actually works for the
 user, not that an API exists for it.** Be honest about the edges.
