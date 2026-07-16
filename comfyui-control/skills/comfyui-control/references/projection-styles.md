@@ -18,6 +18,12 @@ SD3.5 has no community champion for abstract work. (Corroborated:
 | `sacred-geometry-sdxl` | mandala/sacred geometry | `sacred geometry` | 0.8–1.0 |
 | `psychedelic-noir-sdxl` | dark psychedelic | (none needed) | 0.6–0.9 |
 | `particles-style-sdxl` | glowing particles | `ais-particlez` | 0.8–1.0 |
+| `dissolve-style-sdxl` | particle disintegration | `ral-dissolve` | 0.8–1.0 |
+| `liquid-water-flow-sdxl` | flowing water/fluid | `watce` | 0.7–1.0 |
+| `art-nouveau-sdxl` | art nouveau ornament | `ArsMJStyle, Art Nouveau` | 0.8–1.0 |
+| `stained-glass-sdxl` | stained glass | `Stained Glass Portrait` | 0.8–1.0 |
+| `ink-wash-sdxl` | sumi-e ink wash | `ink-style, ink_wash_painting` | 0.7–1.0 |
+| `baroque-fantasy-sdxl` | baroque gold fantasy | `Baroque Fantasy Realism` | 0.7–1.0 |
 | + the 3 icon LoRAs | flat icons | "icons" | 0.8–1.0 |
 
 ## Worth downloading when a job calls for it (Civitai, SDXL, triggers verified)
