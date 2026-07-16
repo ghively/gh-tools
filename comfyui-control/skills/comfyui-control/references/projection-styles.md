@@ -17,13 +17,13 @@ SD3.5 has no community champion for abstract work. (Corroborated:
 | `wireframe-hologram-sdxl` | wireframe/holographic | `noc-wfhlgr` | 0.75–1.2 |
 | `sacred-geometry-sdxl` | mandala/sacred geometry | `sacred geometry` | 0.8–1.0 |
 | `psychedelic-noir-sdxl` | dark psychedelic | (none needed) | 0.6–0.9 |
+| `particles-style-sdxl` | glowing particles | `ais-particlez` | 0.8–1.0 |
 | + the 3 icon LoRAs | flat icons | "icons" | 0.8–1.0 |
 
 ## Worth downloading when a job calls for it (Civitai, SDXL, triggers verified)
 Neon Outline `ral-neotlns` · Glitch Style `ral-glydch` · Aether Glitch (VHS,
 "vhs glitch") · Chrome Style `ral-chrome` · Iridescent SDXL · Synthwave-Style
-`synthworld` · Particles `ais-particlez` / Dark Particles `ais-darkpartz`
-(needs civitai_token — 401 without) · Glowing & Light Particles ("glowing",
+`synthworld` · Dark Particles `ais-darkpartz` · Glowing & Light Particles ("glowing",
 "light particles"; also covers SD3.5) · Dissolve `dissolve` · Smoke `dvr-smoke`
 / `Smoke_XL` · Line Art + Flat Colors (`lineart, flat colors`, w 1.0–2.0) and
 Minimalist Vector Art (`ArsMJStyle`, w 1.2–1.5) for clean vector output.
