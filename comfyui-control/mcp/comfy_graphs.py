@@ -68,7 +68,11 @@ def _encode_and_save(graph: dict, model, clip, vae, prompt: str, negative: str,
 # --------------------------------------------------------------- image graphs
 
 def txt2img(checkpoint, prompt, negative, width, height, seed, steps, cfg,
-            sampler, scheduler, lora_spec="", tiled_vae=False) -> dict:
+            sampler, scheduler, lora_spec="", tiled_vae=False,
+            hires_scale=0.0) -> dict:
+    """hires_scale (1.5-2.0): latent-space hires-fix — LatentUpscaleBy ->
+    second low-denoise KSampler (same seed/prompts) -> tiled decode (forced,
+    regardless of tiled_vae). The projection mastering path."""
     graph: dict = {}
     model, clip, vae = _clip_and_model(graph, checkpoint, lora_spec)
     latent_class = "EmptySD3LatentImage" if "sd3" in checkpoint.lower() \
@@ -76,7 +80,21 @@ def txt2img(checkpoint, prompt, negative, width, height, seed, steps, cfg,
     graph["4"] = {"class_type": latent_class,
                   "inputs": {"width": width, "height": height, "batch_size": 1}}
     _encode_and_save(graph, model, clip, vae, prompt, negative, ["4", 0],
-                     seed, steps, cfg, sampler, scheduler, 1.0, tiled_vae)
+                     seed, steps, cfg, sampler, scheduler, 1.0,
+                     tiled_vae or hires_scale > 0)
+    if hires_scale:
+        graph["12"] = {"class_type": "LatentUpscaleBy",
+                       "inputs": {"samples": ["5", 0],
+                                  "upscale_method": "bicubic",
+                                  "scale_by": hires_scale}}
+        graph["13"] = {"class_type": "KSampler",
+                       "inputs": {"model": model, "positive": ["2", 0],
+                                  "negative": ["3", 0],
+                                  "latent_image": ["12", 0],
+                                  "seed": seed, "steps": steps, "cfg": cfg,
+                                  "sampler_name": sampler,
+                                  "scheduler": scheduler, "denoise": 0.25}}
+        graph["6"]["inputs"]["samples"] = ["13", 0]
     return graph
 
 
@@ -160,6 +178,74 @@ def ltxv_txt2video(checkpoint, t5_name, prompt, negative, width, height,
                "inputs": {"video": ["11", 0], "filename_prefix": "video/mcp",
                           "format": "mp4", "codec": "h264"}},
     }
+
+
+def ltxv_img2video(checkpoint, t5_name, image_name, prompt, negative, width,
+                   height, frames, fps, seed, steps, cfg, strength=0.9,
+                   loop=True, img_compression=35) -> dict:
+    """LTX-Video image-to-video with keyframe guides (verified against 0.26.0
+    nodes_lt.py). The input still is pinned at frame 0 via LTXVAddGuide; with
+    loop=True a second guide pins the SAME image at frame_idx=-1 (negative
+    indices count from the end) -> the clip is a true seamless cycle, no
+    crossfade ghosting. Pair with a steady-state motion prompt (motion must be
+    mid-cycle at start/end, never "begins to..."). LTXVCropGuides strips the
+    appended guide latents after sampling — mandatory. LTXVPreprocess
+    jpeg-degrades the still to match LTXV's training distribution."""
+    guide_common = {"vae": ["1", 2], "image": ["21", 0], "strength": strength}
+    graph = {
+        "1": {"class_type": "CheckpointLoaderSimple",
+              "inputs": {"ckpt_name": checkpoint}},
+        "2": {"class_type": "CLIPLoader",
+              "inputs": {"clip_name": t5_name, "type": "ltxv"}},
+        "3": {"class_type": "CLIPTextEncode",
+              "inputs": {"text": prompt, "clip": ["2", 0]}},
+        "4": {"class_type": "CLIPTextEncode",
+              "inputs": {"text": negative, "clip": ["2", 0]}},
+        "5": {"class_type": "EmptyLTXVLatentVideo",
+              "inputs": {"width": width, "height": height,
+                         "length": frames, "batch_size": 1}},
+        "6": {"class_type": "LTXVConditioning",
+              "inputs": {"positive": ["3", 0], "negative": ["4", 0],
+                         "frame_rate": float(fps)}},
+        "20": {"class_type": "LoadImage", "inputs": {"image": image_name}},
+        "21": {"class_type": "LTXVPreprocess",
+               "inputs": {"image": ["20", 0],
+                          "img_compression": img_compression}},
+        "22": {"class_type": "LTXVAddGuide",
+               "inputs": {"positive": ["6", 0], "negative": ["6", 1],
+                          "latent": ["5", 0], "frame_idx": 0, **guide_common}},
+    }
+    last = "22"
+    if loop:
+        graph["23"] = {"class_type": "LTXVAddGuide",
+                       "inputs": {"positive": ["22", 0], "negative": ["22", 1],
+                                  "latent": ["22", 2], "frame_idx": -1,
+                                  **guide_common}}
+        last = "23"
+    graph.update({
+        "7": {"class_type": "LTXVScheduler",
+              "inputs": {"steps": steps, "max_shift": 2.05, "base_shift": 0.95,
+                         "stretch": True, "terminal": 0.1,
+                         "latent": [last, 2]}},
+        "8": {"class_type": "KSamplerSelect", "inputs": {"sampler_name": "euler"}},
+        "9": {"class_type": "SamplerCustom",
+              "inputs": {"model": ["1", 0], "add_noise": True,
+                         "noise_seed": seed, "cfg": cfg,
+                         "positive": [last, 0], "negative": [last, 1],
+                         "sampler": ["8", 0], "sigmas": ["7", 0],
+                         "latent_image": [last, 2]}},
+        "24": {"class_type": "LTXVCropGuides",
+               "inputs": {"positive": [last, 0], "negative": [last, 1],
+                          "latent": ["9", 0]}},
+        "10": {"class_type": "VAEDecode",
+               "inputs": {"samples": ["24", 2], "vae": ["1", 2]}},
+        "11": {"class_type": "CreateVideo",
+               "inputs": {"images": ["10", 0], "fps": float(fps)}},
+        "12": {"class_type": "SaveVideo",
+               "inputs": {"video": ["11", 0], "filename_prefix": "video/mcp_i2v",
+                          "format": "mp4", "codec": "h264"}},
+    })
+    return graph
 
 
 # ------------------------------------------------------- PNG workflow extract
