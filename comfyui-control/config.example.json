@@ -1,0 +1,10 @@
+{
+  "base_url": "http://192.168.0.214:8188",
+  "timeout": 60,
+  "output_dir": "~/comfy-outputs",
+  "models_dir": "/mnt/NVME/ai-models/comfyui/models",
+  "custom_nodes_dir": "/home/ghively/projects/ComfyUI/custom_nodes",
+  "compose_file": "/srv/agent-lab/docker-compose.yml",
+  "compose_service": "comfyui",
+  "library_url": "http://192.168.0.214:8080"
+}
