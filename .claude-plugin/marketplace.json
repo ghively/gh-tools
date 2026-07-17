@@ -8,7 +8,7 @@
     {
       "name": "synology-nas",
       "source": "./",
-      "description": "Full control of a Synology DiskStation (DSM 7.x) — MCP server reaching all ~870 DSM Web APIs plus curated tools, a control skill, and workflow commands.",
+      "description": "Full control of a Synology DiskStation (DSM 7.x) \u2014 MCP server reaching all ~870 DSM Web APIs plus curated tools, a control skill, and workflow commands.",
       "category": "infrastructure"
     },
     {
@@ -20,13 +20,13 @@
     {
       "name": "gitlab",
       "source": "./gitlab",
-      "description": "Full control of a self-hosted GitLab CE instance (verified on 19.0.0) — MCP server with generic REST+GraphQL passthrough reaching all ~170 API domains, ~35 curated tools (projects, repos, MRs, issues, CI/CD, runners, admin), a control skill, and workflow commands.",
+      "description": "Full control of a self-hosted GitLab CE instance (verified on 19.0.0) \u2014 MCP server with generic REST+GraphQL passthrough reaching all ~170 API domains, ~35 curated tools (projects, repos, MRs, issues, CI/CD, runners, admin), a control skill, and workflow commands.",
       "category": "development"
     },
     {
       "name": "emby",
       "source": "./emby",
-      "description": "Full control of an Emby media server (verified on 4.7.14.0) — MCP server with a generic passthrough reaching all ~484 REST operations (self-discovered from the live OpenAPI spec), ~30 curated tools (status, library & metadata, users & policies, sessions & remote playback control, transcoding analysis, scheduled tasks, plugins & catalog, collections, playlists, configuration), a control skill with official-docs references (configuration, troubleshooting, optimization, plugin management & development), and workflow commands.",
+      "description": "Full control of an Emby media server (verified on 4.7.14.0) \u2014 MCP server with a generic passthrough reaching all ~484 REST operations (self-discovered from the live OpenAPI spec), ~30 curated tools (status, library & metadata, users & policies, sessions & remote playback control, transcoding analysis, scheduled tasks, plugins & catalog, collections, playlists, configuration), a control skill with official-docs references (configuration, troubleshooting, optimization, plugin management & development), and workflow commands.",
       "category": "media"
     },
     {
@@ -38,8 +38,15 @@
     {
       "name": "unifi-network",
       "source": "./unifi",
-      "description": "Full control of a Ubiquiti UniFi console (UniFi OS) — MCP server reaching every Network endpoint across the classic v1, modern v2, and UniFi OS host APIs, plus ~30 curated tools for health, devices, clients, wireless, firewall, port-forwarding, traffic rules, events and statistics, a control skill, and workflow commands. Tested against a UniFi Dream Router 7.",
+      "description": "Full control of a Ubiquiti UniFi console (UniFi OS) \u2014 MCP server reaching every Network endpoint across the classic v1, modern v2, and UniFi OS host APIs, plus ~30 curated tools for health, devices, clients, wireless, firewall, port-forwarding, traffic rules, events and statistics, a control skill, and workflow commands. Tested against a UniFi Dream Router 7.",
       "category": "infrastructure"
+    },
+    {
+      "name": "comfyui-control",
+      "source": "./comfyui-control",
+      "description": "Deep ComfyUI control v2 (built with deep-integration-builder, live-verified on ComfyUI 0.26.0): generation suite (txt2img/img2img/inpaint/upscale/LoRA/batch), LTX-Video + animated GIFs, HF/Civitai model management, PNG workflow remix, custom-node installs, websocket per-node progress, projection-mapping batch workflow (seamless palindrome GIF loops), full 46-route API passthrough, and a skill with per-model prompt engineering + a model encyclopedia.",
+      "category": "infrastructure",
+      "version": "2.5.0"
     }
   ]
 }
