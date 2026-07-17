@@ -50,6 +50,9 @@ server attaches it for you. Conventions the tools encode:
   (HTTP Basic). `romm_scan` does that whole dance, but it needs the optional
   `username`/`password` fields in `config.local.json` — the API key cannot
   mint a session. Everything else works with just the API key.
+  `romm_status`'s `scan_trigger_available` only checks that those two config
+  fields are non-empty — it does **not** confirm the login actually works.
+  See Troubleshooting for what a login failure at scan time means.
 
 Two layers of tools:
 
@@ -58,6 +61,22 @@ Two layers of tools:
    to find any operation, `romm_schema(path, method)` for its exact
    parameters, `romm_call(method, path, ...)` to execute it. If a curated
    tool doesn't cover something, the passthrough almost certainly does.
+
+## Guided workflows (prefer these over ad-hoc tool chains)
+
+Each command below is a tuned multi-step sequence — already gets the order,
+confirmations, and error-handling right, so reach for it before composing the
+raw tools from scratch for the same job:
+
+| Command | For |
+|---|---|
+| `/romm:romm-setup` | First-time library setup: folders → BIOS → first scan → match |
+| `/romm:romm-scan` | Trigger + monitor a scan, with pre-flight checks and result reporting |
+| `/romm:romm-health` | Fast read-only status sweep across the whole server |
+| `/romm:romm-library` | Deep audit: unmatched/missing/duplicates/firmware, per platform |
+| `/romm:romm-match` | Hand-match unidentified ROMs against providers |
+| `/romm:romm-collections` | Build/curate manual, smart, or favorites collections |
+| `/romm:romm-users` | User/role/permission-group administration |
 
 ## Common jobs → tools
 
@@ -167,6 +186,17 @@ server's environment — `romm_status` shows which are live.
   renamed/patched ROMs may need a known-good dump or a manual match.
 - **Deep dives** → `romm_logs(limit=200)` streams the backend log ring
   buffer (same data as the UI's log viewer).
+- **`romm_scan` errors with `login failed (5xx)`** even though
+  `scan_trigger_available` was `true` → that flag only means the config has
+  non-empty `username`/`password`, not that login works. A 5xx (as opposed to
+  401/403) means RomM's own `/api/login` route is erroring server-side —
+  wrong password looks like 401, not 500. Cross-check with `romm_logs`; if
+  that *also* 500s, the backend itself is unhealthy end-to-end (e.g. just
+  restarted, DB not ready, crashed internally) and needs attention on the
+  server (container logs/restart), not more API probing from here. Report
+  this to the user as a server-side issue rather than retrying. Never
+  hand-replay the login via `romm_call` — it would resend the same plaintext
+  password for no signal beyond what the error already gives you.
 
 ## Known 5.0.0 server quirks (verified live; tools already work around them)
 
