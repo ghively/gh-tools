@@ -65,11 +65,7 @@ show("romm_roms(limit=5)", R.romm_roms(limit=5))
 show("romm_roms(search)", R.romm_roms(search_term="mario", limit=5))
 
 # ---- collections ----
-show("romm_collections(all)", R.romm_collections())
-show(
-    "romm_call virtual collections",
-    R.romm_call("GET", "/api/collections/virtual", query_params={"type": "franchise"}),
-)
+show("romm_collections(all)", R.romm_collections())  # now includes real virtual data, not a note
 
 # ---- users / permissions / keys ----
 show("romm_users", R.romm_users())
@@ -92,6 +88,18 @@ show("romm_play_sessions", R.romm_play_sessions(limit=5))
 show("romm_music(albums)", R.romm_music("albums", limit=5))
 show("romm_feeds()", R.romm_feeds())
 show("romm_feeds(webrcade)", R.romm_feeds("webrcade"))
+
+# ---- device pairing / sync / netplay (new) ----
+show("romm_sync(sessions)", R.romm_sync("sessions"))
+show(
+    "romm_device_auth(pending, unknown code)",
+    R.romm_device_auth("pending", user_code="smoketest-unknown-code"),
+    allow_error_substr="404",
+)
+show(
+    "romm_netplay_rooms(unknown game)",
+    R.romm_netplay_rooms(game_id="smoketest-unknown-game"),
+)
 
 # ---- confirmation gates on every write tool (no mutations happen) ----
 show("gate platform_create", R.romm_platform_create("snes"), expect_gate=True)
@@ -116,9 +124,38 @@ show("gate states_delete", R.romm_states_delete([1]), expect_gate=True)
 show("gate firmware_upload", R.romm_firmware_upload(1, "x"), expect_gate=True)
 show("gate firmware_delete", R.romm_firmware_delete([1]), expect_gate=True)
 show("gate device_delete", R.romm_device_delete(1), expect_gate=True)
+show("gate device_update", R.romm_device_update("x", "{}"), expect_gate=True)
 show("gate upload_rom", R.romm_upload_rom(1, "x"), expect_gate=True)
 show("gate export(local)", R.romm_export("pegasus", [1], local_export=True), expect_gate=True)
+show("gate rom_manuals(redownload)", R.romm_rom_manuals(1, "redownload"), expect_gate=True)
+show("gate rom_manuals(delete_all)", R.romm_rom_manuals(1, "delete_all"), expect_gate=True)
+show("gate rom_manuals(delete_file)", R.romm_rom_manuals(1, "delete_file", file_id=1), expect_gate=True)
+show("gate rom_soundtracks(delete)", R.romm_rom_soundtracks(1, "delete", file_id=1), expect_gate=True)
+show("gate rom_patch", R.romm_rom_patch(1, patch_file_id=1), expect_gate=True)
+show("gate rom_convert_to_folder", R.romm_rom_convert_to_folder(1), expect_gate=True)
+show("gate screenshot(delete)", R.romm_screenshot("delete", screenshot_id=1), expect_gate=True)
+show("gate smart_collection_update", R.romm_smart_collection_update(1), expect_gate=True)
+show("gate permission_group(update)", R.romm_permission_group("update", group_id=1, name="x"), expect_gate=True)
+show("gate permission_group(delete)", R.romm_permission_group("delete", group_id=1), expect_gate=True)
+show("gate user_permissions_update", R.romm_user_permissions_update(1), expect_gate=True)
+show(
+    "gate permission_hidden",
+    R.romm_permission_hidden("add", "roms", 1, user_id=1),
+    expect_gate=True,
+)
+show(
+    "gate device_auth(approve)",
+    R.romm_device_auth("approve", user_code="x", approved_scopes=["me.read"]),
+    expect_gate=True,
+)
+show("gate device_auth(deny)", R.romm_device_auth("deny", user_code="x"), expect_gate=True)
+show("gate sync(trigger)", R.romm_sync("trigger", device_id="x"), expect_gate=True)
 show("gate scan", R.romm_scan(), expect_gate=True)
+show(
+    "scan_status(none running) clear error",
+    R.romm_scan_status(wait_seconds=0),
+    allow_error_substr="no scan is currently running",
+)
 
 # Without creds, scan+confirm must fail with a clear message, not hang.
 # With creds configured we do NOT fire a real scan from a smoke test.

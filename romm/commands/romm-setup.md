@@ -26,11 +26,14 @@ BIOS at `library/bios/<platform_slug>/`.
    text matching suggest adding IGDB or ScreenScraper credentials to the
    server's environment (docker compose), then restarting.
 5. **First scan** — once files are in place, run `/romm:romm-scan` (it
-   handles pre-flight checks and failure diagnosis) or call `romm_scan(
-   scan_type="quick", confirm=True, wait_seconds=600)` directly. Needs
-   username/password in `config.local.json`; if that's set but you still get
-   a login 5xx, that's a server-side problem, not a config gap — see the
-   romm-control skill's troubleshooting map. Report the returned stats.
+   handles pre-flight checks, progress narration via `romm_scan_status`
+   polling, and failure diagnosis) rather than calling `romm_scan` directly
+   with a long `wait_seconds` — a first scan across a whole library can take
+   minutes, and polling in a loop lets you report progress instead of the
+   user watching nothing happen. Needs username/password in
+   `config.local.json`; if that's set but you still get a login 5xx, that's a
+   server-side problem, not a config gap — see the romm-control skill's
+   troubleshooting map. Report the returned stats.
 6. **Verify & fix** — `romm_stats(include_platform_stats=True)`,
    `romm_roms(matched=False, limit=1)` for the unmatched count. If high,
    hand off to `/romm:romm-match`.

@@ -32,7 +32,7 @@
     {
       "name": "romm",
       "source": "./romm",
-      "description": "Full control of a RomM ROM-library server (verified on 5.0.0) — MCP server with a generic passthrough reaching all ~189 REST operations (self-discovered from the live OpenAPI spec), ~50 curated tools (platforms, ROM search & metadata matching, collections, users & permissions, saves/states, firmware, tasks, feeds, exports, chunked uploads), a Socket.IO scan trigger, a control skill, and workflow commands.",
+      "description": "Full control of a RomM ROM-library server (verified on 5.0.0) — MCP server with a generic passthrough reaching all ~189 REST operations (self-discovered from the live OpenAPI spec), ~70 curated tools (platforms, ROM search & metadata matching, manuals/soundtracks/patches, screenshots, collections, users & fine-grained permissions, saves/states, firmware, tasks, feeds, exports, device pairing & sync, netplay, chunked uploads), a pollable Socket.IO scan trigger, a control skill, and workflow commands.",
       "category": "media"
     },
     {
