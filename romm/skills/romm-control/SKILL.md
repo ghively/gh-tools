@@ -53,10 +53,15 @@ server attaches it for you. Conventions the tools encode:
   `romm_status`'s `scan_trigger_available` only checks that those two config
   fields are non-empty — it does **not** confirm the login actually works.
   See Troubleshooting for what a login failure at scan time means.
+  `romm_scan` only blocks for `wait_seconds` (default 20s) then returns even
+  if the scan is still running — it does not go silent for the whole scan.
+  Follow up with `romm_scan_status(wait_seconds=...)` in a loop, narrating
+  the `new_events`/`finished` it returns each call, instead of setting one
+  huge `wait_seconds` and reporting nothing until it's all done.
 
 Two layers of tools:
 
-1. **Curated tools** (~50) for the common jobs — one call, correct params.
+1. **Curated tools** (~70) for the common jobs — one call, correct params.
 2. **Generic passthrough** for the long tail: `romm_endpoints(search=...)`
    to find any operation, `romm_schema(path, method)` for its exact
    parameters, `romm_call(method, path, ...)` to execute it. If a curated
@@ -89,7 +94,7 @@ raw tools from scratch for the same job:
 | Identify an unmatched game | `romm_match_search(rom_id)` → pick candidate → `romm_rom_update(id, provider_ids_json='{"igdb_id": N}', confirm=True)` |
 | Fix name/summary/cover | `romm_rom_update` |
 | Track play status/rating | `romm_rom_props` (status: incomplete/finished/completed_100/retired/never_playing) |
-| Trigger a scan | `romm_scan(scan_type=...)` — needs username/password configured |
+| Trigger a scan | `romm_scan(scan_type=...)` to start, then `romm_scan_status()` in a loop to narrate progress — needs username/password configured |
 | Run maintenance task | `romm_task_run` (cleanup_orphaned_resources, cleanup_missing_roms, sync_folder_scan, recompute_save_content_hashes, update_switch_titledb, update_launchbox_metadata, convert_images_to_webp) |
 | Collections | `romm_collections`, `romm_collection_create/update/delete`, `romm_collection_roms(action=add/remove)`, `romm_smart_collection_create` |
 | Users & roles | `romm_users`, `romm_user_create/update/delete`, `romm_user_invite`; fine-grained perms via `romm_permissions` |
@@ -103,6 +108,20 @@ raw tools from scratch for the same job:
 | Download a ROM file | `romm_download_rom(rom_id, dest_dir)` |
 | Folder-name → platform mapping | `romm_config_platform_binding`; exclusions via `romm_config_exclude` |
 | Server logs | `romm_logs` |
+| Screenshots (add/update/delete/download) | `romm_screenshot(action=...)` |
+| ROM manuals (PDF) | `romm_rom_manuals(rom_id, action=...)` |
+| ROM soundtracks (bundled audio) | `romm_rom_soundtracks(rom_id, action=...)` |
+| Apply a patch (IPS/BPS/UPS) to a ROM | `romm_rom_patch(rom_id, patch_file_id=... or patch_file_path=...)` |
+| Convert a single-file ROM to folder structure | `romm_rom_convert_to_folder(rom_id)` |
+| Smart collection rule/name edits | `romm_smart_collection_update` |
+| Virtual collections (franchise/genre/...) | `romm_collections(kind="virtual", virtual_type=...)` |
+| Permission groups (fine-grained access tiers) | `romm_permission_group(action=create/update/delete)` |
+| Assign a user's permission group/overrides | `romm_user_permissions_update` |
+| Hide an entity from a user/group | `romm_permission_hidden(action=add/remove, ...)` |
+| Rename/edit a registered device | `romm_device_update(device_id, fields_json)` |
+| Approve/deny a device pairing request | `romm_device_auth(action=pending/approve/deny)` |
+| Device save/state sync sessions | `romm_sync(action=sessions/session/trigger)` |
+| Netplay rooms for a game | `romm_netplay_rooms(game_id)` |
 
 ## Full domain map (all 27 API tags — nothing outside this list exists)
 
@@ -114,25 +133,25 @@ marked (passthrough) have no curated tool — reach them with
 |---|---|
 | system, stats, logs | `romm_status`, `romm_stats`, `romm_logs` |
 | platforms | `romm_platforms` / `_platform*` / `romm_supported_platforms` |
-| roms, upload | `romm_roms`, `romm_rom*`, `romm_upload_rom`, `romm_download_rom` |
+| roms, upload | `romm_roms`, `romm_rom*`, `romm_upload_rom`, `romm_download_rom`, `romm_rom_manuals`, `romm_rom_soundtracks`, `romm_rom_patch`, `romm_rom_convert_to_folder` |
 | search | `romm_match_search` (cover search needs SGDB server-side) |
-| collections | `romm_collections` / `_collection*` / `romm_smart_collection_create` |
-| users, permissions | `romm_users` / `_user*`, `romm_permissions` |
-| client-tokens | `romm_api_keys` |
+| collections | `romm_collections` (manual/smart/virtual) / `_collection*` / `romm_smart_collection_create` / `romm_smart_collection_update` |
+| users, permissions | `romm_users` / `_user*`; reads via `romm_permissions`, writes via `romm_permission_group`, `romm_user_permissions_update`, `romm_permission_hidden` |
+| client-tokens | `romm_api_keys` (pairing-code exchange flow — client-tokens/pair, /exchange — is device-initiated, left to passthrough) |
 | saves, states | `romm_saves` / `romm_states` (+ `_delete`; upload via `romm_call` with `file_path`) |
-| screenshots | list via `romm_rom` detail; CRUD via passthrough |
+| screenshots | `romm_screenshot` (add/update/delete/download); list via `romm_rom` detail |
 | firmware | `romm_firmware` / `_firmware_upload` / `_firmware_delete` |
 | tasks | `romm_tasks` / `romm_task_run`; scans via `romm_scan` (Socket.IO) |
-| config | `romm_config` / `_config_exclude` / `_config_platform_binding` |
-| devices | `romm_devices` / `romm_device_delete`; register/update via passthrough |
-| activity, play-sessions | `romm_activity`, `romm_play_sessions` |
+| config | `romm_config` / `_config_exclude` / `_config_platform_binding` (covers both platform bindings and versions) |
+| devices | `romm_devices` / `_device_delete` / `_device_update`; registration is device-initiated (passthrough) |
+| device-auth | `romm_device_auth` (pending/approve/deny — the admin side); device init/token is the pairing device's own half (passthrough) |
+| sync | `romm_sync` (sessions/session/trigger); negotiate/complete are device-protocol steps, not admin actions (passthrough) |
+| netplay | `romm_netplay_rooms(game_id)` |
+| activity, play-sessions | `romm_activity`, `romm_play_sessions`; device heartbeat ingest and session ingest are client telemetry, not admin actions (passthrough) |
 | music | `romm_music` |
 | feeds | `romm_feeds` |
 | export | `romm_export` |
-| auth | login/logout/token via passthrough (session flows; Basic creds) |
-| device-auth | (passthrough) interactive client-pairing flow for emulator apps — approve/deny pending requests via `romm_call` |
-| sync | (passthrough) device save-sync sessions: `GET /api/sync/sessions`, push-pull per device |
-| netplay | (passthrough) `GET /api/netplay/list?game_id=` ; sessions are emulator-client Socket.IO flows |
+| auth | **by design, not exposed as tools** — login/logout/token/openid/forgot-password/reset-password are all session/self-service flows; `romm_scan` handles login internally via Basic auth. Never hand-roll a login call through `romm_call` even for debugging — it just resends a plaintext password for no benefit over the error you already have (see Troubleshooting). |
 
 ## Library structure & scanning
 
@@ -166,6 +185,11 @@ server's environment — `romm_status` shows which are live.
 - Prefer reversible proofs: create a test collection → verify → delete.
 - Scans on a large library are heavy (hashing + metadata fetches); prefer
   `quick` over `complete` unless the user wants a full rebuild.
+- Don't set a huge `wait_seconds` on `romm_scan` hoping to "wait it out" —
+  the user sees nothing until the call returns. Take the default short wait,
+  then poll `romm_scan_status` every 15-30s and report each batch of
+  `new_events` (platform/ROM names as they're scanned) so a long scan reads
+  as progress, not silence.
 
 ## Troubleshooting map
 
@@ -219,3 +243,11 @@ server's environment — `romm_status` shows which are live.
   folders (empty 200 back; `local_export` only switches paths-vs-URLs
   inside the XML). There is no download-to-client export. `romm_export` is
   confirm-gated for this reason.
+- `GET /api/roms?order_by=name` returns an EMPTY result (`total: 0`) when
+  no `platform_id` is also set — verified reproducible on a stable 33-ROM
+  library (`created_at`/`fs_size_bytes` ordering, or adding `platform_id`,
+  both return correct data; only the unfiltered name-sort is broken). Since
+  this is the single most common call shape ("list my library"),
+  `romm_roms`'s default `order_by` was changed to `created_at` to avoid
+  silently reporting an empty library — don't set `order_by="name"` back
+  unless you're also filtering by `platform_id`.
