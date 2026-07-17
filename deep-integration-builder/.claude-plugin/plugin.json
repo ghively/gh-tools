@@ -1,11 +1,19 @@
 {
   "name": "deep-integration-builder",
   "description": "A methodology skill for building comprehensive, deeply-tested control integrations (MCP servers + skills + workflows) for any system with an API. Captures the discover-first, generic+curated, live-verify, honest-gap-taxonomy, reverse-engineer-from-UI-traffic workflow used to fully control a Synology NAS. Use whenever building or expanding a plugin/MCP integration and 'complete coverage' matters.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": {
     "name": "poomonkey405"
   },
-  "keywords": ["mcp", "plugin", "integration", "api", "methodology", "coverage", "reverse-engineering"],
+  "keywords": [
+    "mcp",
+    "plugin",
+    "integration",
+    "api",
+    "methodology",
+    "coverage",
+    "reverse-engineering"
+  ],
   "skills": "./skills/",
   "commands": "./commands/"
 }
