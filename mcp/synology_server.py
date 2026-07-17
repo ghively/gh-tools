@@ -374,26 +374,43 @@ class DSMClient:
             code = int((body.get("error") or {}).get("code", 100))
             raise DSMError(code, api, method)
 
-    def upload(self, local_path: str, remote_folder: str, overwrite: bool = True) -> dict:
+    def upload(self, local_path: str, remote_folder: str, overwrite: bool = True,
+               _retried: bool = False) -> dict:
         self.ensure_session()
         path, ver = self._resolve("SYNO.FileStation.Upload", None)
         lp = Path(local_path)
         if not lp.is_file():
             raise FileNotFoundError(local_path)
         headers = {"X-SYNO-TOKEN": self.synotoken} if self.synotoken else {}
-        fields = {
+        # The upload CGI ignores identity fields placed inside the multipart body,
+        # and format=sid logins set no cookie — api/version/method/_sid must ride
+        # the query string or DSM answers 119 (verified on DSM 7.3.1-86003).
+        query = {
             "api": "SYNO.FileStation.Upload",
             "version": str(ver),
             "method": "upload",
+            "_sid": self.sid,
+        }
+        fields = {
             "path": remote_folder,
             "create_parents": "true",
             "overwrite": "true" if overwrite else "false",
-            "_sid": self.sid,
         }
-        with open(lp, "rb") as fh:
-            files = {"file": (lp.name, fh, "application/octet-stream")}
-            r = self._http.post(f"{self.base}/{path}", data=fields, files=files, headers=headers)
-        data = self._parse(r, "SYNO.FileStation.Upload", "upload")
+        try:
+            with open(lp, "rb") as fh:
+                files = {"file": (lp.name, fh, "application/octet-stream")}
+                r = self._http.post(f"{self.base}/{path}", params=query, data=fields,
+                                    files=files, headers=headers)
+            data = self._parse(r, "SYNO.FileStation.Upload", "upload")
+        except DSMError as e:
+            if e.code in (105, 106, 107, 119) and not _retried:
+                log(f"session error {e.code} on upload; re-authenticating and retrying")
+                self.sid = None
+                self.synotoken = None
+                self.confirm_token = None
+                self.login()
+                return self.upload(local_path, remote_folder, overwrite, _retried=True)
+            raise
         return {"uploaded": lp.name, "to": remote_folder, "result": data}
 
 
