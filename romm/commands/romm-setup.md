@@ -25,10 +25,12 @@ BIOS at `library/bios/<platform_slug>/`.
    LibretroDB work with no keys (hash matching of known dumps). For richer
    text matching suggest adding IGDB or ScreenScraper credentials to the
    server's environment (docker compose), then restarting.
-5. **First scan** — once files are in place:
-   `romm_scan(scan_type="quick", confirm=True, wait_seconds=600)` (needs
-   username/password in config.local.json — see the romm-control skill).
-   Report the returned stats.
+5. **First scan** — once files are in place, run `/romm:romm-scan` (it
+   handles pre-flight checks and failure diagnosis) or call `romm_scan(
+   scan_type="quick", confirm=True, wait_seconds=600)` directly. Needs
+   username/password in `config.local.json`; if that's set but you still get
+   a login 5xx, that's a server-side problem, not a config gap — see the
+   romm-control skill's troubleshooting map. Report the returned stats.
 6. **Verify & fix** — `romm_stats(include_platform_stats=True)`,
    `romm_roms(matched=False, limit=1)` for the unmatched count. If high,
    hand off to `/romm:romm-match`.

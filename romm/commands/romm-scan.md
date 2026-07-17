@@ -7,12 +7,13 @@ argument-hint: (optional) scan type or platform, e.g. "complete", "unmatched", "
 
 Trigger and monitor a library scan with the `romm` MCP tools.
 
-1. **Pre-flight** — `romm_status`: confirm `scan_trigger_available` is true
-   (if false, tell the user to add `username`/`password` to the plugin's
-   `config.local.json` — RomM only exposes scans over Socket.IO with a session
-   login; the API key alone cannot do it). Note `filesystem_platform_dirs` —
-   if the folder the user expects isn't listed, the scan won't see it; check
-   `romm_config` exclusions and the library mount first.
+1. **Pre-flight** — `romm_status`: confirm `scan_trigger_available` is true.
+   That only means `username`/`password` are *configured* in
+   `config.local.json` — not that login will actually succeed (see step 3).
+   If false, tell the user to add those fields; the API key alone can't mint
+   the session scans need. Note `filesystem_platform_dirs` — if the folder
+   the user expects isn't listed, the scan won't see it; check `romm_config`
+   exclusions and the library mount first.
 2. **Choose scan type** from `$ARGUMENTS` or ask:
    - `quick` — index new files only (default; cheap).
    - `unmatched` — retry identification of unidentified games.
@@ -23,7 +24,10 @@ Trigger and monitor a library scan with the `romm` MCP tools.
    If `$ARGUMENTS` names a platform, resolve its id via `romm_platforms` and
    pass `platform_ids=[id]`.
 3. **Confirm with the user**, then `romm_scan(scan_type=..., platform_ids=...,
-   confirm=True, wait_seconds=300)`.
+   confirm=True, wait_seconds=300)`. If it errors with `login failed (5xx)`,
+   that's RomM's own backend rejecting the login, not a plugin/config
+   problem — see the romm-control skill's troubleshooting map. Don't retry by
+   hand-replaying the login yourself; report it to the user as server-side.
 4. **Report** — the returned stats (platforms scanned/added, ROMs
    scanned/added/identified). Then `romm_stats(include_platform_stats=True)`
    and `romm_roms(matched=False, limit=1)` to state the new unmatched count.
