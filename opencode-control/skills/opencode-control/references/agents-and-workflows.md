@@ -68,6 +68,16 @@ permission key (glob on subagent names). Use subagents to parallelize independen
 (e.g. an `explore` pass feeding a `build` implementation) and to sandbox risky steps behind
 tighter permissions than the primary.
 
+**⚠️ Permission does not propagate across the Task boundary — this bites people.**
+Disabling `write`/`edit` on a *primary* agent does NOT stop a subagent it spawns from
+writing; lock down `permission.task` too. Never set `task: allow` *globally* — it removes
+the nesting guard and enables unbounded recursive spawning (`steps`/`doom_loop` don't catch
+it). And a permissive parent's `allow` rules don't flow down — for unattended/CI runs, give
+every subagent it may spawn explicit `allow`. Scope task the clean way:
+`permission: { task: { "reviewer": "allow", "*": "deny" } }`. These have been real, version-
+dependent bugs — verify on the installed version. Full detail + issue refs in
+`references/ecosystem-and-recipes.md`.
+
 ## Custom commands (slash-commands = reusable workflows)
 
 `<config>/command/<name>.md` or `.opencode/command/<name>.md`. The body is the prompt
@@ -108,14 +118,30 @@ confirm=true)`. (opencode ships a built-in `customize-opencode` skill for editin
 
 ## Plugins (JS/TS hooks — deeper extension)
 
-`.opencode/plugins/*.{js,ts}` or global; or npm packages in the `plugin` array. A plugin is
-`async (input) => Hooks`. Hooks include: `event`, `config`, `tool` (register custom tools via
-the `tool()` helper), `chat.message`, `chat.params`, `chat.headers`, `permission.ask`,
-`command.execute.before`, `tool.execute.before` (**throw to abort a tool call**),
-`tool.execute.after`, `shell.env`, `tool.definition`, and `experimental.*` transforms.
-Package: `@opencode-ai/plugin`. Use plugins for guardrails (block reading `.env`),
-telemetry, dynamic model/provider injection, or custom tools. This plugin doesn't author
-plugin files (they're code) — write them directly with the Write tool when needed.
+`.opencode/plugin/*.{js,ts}` (singular dir) or global; or npm packages in the `plugin`
+array. A plugin is `async (input, options?) => Hooks`; `input` gives `client` (the SDK, to
+drive opencode), `$` (Bun shell), `directory`, `worktree`, `project`, `serverUrl`. Each
+hook is `(input, output) => Promise<void>` and **mutates `output` in place**.
+
+**There is exactly ONE `event` hook** that you `switch` on — `session.idle`,
+`session.created`, `permission.asked`, etc. are `Event.type` *values*, not separate hooks.
+The real hook keys: `event`, `config` (can mutate opencode's own config), `tool` (register
+custom tools), `auth`, `provider`, `chat.message`, `chat.params`, `chat.headers`,
+`permission.ask`, `command.execute.before`, `tool.execute.before` (**throw to abort a
+tool**), `tool.execute.after`, `shell.env`, `tool.definition`, and the `experimental.*`
+hooks (`chat.messages.transform`, `chat.system.transform`, `session.compacting`,
+`compaction.autocontinue`, `provider.small_model`, `text.complete`).
+
+Use plugins for guardrails (block `.env` reads), telemetry, PII redaction, context
+compression, custom auth providers, dynamic model injection, or custom tools. Author with
+`oc_plugin_write(name, body, confirm=true)`. Gotcha: use **only a default export** (extra
+named exports double-register) and keep the file self-contained (only import
+`@opencode-ai/plugin`, `@opencode-ai/sdk`, `node:*` — shell out for heavy logic).
+
+**Custom tools** don't need a full plugin — drop a `.ts`/`.js` file in `.opencode/tool/`
+(or `~/.config/opencode/tool/`); filename becomes the tool name. Use the `tool()` helper
+(`tool.schema` is zod). See `references/ecosystem-and-recipes.md` for the full plugin
+cookbook, real examples, and orchestration patterns.
 
 ## Optimization playbook
 
@@ -126,7 +152,11 @@ plugin files (they're code) — write them directly with the Write tool when nee
 - Trim the catalog: `disabled_providers`/`enabled_providers` (openrouter alone adds 340
   models to every picker — disable what you don't use).
 - Per-agent `model`: give cheap read-only agents (`explore`, reviewers) a small model and
-  reserve the big model for `build`.
+  reserve the big model for `build`. In practice, permission + temperature routing is used
+  at least as much as model routing for cost/safety control.
+- **Category-based routing** (oh-my-openagent's signature pattern): delegate by task-intent
+  → a `categories` map that resolves to model+variant+reasoning-effort+fallbacks, instead
+  of hardcoding model names per task. See `references/ecosystem-and-recipes.md`.
 
 **Speed / focus**
 - Tighten `permission` so routine safe commands (`git *`, `npm run *`) are `allow` and never

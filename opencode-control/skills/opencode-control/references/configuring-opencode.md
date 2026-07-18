@@ -99,6 +99,12 @@ Per-model overrides: `name, family, release_date, reasoning, tool_call, cost{inp
 cache_read,cache_write}, limit{context,input,output}, modalities{input[],output[]}, status,
 variants`. Trim the catalog with `disabled_providers` / `enabled_providers`.
 
+Local endpoints (all `@ai-sdk/openai-compatible`): Ollama `http://localhost:11434/v1`,
+LM Studio `http://127.0.0.1:1234/v1`, llama.cpp `http://127.0.0.1:8080/v1`. For org-wide
+provider governance beyond allow/deny lists, use **`policies`** (top-level): statements
+`{"effect":"allow"|"deny","action":"provider.use","resource":"<id|*>"}` — a project config
+**cannot** re-enable a provider the org denied (global policies beat project policies).
+
 ## MCP servers
 
 Discriminated union on `type`. Secrets via `{env:...}`.
@@ -136,7 +142,9 @@ gated by `tools`/`permission` globs (e.g. `"my-mcp*"`).
 }
 ```
 `.env` reads default to `deny` (`.env.example` allowed). `OPENCODE_PERMISSION` (JSON) can
-override at runtime.
+override at runtime. **`doom_loop`** is a real permission: it fires when the same tool call
+repeats 3× with identical input — set `deny` for CI to hard-stop infinite loops. `--auto`
+auto-approves anything not explicitly denied.
 
 ## Rules / instructions
 
@@ -152,3 +160,21 @@ override at runtime.
 `lsp` / `formatter` are `true` (auto) or a map of custom servers. Custom LSP needs
 `command` + `extensions`. LSP powers `/find/symbol` and code intelligence — without a
 configured+running server for the language, symbol search returns empty (see conventions.md).
+When enabled, the model *sees* compiler/linter diagnostics as tool output. Formatters
+auto-run on every write/edit (`{command:["deno","fmt","$FILE"], extensions:[".md"]}`).
+
+## References & cross-tool skills
+
+**`references`** exposes other repos/dirs into a session without copying them in:
+`"references": {"docs": {"path": "../product-docs"}}` or `{"repository": "owner/repo",
+"branch": "main"}`. `@alias` attaches, `@alias/` searches within; references bypass the
+external-directory permission boundary; `hidden:true` keeps them out of autocomplete.
+
+**Skills are cross-tool**: opencode discovers `SKILL.md` from `.opencode/skills`,
+`~/.config/opencode/skills`, **`.claude/skills`, `~/.claude/skills`**, `.agents/skills`,
+`~/.agents/skills` — a Claude-Code skills dir works unmodified. `AGENTS.md`/`CLAUDE.md`
+interop and `instructions` globs (incl. `.cursor/rules/*.md` and remote URLs) layer in
+additively. Toggle Claude-Code compat with `OPENCODE_DISABLE_CLAUDE_CODE[_PROMPT|_SKILLS]`.
+
+For real-world build patterns, orchestration recipes, the plugin cookbook, and the
+permission-security gotchas, see **`references/ecosystem-and-recipes.md`**.

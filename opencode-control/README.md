@@ -57,10 +57,16 @@ if not the default `opencode`) in `config.local.json` — auth is HTTP Basic.
 
 - Skill **opencode-control** — how to drive the server, plus references on the full API
   map, conventions/auth/gap-taxonomy, configuring opencode, designing agents/workflows,
-  and the ACP protocol.
+  the ACP protocol, and **`ecosystem-and-recipes.md`** — real-world build patterns
+  distilled from a deep survey of the opencode ecosystem (oh-my-openagent, joelhooks/
+  opencode-config, dozens of real plugins): multi-agent orchestration recipes, the plugin
+  cookbook (real hook table + `tool()` helper + real examples), category-based model
+  routing, GitHub-agent CI, ACP editor integration, and the permission/subagent security
+  gotchas from the issue tracker.
 - `/oc-health` — full health & orientation check
 - `/oc-run <task>` — run a coding task through opencode (ACP)
 - `/oc-agent <role>` — design & author an agent
+- `/oc-build <thing>` — build an agent/command/plugin/workflow using real ecosystem patterns
 - `/oc-optimize` — audit & optimize the config
 
 ## Safety
