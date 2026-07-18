@@ -1,0 +1,11 @@
+{
+  "name": "searxng-control",
+  "description": "Full control of a self-hosted SearXNG metasearch instance (verified on 2026.5.7) from Claude Code. Bundles an MCP server with three layers: a generic HTTP passthrough reaching every SearXNG runtime route (/search json/csv/rss, /autocompleter, /config, /stats, /stats/errors, /preferences, /healthz, /opensearch.xml, /info); curated tools for search (all query params — categories, engines, language, time_range, safesearch, pageno), instance config, the 249-engine inventory, autocomplete, and engine-failure diagnostics; and a config-management layer that edits settings.yml inside the container over SSH and applies it with a restart (enable/disable engines, add custom engines, tune outgoing/limiter/search/server knobs, backup & restore) — every write confirm-gated and auto-backed-up. Includes a control skill with a full settings.yml reference and an engine-reliability/CAPTCHA-diagnostics playbook, plus workflow commands (health, diagnose-empty-results, tune-reliability, add-engine).",
+  "version": "0.1.0",
+  "author": {
+    "name": "poomonkey405"
+  },
+  "keywords": ["searxng", "search", "metasearch", "self-hosted", "privacy", "mcp", "homelab", "web-search"],
+  "skills": "./skills/",
+  "commands": "./commands/"
+}

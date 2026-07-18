@@ -1,0 +1,9 @@
+{
+  "searxng": {
+    "command": "uv",
+    "args": ["run", "--script", "${CLAUDE_PLUGIN_ROOT}/mcp/searxng_server.py"],
+    "env": {
+      "SEARXNG_CONFIG": "${CLAUDE_PLUGIN_ROOT}/config.local.json"
+    }
+  }
+}
