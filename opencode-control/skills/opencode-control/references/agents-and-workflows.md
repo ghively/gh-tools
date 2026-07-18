@@ -111,10 +111,15 @@ with `oc_command_write(name, template, description, agent, ..., confirm=true)`. 
 
 ## Skills
 
-Skills are model-invoked capability docs: `<config>/skills/<name>/SKILL.md` with frontmatter
-(`name`, `description`) and a markdown body. The `description` decides when the model reaches
-for it — make it a precise trigger. Author with `oc_skill_write(name, description, body,
-confirm=true)`. (opencode ships a built-in `customize-opencode` skill for editing its own config.)
+Skills are model-invoked capability docs: `<config>/skills/<name>/SKILL.md`. The stable spec
+recognizes only `name`, `description` (required), and optional `license`, `compatibility`,
+`metadata` — **no `allowed-tools`/`model`** (those are Claude-Code fields opencode ignores).
+The `description` decides when the model reaches for it — make it a precise trigger. Discovered
+from six paths (incl. `.claude/skills` — a Claude skills dir works unmodified); the body loads
+on-demand via the `skill` tool, so reference extra files from a `references/` subdir. Author
+with `oc_skill_write(name, description, body, license, metadata, confirm=true)`. Full spec,
+skill-scoped MCP, and gating in `references/skills-eval-enterprise.md`. (opencode ships a
+built-in `customize-opencode` skill for editing its own config.)
 
 ## Plugins (JS/TS hooks — deeper extension)
 

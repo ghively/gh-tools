@@ -663,12 +663,15 @@ async def oc_command_write(name: str, template: str, description: str = "",
 
 
 @mcp.tool()
-async def oc_skill_write(name: str, description: str, body: str,
-                         scope: str = "global", project_dir: str = "",
-                         confirm: bool = False) -> str:
-    """Create/overwrite an opencode skill as <dir>/skills/<name>/SKILL.md with YAML
-    frontmatter (name+description) and markdown body. scope global -> <config>/skills;
-    project -> <project_dir>/.opencode/skills. Requires confirm=true."""
+async def oc_skill_write(name: str, description: str, body: str, license: str = "",
+                         metadata: Optional[dict] = None, scope: str = "global",
+                         project_dir: str = "", confirm: bool = False) -> str:
+    """Create/overwrite an opencode skill as <dir>/skills/<name>/SKILL.md. The stable
+    opencode SKILL.md spec recognizes only: name, description (required), and optional
+    license, compatibility, metadata (a string->string map) — `allowed-tools`/`model` are
+    NOT supported and are ignored. name must be 1-64 chars, lowercase, single hyphens.
+    Reference extra files from a sibling references/ dir for progressive disclosure.
+    scope global -> <config>/skills; project -> <project_dir>/.opencode/skills. confirm=true."""
     if not confirm:
         return "Refusing to write skill without confirm=true."
     if scope == "project":
@@ -677,7 +680,16 @@ async def oc_skill_write(name: str, description: str, body: str,
         base = (await _config_dir()) / "skills" / name
     base.mkdir(parents=True, exist_ok=True)
     dest = base / "SKILL.md"
-    content = (f"---\nname: {name}\ndescription: {json.dumps(description)}\n---\n\n{body}\n")
+    fm = ["---", f"name: {name}", f"description: {json.dumps(description)}",
+          "compatibility: opencode"]
+    if license:
+        fm.append(f"license: {license}")
+    if metadata:
+        fm.append("metadata:")
+        for k, v in metadata.items():
+            fm.append(f"  {k}: {json.dumps(str(v))}")
+    fm.append("---")
+    content = "\n".join(fm) + f"\n\n{body}\n"
     dest.write_text(content)
     return f"Wrote skill -> {dest}\n\n" + content[:1200]
 
