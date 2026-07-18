@@ -631,6 +631,93 @@ def searx_engine_add(name: str, engine: str, shortcut: str, categories: str = ""
     return (f"OK: added engine '{name}'. Backup: {bak}." + _apply_note(apply))
 
 
+def _engines_dir() -> str:
+    """Locate searx/engines inside the container. The official searxng image
+    installs to /usr/local/searxng/searx; probe that, then fall back to a find.
+    (Avoid `import searx` — the bare container python lacks some runtime deps.)"""
+    default = "/usr/local/searxng/searx/engines"
+    if _dexec(f"test -d {default} && echo yes || echo no").strip() == "yes":
+        return default
+    found = _dexec("find / -maxdepth 7 -type d -path '*searx/engines' 2>/dev/null | head -1").strip()
+    if not found:
+        raise SearxError("could not locate searx/engines in the container (set path manually)")
+    return found
+
+
+@mcp.tool()
+@_tool_error
+def searx_engine_module_deploy(module_name: str, python_code: str, register_name: str,
+                               shortcut: str, categories: str = "general",
+                               extra_yaml_json: str = "{}", confirm: bool = False,
+                               apply: bool = False) -> str:
+    """Deploy a CUSTOM PYTHON engine module (write): writes
+    searx/engines/<module_name>.py into the container and registers it in
+    settings.yml. Use for engines that need real code (custom request/response,
+    signing, pagination); for plain JSON/HTML/SQL sources use searx_engine_add.
+    python_code must implement the SearXNG engine API (module attrs + request(
+    query, params) + response(resp)) — see references/writing-engines.md. The
+    module is syntax-checked (py_compile) and removed if it fails. confirm=True
+    required; auto-backs-up settings.yml. Note: this runs your code inside the
+    search container — review it first."""
+    if not confirm:
+        return (f"CONFIRM: write searx/engines/{module_name}.py ({len(python_code)} bytes) "
+                f"into container '{CONTAINER}' on {SSH_HOST} and register engine "
+                f"'{register_name}' (shortcut !{shortcut}). This executes your code "
+                f"in the search container. Re-call with confirm=True.")
+    if not module_name.replace("_", "").isalnum():
+        raise SearxError("module_name must be letters/digits/underscore only")
+    eng_dir = _engines_dir()
+    target = f"{eng_dir}/{module_name}.py"
+    if _dexec(f"test -f {target} && echo yes || echo no").strip() == "yes":
+        raise SearxError(f"{target} already exists — pick another module_name or remove it first.")
+    _dexec(f"cat > {target}", input_bytes=python_code.encode("utf-8"))
+    chk = _dexec(f"python -m py_compile {target} 2>&1 && echo COMPILE_OK || echo COMPILE_FAIL")
+    if "COMPILE_OK" not in chk:
+        _dexec(f"rm -f {target}")
+        raise SearxError(f"module failed to compile (removed, nothing registered): {chk[:400]}")
+    y, data = _load_settings_obj()
+    if any(e.get("name") == register_name for e in data.get("engines", [])):
+        _dexec(f"rm -f {target}")
+        raise SearxError(f"engine '{register_name}' already in settings; module removed. Rename.")
+    block: dict = {"name": register_name, "engine": module_name, "shortcut": shortcut}
+    if categories:
+        block["categories"] = [c.strip() for c in categories.split(",") if c.strip()]
+    block.update(json.loads(extra_yaml_json) if extra_yaml_json.strip() else {})
+    data.setdefault("engines", []).append(block)
+    bak = _backup_settings()
+    _write_settings(_dump_settings_obj(y, data))
+    return (f"OK: deployed {target} and registered engine '{register_name}'. "
+            f"Settings backup: {bak}." + _apply_note(apply)
+            + " After restart, test with searx_search(engines='%s')." % register_name)
+
+
+@mcp.tool()
+@_tool_error
+def searx_engine_module_remove(module_name: str, register_name: str = "",
+                               confirm: bool = False, apply: bool = False) -> str:
+    """Remove a custom engine module deployed by searx_engine_module_deploy:
+    deletes searx/engines/<module_name>.py and (if register_name given) its
+    settings.yml entry. confirm=True required; auto-backs-up settings."""
+    if not confirm:
+        return (f"CONFIRM: delete engine module '{module_name}.py'"
+                + (f" and unregister '{register_name}'" if register_name else "")
+                + f" on {SSH_HOST}. Re-call with confirm=True.")
+    if not module_name.replace("_", "").isalnum():
+        raise SearxError("module_name must be letters/digits/underscore only")
+    target = f"{_engines_dir()}/{module_name}.py"
+    note = ""
+    if register_name:
+        y, data = _load_settings_obj()
+        before = len(data.get("engines", []))
+        data["engines"] = [e for e in data.get("engines", []) if e.get("name") != register_name]
+        if len(data["engines"]) != before:
+            bak = _backup_settings()
+            _write_settings(_dump_settings_obj(y, data))
+            note = f" Unregistered '{register_name}' (backup {bak})."
+    _dexec(f"rm -f {target}")
+    return (f"OK: removed {target}.{note}" + _apply_note(apply))
+
+
 @mcp.tool()
 @_tool_error
 def searx_setting_set(key_path: str, value: str, confirm: bool = False,
