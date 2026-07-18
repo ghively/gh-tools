@@ -15,15 +15,21 @@ with an **admin** token — instance administration works, not just project acce
 
 ## Layered approach — pick the right tool
 
-1. **Curated tools first** (~35): `list_projects`, `get_project`, `manage_project`,
-   `repo_tree`, `read_file`, `write_files`, `branches`, `tags`, `commits`,
-   `compare_refs`, `list_merge_requests`, `get_merge_request`, `manage_merge_request`,
-   `mr_discussions`, `list_issues`, `get_issue`, `manage_issue`, `labels`,
-   `milestones`, `pipelines`, `jobs`, `ci_variables`, `pipeline_schedules`, `runners`,
-   `ci_lint`, `users`, `user_tokens`, `groups`, `members`, `admin_settings`,
-   `admin_ops`, `search_gitlab`, `releases`, `environments`, `deploy_credentials`,
-   `webhooks`, `integrations`, `snippets`, `wikis`, `packages`, `container_registry`,
-   `todos_and_events`. Most take an `action` parameter — read the tool description.
+1. **Curated tools first** (56): `list_projects`, `get_project`, `manage_project`,
+   `repo_tree`, `read_file`, `write_files`, `repo_extras`, `branches`, `tags`, `commits`,
+   `compare_refs`, `protected`, `list_merge_requests`, `get_merge_request`,
+   `manage_merge_request`, `mr_discussions`, `list_issues`, `get_issue`, `manage_issue`,
+   `labels`, `milestones`, `boards`, `pipelines`, `jobs`, `ci_variables`,
+   `pipeline_schedules`, `pipeline_triggers`, `feature_flags`, `runners`, `ci_lint`,
+   `environments`, `releases`, `deploy_credentials`, `pages`, `users`, `user_tokens`,
+   `access_tokens`, `groups`, `members`, `membership_requests`, `badges`, `admin_settings`,
+   `admin_ops`, `search_gitlab`, `webhooks`, `integrations`, `snippets`, `wikis`,
+   `packages`, `container_registry`, `project_import_export`, `todos_and_events`.
+   Most take an `action` parameter — read the tool description. New in v0.2.0: `pages`
+   (Pages + custom domains), `boards`, `feature_flags`, `pipeline_triggers`,
+   `access_tokens` (project/group bot tokens), `membership_requests` (invitations +
+   access requests), `protected` (granular protected branches/tags/environments),
+   `badges`, `project_import_export`, `repo_extras` (contributors/languages/blame/changelog).
 2. **`gitlab_rest`** for anything not curated — it reaches every REST endpoint.
    Find paths with `gitlab_api_search(keyword)` or `references/api-map.md`.
    Recipes for common non-curated jobs: `references/common-tasks.md`.
@@ -31,6 +37,30 @@ with an **admin** token — instance administration works, not just project acce
    newer features). 160 root queries / 622 mutations on 19.0.
 
 Start sessions (or debug auth issues) with `gitlab_status()`.
+
+## References (read the relevant one before non-trivial work)
+
+- `references/api-map.md` — the full enumerated REST surface (177 resource groups).
+- `references/conventions.md` — auth (`PRIVATE-TOKEN`, scopes, admin mode, sudo),
+  pagination (offset + keyset, `X-Total`/`Link` headers), ID vs IID, URL-encoded
+  paths, rate limits, error vocabulary, discovery via `/help/api/api_resources`.
+- `references/common-tasks.md` — verified call recipes for non-curated jobs.
+- `references/cicd.md` — pipelines, jobs & artifacts, triggers/schedules, variables,
+  runners (incl. the new `POST /user/runners` flow), environments/deployments,
+  releases, feature flags, CI-lint, `CI_JOB_TOKEN` scope, and a `.gitlab-ci.yml` cheat-sheet.
+- `references/projects-repo-mrs-issues.md` — projects/repo/files/commits (multi-action)/
+  branches/tags/protected refs, merge requests (+ basic approvals, blocks, suggestions),
+  issues/boards/labels/milestones, members/invitations/access-requests, packages/registry,
+  deploy keys/tokens, webhooks, wikis/snippets/releases, and the shared notes/discussions model.
+- `references/admin-and-self-hosting.md` — application settings, users + full lifecycle,
+  personal/project/group access tokens, groups, **system hooks** (the CE event surface),
+  and the **SSH/CLI-only hard limits** (backup/restore, `gitlab-ctl`, Rails console, DB/Redis,
+  background migrations — no API on any tier).
+- `references/ce-vs-ee-and-security.md` — the honest **CE-vs-EE gating map** (what 403s/returns
+  empty without a license) and the CE security-scanning reality (run SAST/Secret-Detection
+  templates → parse the raw job **artifact**, since findings never hit the MR widget on Free).
+- `references/graphql.md` — the GraphQL endpoint, live **introspection** as the version-exact
+  discovery path, when GraphQL beats REST (and vice versa), and the null-means-unauthorized gotcha.
 
 ## Safety rules (non-negotiable)
 

@@ -20,8 +20,9 @@
     {
       "name": "gitlab",
       "source": "./gitlab",
-      "description": "Full control of a self-hosted GitLab CE instance (verified on 19.0.0) \u2014 MCP server with generic REST+GraphQL passthrough reaching all ~170 API domains, ~35 curated tools (projects, repos, MRs, issues, CI/CD, runners, admin), a control skill, and workflow commands.",
-      "category": "development"
+      "description": "Deep control of a self-hosted GitLab CE instance (live-verified on 19.0.0) \u2014 generic REST+GraphQL passthrough over all 177 API resource groups + 56 curated tools (projects, repo/commits/branches/tags/protected-refs, MRs+approvals, issues/boards/labels/milestones, CI/CD pipelines/jobs/artifacts/triggers/schedules/variables/runners/environments/releases/feature-flags, Pages+domains, users/tokens/access-tokens, groups/members/invitations/badges, packages/registry, webhooks, wikis/snippets, admin, import/export), an 8-reference control skill (CI/CD, projects/MRs/issues, admin & self-hosting hard limits, CE-vs-EE gating, GraphQL) and workflow commands.",
+      "category": "development",
+      "version": "0.2.0"
     },
     {
       "name": "emby",
