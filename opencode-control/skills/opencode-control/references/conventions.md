@@ -65,18 +65,25 @@ Honest map from the live audit (opencode 1.18.3 on this host). "Works" = read ve
 and/or write path proven; "Fixable" = reachable but state/param-dependent; "Hard-limit" =
 not practical through this integration.
 
-### Works (verified live)
-- Health/status/paths/current-project; config get.
-- Providers & models catalog (`oc_providers`, `oc_models`).
+### Works (verified live) — 49 curated tools
+- Health/status/paths/current-project; config get/patch.
+- Providers & models catalog; **provider auth** methods + API-key set/remove (`oc_auth`);
+  MCP resources (`oc_resources`); the tool catalog agents can call (`oc_tools`).
 - Sessions: list/get/create/messages/todos/children/abort; lifecycle (fork/share/summarize/
-  init/rename/delete) methods present; **prompt proven live over both HTTP and ACP**.
+  init/rename/delete); **prompt proven live over both HTTP and ACP**; single-message get/
+  delete, session diff, **revert/unrevert (undo/redo)**.
 - Agents list; **agent authoring verified reversibly** (opencode loaded a written agent).
-- Commands list + authoring; skills list + authoring.
-- MCP status + add/connect/disconnect methods present.
-- Files list/read/status; find text/file/symbol.
-- VCS info/status.
-- TUI control (show-toast returned 200 live).
-- Full passthrough over all 188 operations; ACP handshake + prompt proven live.
+- Commands list + authoring; skills list + authoring; **plugin authoring** (`oc_plugin_write`).
+- MCP status + add/connect/disconnect.
+- **Interaction with running agents**: pending permission requests list + reply
+  (once/always/reject), questions list + reply/reject.
+- Projects list/current/directories/init-git/update; **git worktrees** create/remove/reset.
+- Files list/read/status; find text/file/symbol; diagnostics (LSP/formatter/file status).
+- VCS info/status/diff/raw + apply-patch.
+- TUI control (verified live); PTY lifecycle (shells/list/create/get/remove).
+- Maintenance: **stats** (token/cost), export/import sessions, upgrade.
+- Full passthrough over all 188 operations; ACP handshake + prompt proven live, with
+  per-session model override (best-effort via set_config_option).
 
 ### Fixable / conditional (reachable; depends on state or params)
 - `/vcs/diff` returns **400 without ref params** and needs a git repo with changes; use
@@ -99,6 +106,21 @@ not practical through this integration.
 - **ACP audio content blocks**: opencode advertises `image`+`text` only (no `audio`).
 - **ACP `reject_always`**: opencode offers only once/always/reject permission options.
 - **No official Python SDK**: we talk raw HTTP (fine) — not a limitation for this plugin.
+
+### Deliberately passthrough-only (reachable via `oc_call`, not curated)
+These are niche multi-client / cloud / experimental features — reach them with `oc_call`
+when needed rather than as curated tools:
+- **Workspaces & sync** (`/experimental/workspace/*`, `/sync/*`) — multi-client session
+  sync/steal/replay and workspace warp/adapters.
+- **Console / control-plane** (`/experimental/console/*`, `/experimental/control-plane/*`) —
+  opencode Zen/Console org switching and moving sessions between locations.
+- **Project copies** (`/experimental/project/{id}/copy*`) — project duplication.
+- **v2 `/api/*` mirrors** (integration/credential/reference/location/pty) — the newer API
+  generation; use `oc_call('GET','/api/...')`. `oc_discover` lists them all.
+- **Provider/MCP OAuth** (`/provider/*/oauth/*`, `/mcp/*/auth/*`) — need a browser round-trip;
+  do the interactive step (`opencode auth login`, `opencode mcp auth <name>`) on the host.
+- **Background subagents** (`/experimental/session/{id}/background`) — gated behind an
+  experimental env flag on the host.
 
 ## "Covered" vs "reachable"
 

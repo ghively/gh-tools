@@ -225,6 +225,17 @@ class ACPSession:
         except Exception:  # noqa: BLE001
             pass
 
+    async def set_model(self, model: str) -> Optional[str]:
+        """Best-effort per-session model override via session/set_config_option
+        (configId 'model'). Returns None on success, or an error string."""
+        try:
+            await self._request("session/set_config_option",
+                                {"sessionId": self.session_id, "configId": "model",
+                                 "value": model}, timeout=20)
+            return None
+        except Exception as e:  # noqa: BLE001
+            return str(e)
+
     async def prompt(self, text: str, files: Optional[list] = None,
                      timeout: float = 300) -> dict:
         blocks: list = [{"type": "text", "text": text}]
@@ -282,7 +293,7 @@ def _content_text(content: Any) -> str:
 
 
 async def run_prompt(prompt: str, *, opencode_bin: str = "opencode", cwd: str = "",
-                     files: Optional[list] = None, mode: str = "",
+                     files: Optional[list] = None, mode: str = "", model: str = "",
                      permission: str = "reject", timeout: float = 300,
                      mcp_servers: Optional[list] = None) -> dict:
     """One-shot: spawn opencode acp, run a single prompt, return the transcript
@@ -292,11 +303,16 @@ async def run_prompt(prompt: str, *, opencode_bin: str = "opencode", cwd: str = 
         await sess.start()
         init = await sess.initialize()
         await sess.new_session(mcp_servers=mcp_servers)
+        model_note = None
         if mode:
             await sess.set_mode(mode)
+        if model:
+            model_note = await sess.set_model(model)
         result = await sess.prompt(prompt, files=files, timeout=timeout)
         out = sess.transcript()
         out["stop_reason"] = result.get("stopReason")
+        if model:
+            out["model_override"] = "applied" if model_note is None else f"unsupported ({model_note[:80]})"
         out["init"] = {"protocolVersion": init.get("protocolVersion"),
                        "authMethods": [m.get("id") for m in init.get("authMethods", [])]}
         return out

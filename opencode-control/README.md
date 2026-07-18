@@ -19,16 +19,24 @@ against opencode 1.18.3**.
 
 Plus on-disk **authoring** of agents, commands, and skills, and `opencode.json` patching.
 
-## Tools
+## Tools (49)
 
 - **Orientation/passthrough**: `oc_status`, `oc_discover`, `oc_schema`, `oc_call`, `oc_server`
 - **Sessions/running**: `oc_sessions`, `oc_session`, `oc_session_create`, `oc_prompt`,
-  `oc_messages`, `oc_shell`, `oc_command`, `oc_abort`, `oc_session_manage`
+  `oc_messages`, `oc_message`, `oc_shell`, `oc_command`, `oc_abort`, `oc_session_manage`,
+  `oc_revert`, `oc_session_diff`
 - **Config/authoring**: `oc_config_get`, `oc_config_update`, `oc_agents`, `oc_agent_write`,
-  `oc_commands`, `oc_command_write`, `oc_skills`, `oc_skill_write`, `oc_models`,
-  `oc_providers`, `oc_mcp`
-- **Project/UI**: `oc_find`, `oc_file`, `oc_vcs`, `oc_tui`, `oc_events`
+  `oc_commands`, `oc_command_write`, `oc_skills`, `oc_skill_write`, `oc_plugin_write`,
+  `oc_models`, `oc_providers`, `oc_mcp`, `oc_resources`, `oc_auth`
+- **Running-agent interaction**: `oc_permissions`, `oc_questions`, `oc_tools`
+- **Project/VCS/UI**: `oc_projects`, `oc_worktree`, `oc_find`, `oc_file`, `oc_vcs`,
+  `oc_diagnostics`, `oc_pty`, `oc_tui`, `oc_events`
+- **Maintenance/data**: `oc_stats`, `oc_export`, `oc_import`, `oc_upgrade`
 - **ACP**: `oc_acp_probe`, `oc_acp_prompt`
+
+Everything else in opencode's 188-operation surface is reachable via `oc_call`
+(`oc_discover` finds it) — see the skill's `conventions.md` for what's deliberately
+left to passthrough (workspaces/sync, console/control-plane, OAuth flows, v2 `/api/*`).
 
 ## Install
 
