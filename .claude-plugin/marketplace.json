@@ -47,6 +47,13 @@
       "description": "Deep ComfyUI control v2 (built with deep-integration-builder, live-verified on ComfyUI 0.26.0): generation suite (txt2img/img2img/inpaint/upscale/LoRA/batch), LTX-Video + animated GIFs, HF/Civitai model management, PNG workflow remix, custom-node installs, websocket per-node progress, projection-mapping batch workflow (seamless palindrome GIF loops), full 46-route API passthrough, and a skill with per-model prompt engineering + a model encyclopedia.",
       "category": "infrastructure",
       "version": "2.5.0"
+    },
+    {
+      "name": "opencode-control",
+      "source": "./opencode-control",
+      "description": "Deep control of the OpenCode AI coding agent (anomalyco/sst opencode; live-verified on 1.18.3). Two connectors: the HTTP server (opencode serve) via a full 188-operation passthrough (self-discovered from the live OpenAPI /doc) plus ~30 curated tools (status, sessions, prompt, agents, commands, skills, models/providers, config, MCP, files/find, VCS, TUI control, events, server lifecycle), AND an ACP (Agent Client Protocol) connector that drives `opencode acp` over JSON-RPC/stdio to run prompts as an agent with no server needed. Plus on-disk authoring of agents/commands/skills and opencode.json patching, and a control skill covering configuration, optimization, and agent/workflow design.",
+      "category": "development",
+      "version": "0.1.0"
     }
   ]
 }

@@ -1,0 +1,11 @@
+{
+  "base_url": "http://127.0.0.1:4096",
+  "username": "opencode",
+  "password": "",
+  "opencode_bin": "opencode",
+  "config_dir": "",
+  "default_cwd": "",
+  "timeout": 120,
+
+  "_comment": "Copy to config.local.json (git-ignored). base_url points at a running `opencode serve` (default port 4096); the HTTP curated tools need it — start one with oc_server(action='start') or `opencode serve --port 4096`. The ACP tools (oc_acp_*) and the *_write authoring tools do NOT need a running server. password is only needed if the server was started with OPENCODE_SERVER_PASSWORD set (HTTP Basic; username defaults to 'opencode'). config_dir auto-detects from the server's /path when blank. default_cwd is the project dir ACP sessions and self-started servers use (defaults to $HOME)."
+}
