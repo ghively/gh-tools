@@ -1,0 +1,7 @@
+{
+  "opencode": {
+    "command": "uv",
+    "args": ["run", "--script", "${CLAUDE_PLUGIN_ROOT}/mcp/server.py"],
+    "env": { "OPENCODE_CONFIG": "${CLAUDE_PLUGIN_ROOT}/config.local.json" }
+  }
+}
