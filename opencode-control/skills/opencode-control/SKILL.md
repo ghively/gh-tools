@@ -126,6 +126,13 @@ replaced). Restart of opencode is not needed — config is re-read per session.
 - `references/agents-and-workflows.md` — designing agents & subagents, custom commands,
   skills, plugins, and model/permission **optimization** patterns. **Read before
   authoring agents or workflows.**
+- `references/scoping-serving-webui.md` — **field-verified sharp edges**: scoping an
+  agent to one MCP server (`<server>_*` tool/permission wildcards + the `<server>_<tool>`
+  naming), the `mode: all` vs `--agent`-falls-back-to-default gotcha, running a
+  **persistent web server** (`opencode serve` = API + web UI, Basic auth via
+  `OPENCODE_SERVER_PASSWORD` user `opencode`), the **web-UI project-routing trap**
+  (lands on empty `global`; deep-link `/_abs_path_with_underscores`), and the GLM
+  tool-call-tag-leak quirk. **Read before building a multi-agent fleet or exposing a server.**
 - `references/ecosystem-and-recipes.md` — **real-world build patterns** distilled from the
   opencode ecosystem (oh-my-openagent, joelhooks/opencode-config, real plugins): multi-
   agent orchestration recipes, the plugin cookbook (real hook table + tool() helper),
