@@ -62,7 +62,14 @@ and auto-creates a `settings.yml.bak.<ts>`.
   ui/general/plugins/valkey/brand). `searx_engine_show(name)` — one engine's block.
 - `searx_engine_toggle(name, disabled, confirm=True, apply=)` — enable/disable.
 - `searx_engine_add(name, engine, shortcut, categories=, extra_yaml_json=,
-  confirm=True)` — add a custom engine (templates in `references/settings-reference.md`).
+  confirm=True)` — add a **config-only** engine (JSON API / xpath / SQL / command /
+  mediawiki / another SearXNG). Templates in `references/settings-reference.md`.
+- `searx_engine_module_deploy(module_name, python_code, register_name, shortcut,
+  categories=, confirm=True)` / `searx_engine_module_remove(...)` — deploy/remove
+  a **custom Python engine module** (for sources needing real code). The module
+  is syntax-checked before registering. **Authoring guide: `references/writing-
+  engines.md`** (the full engine knowledgebase — every generic type, the Python
+  engine API, the result-dict schema, and result templates).
 - `searx_setting_set(key_path, value, confirm=True)` — any scalar/list, e.g.
   `outgoing.request_timeout` `6.0`, `server.limiter` `true`,
   `search.autocomplete` `"duckduckgo"`, `search.formats` `["html","json","csv","rss"]`.
@@ -88,3 +95,8 @@ avoids repeated downtime. Read the value back after restart to confirm it took.
 - `references/api-map.md` — full HTTP surface, search params, response shapes, conventions.
 - `references/settings-reference.md` — every settings.yml section & option, engine-block format, custom-engine templates.
 - `references/engine-tuning.md` — the reliability/CAPTCHA playbook, datacenter-IP engine picks, limiter & outgoing tuning, proxies/Tor.
+- `references/writing-engines.md` — **the engine-authoring knowledgebase**: all
+  search-resource types (JSON API, HTML/xpath, SQL/NoSQL, command, MediaWiki,
+  federated SearXNG), config-only vs Python-module paths, the request/response
+  API, the full result-dict schema, and all 11 result templates — with worked
+  examples from the live source and the dev loop using this plugin's tools.
