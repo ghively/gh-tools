@@ -1,0 +1,35 @@
+# Language-agnostic skeleton: lint -> test -> build -> deploy(manual).
+# Fill in the scripts for your stack; the rules/structure are the bulletproof part.
+stages: [lint, test, build, deploy]
+
+.mr-or-default: &mr_or_default
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+lint:
+  stage: lint
+  script: ['echo "TODO: lint"']
+  rules: *mr_or_default
+
+test:
+  stage: test
+  script: ['echo "TODO: test"']
+  rules: *mr_or_default
+
+build:
+  stage: build
+  script: ['echo "TODO: build"']
+  artifacts:
+    paths: [build/]
+    expire_in: 1 week
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+deploy:
+  stage: deploy
+  script: ['echo "TODO: deploy"']
+  environment:
+    name: production
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual

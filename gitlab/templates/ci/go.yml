@@ -1,0 +1,39 @@
+# Go — vet, build, test with the module cache.
+default:
+  image: golang:1.23-alpine
+  cache:
+    key:
+      files: [go.sum]
+    paths: [.gocache/, .gomod/]
+
+stages: [test, build]
+
+variables:
+  GOPATH: "$CI_PROJECT_DIR/.gomod"
+  GOCACHE: "$CI_PROJECT_DIR/.gocache"
+
+.rules: &rules
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+vet:
+  stage: test
+  script:
+    - go vet ./...
+  rules: *rules
+
+test:
+  stage: test
+  script:
+    - go test ./... -race -cover
+  rules: *rules
+
+build:
+  stage: build
+  script:
+    - go build -o app ./...
+  artifacts:
+    paths: [app]
+    expire_in: 1 week
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'

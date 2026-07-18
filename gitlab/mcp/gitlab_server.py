@@ -1996,6 +1996,95 @@ def repo_extras(project: str, action: str = "contributors", ref: Optional[str] =
     return {"error": True, "message": f"unknown action '{action}'"}
 
 
+def _fullpath(project: Any) -> str:
+    """Resolve a project id/path to its full namespaced path (for GraphQL fullPath)."""
+    s = str(project)
+    if not s.isdigit() and "/" in s:
+        return s
+    d = rest("GET", f"/projects/{_proj(project)}")
+    return d.get("path_with_namespace", s) if isinstance(d, dict) else s
+
+
+@mcp.tool()
+def model_registry(project: str, action: str = "models", name: Optional[str] = None,
+                   mlflow_path: Optional[str] = None, params: Optional[dict] = None) -> Any:
+    """GitLab ML Model Registry & experiment tracking (all CE-available, read-only).
+    action = models | experiments | packages | mlflow.
+      models       registered models for the project (GraphQL: id, name, versionCount).
+      experiments  ML experiments (GraphQL: id, name, candidateCount).
+      packages     ml_model packages (REST) — the raw artifacts + versions.
+      mlflow       MLflow-compatible REST passthrough — mlflow_path e.g.
+                   'registered-models/search', 'model-versions/search', 'runs/search',
+                   'experiments/search'; params become query args.
+    NOTE: GitLab Duo / AI (code suggestions, Duo chat/workflows) are EE-gated and 404 on
+    this CE instance — this tool covers the ML/model side, which does work on CE."""
+    p = _proj(project)
+    if action == "packages":
+        return rest("GET", f"/projects/{p}/packages",
+                    params=_clean({"package_type": "ml_model", **(params or {})}))
+    if action == "mlflow":
+        mp = (mlflow_path or "registered-models/search").lstrip("/")
+        return rest("GET", f"/projects/{p}/ml/mlflow/api/2.0/mlflow/{mp}", params=params)
+    fp = _fullpath(project)
+    if action == "models":
+        q = ("query($fp:ID!){ project(fullPath:$fp){ mlModels(first:50){ count "
+             "nodes{ id name versionCount description latestVersion{ version } createdAt } } } }")
+        return gql(q, {"fp": fp})
+    if action == "experiments":
+        q = ("query($fp:ID!){ project(fullPath:$fp){ mlExperiments(first:50){ count "
+             "nodes{ id name candidateCount modelId } } } }")
+        return gql(q, {"fp": fp})
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def ci_catalog(action: str = "list", project: Optional[str] = None,
+               params: Optional[dict] = None) -> Any:
+    """CI/CD Catalog (CE): reusable pipeline components published across the instance.
+    action = list | resource | versions.
+      list      catalog resources (GraphQL: id, name, description, webPath, starCount).
+      resource  one project's catalog resource + its components (project = id/path).
+      versions  a catalog resource's published versions.
+    Use these component paths in .gitlab-ci.yml as `include: - component: <fqdn>/<path>@<ver>`."""
+    if action == "list":
+        q = ("{ ciCatalogResources(first:50){ count nodes{ id name description webPath "
+             "starCount } } }")
+        return gql(q)
+    if not project:
+        return {"error": True, "message": "resource/versions need project=id/path"}
+    fp = _fullpath(project)
+    if action == "resource":
+        q = ("query($fp:ID!){ project(fullPath:$fp){ ciCatalogResource{ id name description "
+             "webPath starCount versions(first:10){ nodes{ name releasedAt path } } } } }")
+        return gql(q, {"fp": fp})
+    if action == "versions":
+        q = ("query($fp:ID!){ project(fullPath:$fp){ ciCatalogResource{ versions(first:50){ "
+             "nodes{ name releasedAt path } } } } }")
+        return gql(q, {"fp": fp})
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def templates(kind: str = "gitlab_ci_ymls", action: str = "list",
+              name: Optional[str] = None, project: Optional[str] = None) -> Any:
+    """GitLab's built-in file templates (read-only). kind = gitignores | licenses |
+    dockerfiles | gitlab_ci_ymls. action = list | get (get needs name, e.g. 'Node',
+    'Python', 'mit'). With project set, uses the project-scoped templates endpoint
+    (which also exposes issue/merge_request templates defined in the repo's .gitlab/).
+    For this plugin's OWN bulletproof, live-linted templates, see the templates/ dir and
+    references/templates.md — the workflow commands apply them via write_files + ci_lint."""
+    if project:
+        p = _proj(project)
+        if action == "list":
+            return rest("GET", f"/projects/{p}/templates/{kind}")
+        return rest("GET", f"/projects/{p}/templates/{kind}/{quote(name or '', safe='')}")
+    if action == "list":
+        return rest("GET", f"/templates/{kind}", paginate=True)
+    if action == "get":
+        return rest("GET", f"/templates/{kind}/{quote(name or '', safe='')}")
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
 # --------------------------------------------------------------------------- #
 # Selftest — live read-only audit of every domain (no mutations)              #
 # --------------------------------------------------------------------------- #

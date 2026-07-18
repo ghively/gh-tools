@@ -1,0 +1,13 @@
+{
+  "_comment": "Webhook preset: notify an external endpoint on push, MR, pipeline, and job events, with SSL verify + a secret token. Apply with: webhooks(scope_type='project', scope_id=project, action='create', params=<this minus _keys>, confirm=true). Replace url + token.",
+  "_apply_with": "webhooks",
+  "url": "https://example.com/gitlab-webhook",
+  "token": "{set-a-shared-secret}",
+  "enable_ssl_verification": true,
+  "push_events": true,
+  "merge_requests_events": true,
+  "pipeline_events": true,
+  "job_events": true,
+  "tag_push_events": true,
+  "releases_events": true
+}

@@ -1,0 +1,43 @@
+# Terraform: validate -> plan (auto) -> apply (manual, default branch only).
+default:
+  image:
+    name: hashicorp/terraform:1.9
+    entrypoint: [""]
+  cache:
+    key: "$CI_COMMIT_REF_SLUG"
+    paths: [.terraform/]
+
+stages: [validate, plan, apply]
+
+before_script:
+  - terraform init -input=false
+
+validate:
+  stage: validate
+  script:
+    - terraform fmt -check
+    - terraform validate
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+plan:
+  stage: plan
+  script:
+    - terraform plan -input=false -out=tfplan
+  artifacts:
+    paths: [tfplan]
+    expire_in: 1 day
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+apply:
+  stage: apply
+  script:
+    - terraform apply -input=false tfplan
+  environment:
+    name: production
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual

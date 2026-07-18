@@ -15,7 +15,7 @@ with an **admin** token — instance administration works, not just project acce
 
 ## Layered approach — pick the right tool
 
-1. **Curated tools first** (56): `list_projects`, `get_project`, `manage_project`,
+1. **Curated tools first** (59): `list_projects`, `get_project`, `manage_project`,
    `repo_tree`, `read_file`, `write_files`, `repo_extras`, `branches`, `tags`, `commits`,
    `compare_refs`, `protected`, `list_merge_requests`, `get_merge_request`,
    `manage_merge_request`, `mr_discussions`, `list_issues`, `get_issue`, `manage_issue`,
@@ -24,8 +24,12 @@ with an **admin** token — instance administration works, not just project acce
    `environments`, `releases`, `deploy_credentials`, `pages`, `users`, `user_tokens`,
    `access_tokens`, `groups`, `members`, `membership_requests`, `badges`, `admin_settings`,
    `admin_ops`, `search_gitlab`, `webhooks`, `integrations`, `snippets`, `wikis`,
-   `packages`, `container_registry`, `project_import_export`, `todos_and_events`.
-   Most take an `action` parameter — read the tool description. New in v0.2.0: `pages`
+   `packages`, `container_registry`, `project_import_export`, `model_registry`,
+   `ci_catalog`, `templates`, `todos_and_events`.
+   Most take an `action` parameter — read the tool description. New in v0.3.0:
+   `model_registry` (ML models + MLflow experiments — CE), `ci_catalog` (reusable CI
+   components), `templates` (GitLab's built-in gitignore/license/dockerfile/CI templates).
+   New in v0.2.0: `pages`
    (Pages + custom domains), `boards`, `feature_flags`, `pipeline_triggers`,
    `access_tokens` (project/group bot tokens), `membership_requests` (invitations +
    access requests), `protected` (granular protected branches/tags/environments),
@@ -61,6 +65,22 @@ Start sessions (or debug auth issues) with `gitlab_status()`.
   templates → parse the raw job **artifact**, since findings never hit the MR widget on Free).
 - `references/graphql.md` — the GraphQL endpoint, live **introspection** as the version-exact
   discovery path, when GraphQL beats REST (and vice versa), and the null-means-unauthorized gotcha.
+- `references/templates.md` — the **bulletproof templates** catalog: `templates/ci/*.yml`
+  (all live-linted `valid:true` on 19.0.0), project scaffolding, and config presets, with how
+  to apply each. **Read before scaffolding or adding CI.**
+- `references/workflows.md` — the `/gl-*` **workflow** playbooks and orchestration patterns
+  (onboard, ci-bootstrap, audit, cleanup, user-offboard, triage, release, model-registry).
+- `references/ai-and-model-registry.md` — the ML **Model Registry** + MLflow experiment tracking
+  + CI Catalog (all CE), and the honest story that **GitLab Duo / AI is EE-gated and 404s here**.
+
+## Templates & workflows
+
+Bulletproof, ready-to-use assets live in `templates/`: CI pipelines (`templates/ci/*.yml`, each
+validated against this instance's CI Lint API), project scaffolding (`templates/project/` — issue/
+MR templates, CODEOWNERS, .editorconfig, CONTRIBUTING), and config presets (`templates/config/*.json`).
+The `/gl-*` workflow commands orchestrate them into one job (e.g. `/gl-onboard` bootstraps a project
+end-to-end). Always `ci_lint(project, content=...)` after editing a CI template before committing.
+See `references/templates.md` and `references/workflows.md`.
 
 ## Safety rules (non-negotiable)
 
