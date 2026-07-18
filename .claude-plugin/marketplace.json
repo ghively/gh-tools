@@ -54,6 +54,13 @@
       "description": "Deep, near-complete control of the OpenCode AI coding agent (anomalyco/sst opencode; live-verified on 1.18.3). 49 curated tools + full 188-operation passthrough (self-discovered from the live OpenAPI /doc), across two connectors: the HTTP server (opencode serve) and an ACP (Agent Client Protocol) connector driving `opencode acp` over JSON-RPC/stdio (runs prompts as an agent, no server needed). Covers sessions/prompting, agents/commands/skills/plugins authoring, config & optimization, models/providers/auth, permissions & questions, projects/worktrees, revert/undo, VCS, diagnostics, PTY, TUI, stats/export/import, upgrade. Includes a control skill for configuration, optimization, and agent/workflow design.",
       "category": "development",
       "version": "0.3.0"
+    },
+    {
+      "name": "searxng-control",
+      "source": "./searxng-control",
+      "description": "Deep control of a self-hosted SearXNG metasearch instance (built with deep-integration-builder, live-verified on SearXNG 2026.5.7). Three layers: generic HTTP passthrough over the hand-enumerated runtime surface (/search json/csv/rss, /autocompleter, /config, /stats, /stats/errors, /healthz, /info); curated tools for search (all query params), the 249-engine inventory, autocomplete, and engine-failure diagnostics; and a config-management layer that edits settings.yml in the container over SSH and applies it with a restart (enable/disable engines, add custom engines, tune outgoing/limiter/search/server, backup & restore) — every write confirm-gated + auto-backed-up (write path proven reversibly). Skill with a full settings.yml reference and a datacenter-IP engine-reliability/CAPTCHA playbook, plus workflows (health, diagnose-empty-results, tune-reliability, add-engine).",
+      "category": "infrastructure",
+      "version": "0.1.0"
     }
   ]
 }
