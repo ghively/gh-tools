@@ -119,6 +119,11 @@ replaced). Restart of opencode is not needed — config is re-read per session.
 - `references/agents-and-workflows.md` — designing agents & subagents, custom commands,
   skills, plugins, and model/permission **optimization** patterns. **Read before
   authoring agents or workflows.**
+- `references/ecosystem-and-recipes.md` — **real-world build patterns** distilled from the
+  opencode ecosystem (oh-my-openagent, joelhooks/opencode-config, real plugins): multi-
+  agent orchestration recipes, the plugin cookbook (real hook table + tool() helper),
+  category-based model routing, GitHub-agent CI, ACP editor integration, and the
+  **permission/subagent security gotchas**. **Read before building anything non-trivial.**
 - `references/acp.md` — the ACP protocol, the connector's behavior, permission policy,
   and how to drive opencode as an agent.
 

@@ -53,7 +53,7 @@
       "source": "./opencode-control",
       "description": "Deep, near-complete control of the OpenCode AI coding agent (anomalyco/sst opencode; live-verified on 1.18.3). 49 curated tools + full 188-operation passthrough (self-discovered from the live OpenAPI /doc), across two connectors: the HTTP server (opencode serve) and an ACP (Agent Client Protocol) connector driving `opencode acp` over JSON-RPC/stdio (runs prompts as an agent, no server needed). Covers sessions/prompting, agents/commands/skills/plugins authoring, config & optimization, models/providers/auth, permissions & questions, projects/worktrees, revert/undo, VCS, diagnostics, PTY, TUI, stats/export/import, upgrade. Includes a control skill for configuration, optimization, and agent/workflow design.",
       "category": "development",
-      "version": "0.2.0"
+      "version": "0.3.0"
     }
   ]
 }
