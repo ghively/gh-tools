@@ -1,0 +1,9 @@
+# CE security scanning: SAST + Secret Detection run FREE and produce artifacts.
+# NOTE (CE): findings appear only in the job artifact (gl-sast-report.json,
+# gl-secret-detection-report.json) — NOT in the MR widget/dashboard (that is Ultimate).
+# Dependency Scanning and DAST are Ultimate-only and cannot run on Free.
+include:
+  - template: Security/SAST.gitlab-ci.yml
+  - template: Security/Secret-Detection.gitlab-ci.yml
+
+stages: [test]

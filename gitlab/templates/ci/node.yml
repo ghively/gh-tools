@@ -1,0 +1,47 @@
+# Node.js — install (cached) -> lint -> test -> build. Runs on MRs and the default branch.
+# Assumes package.json with "lint", "test", "build" scripts (all optional via --if-present).
+default:
+  image: node:22-alpine
+  cache:
+    key:
+      files: [package-lock.json]
+    paths: [.npm/]
+
+stages: [test, build]
+
+variables:
+  npm_config_cache: "$CI_PROJECT_DIR/.npm"
+
+.rules: &rules
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+lint:
+  stage: test
+  script:
+    - npm ci --cache .npm --prefer-offline
+    - npm run lint --if-present
+  rules: *rules
+
+test:
+  stage: test
+  script:
+    - npm ci --cache .npm --prefer-offline
+    - npm test --if-present
+  artifacts:
+    when: always
+    reports:
+      junit: junit.xml
+    expire_in: 1 week
+  rules: *rules
+
+build:
+  stage: build
+  script:
+    - npm ci --cache .npm --prefer-offline
+    - npm run build --if-present
+  artifacts:
+    paths: [dist/]
+    expire_in: 1 week
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'

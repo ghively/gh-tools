@@ -1,0 +1,10 @@
+{
+  "_comment": "Example CI/CD variable set. Apply each entry with: ci_variables(scope='project', scope_id=project, action='create', params=<one entry minus _keys>, confirm=true). Secrets should be masked+protected; file-type for cert/kubeconfig blobs.",
+  "_apply_with": "ci_variables",
+  "variables": [
+    { "key": "DEPLOY_TOKEN", "value": "{secret}", "protected": true, "masked": true, "variable_type": "env_var" },
+    { "key": "REGISTRY_USER", "value": "ci-bot", "protected": false, "masked": false, "variable_type": "env_var" },
+    { "key": "ENVIRONMENT", "value": "production", "protected": true, "masked": false, "environment_scope": "production" },
+    { "key": "KUBECONFIG", "value": "{base64-or-file-contents}", "protected": true, "masked": false, "variable_type": "file" }
+  ]
+}

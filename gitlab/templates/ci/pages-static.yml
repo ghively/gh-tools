@@ -1,0 +1,13 @@
+# Deploy a static site to GitLab Pages. Put built files in ./public (or adjust the copy).
+pages:
+  stage: deploy
+  image: alpine:latest
+  script:
+    - mkdir -p public
+    - '[ -d site ] && cp -r site/. public/ || true'
+    - '[ -d dist ] && cp -r dist/. public/ || true'
+    - '[ -d public ] && ls public'
+  artifacts:
+    paths: [public]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'

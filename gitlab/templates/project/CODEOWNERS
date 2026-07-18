@@ -1,0 +1,14 @@
+# CODEOWNERS — auto-request review from owners when matching files change.
+# Docs: https://docs.gitlab.com/user/project/codeowners/
+# Format: <path glob>  @user  @group  email@example.com
+# Later matches win. On CE, code-owner *approval enforcement* is EE — but the
+# auto-assignment of owners as reviewers works on Free.
+
+# Default owner for everything
+*                       @dadmonkey405
+
+# Per-area examples (edit to taste)
+# /docs/                @dadmonkey405
+# *.tf                  @gregory/infra
+# /.gitlab-ci.yml       @gregory/platform
+# /db/migrations/       @gregory/backend

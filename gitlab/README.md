@@ -7,18 +7,29 @@ following the deep-integration-builder methodology.
 ## What's inside
 
 - **MCP server** (`mcp/gitlab_server.py`, self-provisioning via `uv run --script`):
-  - Generic layer: `gitlab_rest` (any of ~170 REST domains), `gitlab_graphql`
+  - Generic layer: `gitlab_rest` (any of 177 REST resource groups), `gitlab_graphql`
     (160 queries / 622 mutations), `gitlab_status`, `gitlab_api_search`.
-  - ~35 curated tools: projects, repo tree/files/commits/branches/tags, merge
-    requests + review discussions, issues/labels/milestones, pipelines/jobs/
-    variables/schedules/runners/lint, users/tokens/groups/members, admin settings
-    + sidekiq + instance feature flags, search, releases, environments/deployments,
-    deploy keys/tokens, webhooks, integrations, snippets, wikis, packages,
-    container registry, todos/events.
-  - `--selftest`: read-only live audit of every domain (93 checks).
-- **Skill** `gitlab-control`: how to drive it, safety rules, the CE hard-limit map,
-  full API enumeration, conventions/quirks, recipes for the long tail.
-- **Commands**: `/gl-health`, `/gl-project`, `/gl-ci-debug`, `/gl-mr-review`.
+  - **59 curated tools**: projects, repo tree/files/commits/branches/tags/extras,
+    protected refs+environments, merge requests + approvals + review discussions,
+    issues/boards/labels/milestones, pipelines/jobs/artifacts/triggers/schedules/
+    variables/runners/lint, feature flags, environments/deployments, releases,
+    Pages + custom domains, users/tokens, project&group access tokens, groups/members/
+    invitations, badges, packages/registry, webhooks/integrations, snippets/wikis,
+    **ML model registry + MLflow experiments**, **CI/CD catalog**, GitLab's built-in
+    file templates, project import/export, admin settings + sidekiq + system hooks,
+    search, todos/events.
+  - `--selftest`: read-only live audit of every domain.
+- **Skill** `gitlab-control` with **11 references**: how to drive it, safety, the full
+  API map, conventions, CI/CD, projects/MRs/issues, admin & self-hosting (incl. SSH-only
+  hard limits), honest CE-vs-EE gating, GraphQL, the templates catalog, workflow playbooks,
+  and the AI/model-registry story.
+- **Bulletproof templates** (`templates/`): 10 `.gitlab-ci.yml` pipelines **each
+  live-validated against this instance's CI Lint API** (`valid:true` on 19.0.0), project
+  scaffolding (issue/MR templates, CODEOWNERS, .editorconfig, CONTRIBUTING), and config
+  presets (protected-branch ruleset, hardened project settings, webhook, CI variables).
+- **13 workflow commands**: `/gl-onboard`, `/gl-ci-bootstrap`, `/gl-audit`, `/gl-cleanup`,
+  `/gl-user-offboard`, `/gl-triage`, `/gl-release`, `/gl-mr-review`, `/gl-security-scan`,
+  `/gl-ci-debug`, `/gl-model-registry`, `/gl-project`, `/gl-health`.
 
 ## Setup
 
