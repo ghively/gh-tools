@@ -58,9 +58,9 @@
     {
       "name": "searxng-control",
       "source": "./searxng-control",
-      "description": "Deep control of a self-hosted SearXNG metasearch instance (built with deep-integration-builder, live-verified on SearXNG 2026.5.7). Three layers: generic HTTP passthrough over the hand-enumerated runtime surface (/search json/csv/rss, /autocompleter, /config, /stats, /stats/errors, /healthz, /info); curated tools for search (all query params), the 249-engine inventory, autocomplete, and engine-failure diagnostics; and a config-management layer that edits settings.yml in the container over SSH and applies it with a restart (enable/disable engines, add custom engines, tune outgoing/limiter/search/server, backup & restore) \u2014 every write confirm-gated + auto-backed-up (write path proven reversibly). Skill with a full settings.yml reference and a datacenter-IP engine-reliability/CAPTCHA playbook, plus workflows (health, diagnose-empty-results, tune-reliability, add-engine).",
+      "description": "Deep control of a self-hosted SearXNG metasearch instance (built with deep-integration-builder, live-verified on SearXNG 2026.5.7). Three layers: generic HTTP passthrough over the hand-enumerated runtime surface (/search json/csv/rss, /autocompleter, /config, /stats, /stats/errors, /healthz, /info); curated tools for search (all query params), the 249-engine inventory, autocomplete, and engine-failure diagnostics; and a config-management layer that edits settings.yml in the container over SSH and applies it with a restart (enable/disable engines, add config-only custom engines, deploy/remove custom Python engine modules with a syntax check, tune outgoing/limiter/search/server, backup & restore) \u2014 every write confirm-gated + auto-backed-up (write + module-deploy paths proven reversibly). Skill with a full settings.yml reference, a datacenter-IP engine-reliability/CAPTCHA playbook, and a complete engine-authoring knowledgebase (all search-resource types, the request/response API, result-dict schema & templates), plus workflows (health, diagnose-empty-results, tune-reliability, add-engine).",
       "category": "infrastructure",
-      "version": "0.1.0"
+      "version": "0.2.0"
     }
   ]
 }
