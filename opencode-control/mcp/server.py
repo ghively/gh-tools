@@ -741,12 +741,19 @@ async def oc_file(path: str = "", read: bool = False) -> str:
 
 
 @mcp.tool()
-async def oc_vcs(action: str = "status") -> str:
-    """Version control info for the project. action = status | diff | info."""
+async def oc_vcs(action: str = "status", patch: str = "", confirm: bool = False) -> str:
+    """Version control for the project. action = status | diff | raw | info | apply.
+    'raw' returns the unified diff text; 'apply' applies a `patch` to the working tree
+    (confirm=true)."""
     a = action.lower()
-    path = {"status": "/vcs/status", "diff": "/vcs/diff", "info": "/vcs"}.get(a, "/vcs/status")
     try:
-        return _dump(await _req("GET", path), limit=12000)
+        if a == "apply":
+            if not confirm:
+                return "apply needs confirm=true."
+            return _dump(await _req("POST", "/vcs/apply", body={"patch": patch}))
+        path = {"status": "/vcs/status", "diff": "/vcs/diff", "raw": "/vcs/diff/raw",
+                "info": "/vcs"}.get(a, "/vcs/status")
+        return _dump(await _req("GET", path), limit=14000)
     except Exception as e:  # noqa: BLE001
         return _err(e)
 
@@ -757,8 +764,9 @@ async def oc_tui(action: str, text: str = "", command: str = "", message: str = 
                  variant: str = "info") -> str:
     """Drive a RUNNING opencode TUI (must be attached to the same server). action =
     submit-prompt | append-prompt | clear-prompt | execute-command | show-toast |
-    open-help | open-models | open-sessions | open-themes. Use text for append/submit,
-    command for execute-command, message+variant for show-toast."""
+    open-help | open-models | open-sessions | open-themes | select-session | publish.
+    Use text for append/submit (and the session id for select-session), command for
+    execute-command, message+variant for show-toast/publish."""
     a = action.lower()
     try:
         if a == "append-prompt":
@@ -775,7 +783,12 @@ async def oc_tui(action: str, text: str = "", command: str = "", message: str = 
             return _dump(await _req("POST", "/tui/show-toast",
                                     body={"message": message, "variant": variant}))
         if a in ("open-help", "open-models", "open-sessions", "open-themes"):
-            return _dump(await _req("POST", f"/tui/{a.replace('-', '-')}", body={}))
+            return _dump(await _req("POST", f"/tui/{a}", body={}))
+        if a == "select-session":
+            return _dump(await _req("POST", "/tui/select-session",
+                                    body={"sessionID": text}))
+        if a == "publish":
+            return _dump(await _req("POST", "/tui/publish", body={"message": message}))
         return f"Unknown action '{action}'."
     except Exception as e:  # noqa: BLE001
         return _err(e)
@@ -807,6 +820,354 @@ async def oc_events(seconds: float = 4.0, limit: int = 40) -> str:
                if isinstance(e, dict) else e for e in events]
     return f"{len(events)} event(s) in {seconds}s:\n" + _dump(summary, limit=8000)
 
+
+# ================================================================ AUTH / CREDENTIALS
+
+@mcp.tool()
+async def oc_auth(action: str = "methods", provider: str = "", key: str = "",
+                  confirm: bool = False) -> str:
+    """Manage provider credentials. action = methods | set | remove.
+      methods  list how each provider authenticates (api key / oauth / env var).
+      set      store an API key for `provider` (body {type:'api', key:...}). confirm=true.
+      remove   delete stored credentials for `provider`. confirm=true.
+    OAuth-based providers (Anthropic/OpenAI console login etc.) need the interactive
+    `opencode auth login` on the host — this tool only does API-key and removal."""
+    a = action.lower()
+    try:
+        if a == "methods":
+            out = {"provider_auth": await _req("GET", "/provider/auth")}
+            try:
+                prov = await _req("GET", "/config/providers")
+                out["configured"] = [p.get("id") for p in prov.get("providers", [])]
+            except Exception:  # noqa: BLE001
+                pass
+            return _dump(out, limit=9000)
+        if not provider:
+            return "provider is required for set/remove."
+        if not confirm:
+            return f"'{a}' for provider '{provider}' needs confirm=true."
+        if a == "set":
+            if not key:
+                return "key is required for set."
+            return _dump(await _req("PUT", f"/auth/{provider}",
+                                    body={"type": "api", "key": key}))
+        if a == "remove":
+            return _dump(await _req("DELETE", f"/auth/{provider}"))
+        return "action must be methods|set|remove"
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+# ================================================================ PERMISSIONS / QUESTIONS
+
+@mcp.tool()
+async def oc_permissions(action: str = "list", request_id: str = "", reply: str = "",
+                         session_id: str = "", permission_id: str = "",
+                         confirm: bool = False) -> str:
+    """Pending permission requests from running agents. action = list | reply.
+      list   show pending requests (global, or a session's if session_id given).
+      reply  answer a request with reply = once | always | reject. For a session-scoped
+             request pass session_id + permission_id; for a global one pass request_id.
+             Needs confirm=true."""
+    a = action.lower()
+    try:
+        if a == "list":
+            if session_id:
+                return _dump(await _req("GET", f"/session/{session_id}/permission"))
+            return _dump(await _req("GET", "/permission"))
+        if a == "reply":
+            if reply not in ("once", "always", "reject"):
+                return "reply must be once|always|reject"
+            if not confirm:
+                return "reply needs confirm=true."
+            if session_id and permission_id:
+                return _dump(await _req(
+                    "POST", f"/session/{session_id}/permissions/{permission_id}",
+                    body={"response": reply}))
+            if request_id:
+                return _dump(await _req("POST", f"/permission/{request_id}/reply",
+                                        body={"reply": reply}))
+            return "Provide session_id+permission_id, or request_id."
+        return "action must be list|reply"
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+async def oc_questions(action: str = "list", request_id: str = "",
+                       answers: Optional[list] = None, confirm: bool = False) -> str:
+    """Pending questions an agent asked the user. action = list | reply | reject.
+      list    show pending questions.
+      reply   answer request_id with answers (a list of strings). confirm=true.
+      reject  reject request_id. confirm=true."""
+    a = action.lower()
+    try:
+        if a == "list":
+            return _dump(await _req("GET", "/question"))
+        if not request_id:
+            return "request_id is required for reply/reject."
+        if not confirm:
+            return f"'{a}' needs confirm=true."
+        if a == "reply":
+            return _dump(await _req("POST", f"/question/{request_id}/reply",
+                                    body={"answers": answers or []}))
+        if a == "reject":
+            return _dump(await _req("POST", f"/question/{request_id}/reject", body={}))
+        return "action must be list|reply|reject"
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+# ================================================================ TOOLS / RESOURCES / DIAGNOSTICS
+
+@mcp.tool()
+async def oc_tools(provider: str = "", model: str = "", schemas: bool = False) -> str:
+    """List the tools opencode agents can call. Default returns tool IDs; schemas=true
+    returns full JSON-schema params (optionally for a specific provider+model)."""
+    try:
+        if schemas:
+            params = {}
+            if provider:
+                params["provider"] = provider
+            if model:
+                params["model"] = model
+            return _dump(await _req("GET", "/experimental/tool", params=params or None),
+                         limit=12000)
+        return _dump(await _req("GET", "/experimental/tool/ids"))
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+async def oc_resources() -> str:
+    """List MCP resources exposed to opencode by its connected MCP servers (experimental)."""
+    try:
+        return _dump(await _req("GET", "/experimental/resource"), limit=10000)
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+async def oc_diagnostics() -> str:
+    """Project diagnostics: LSP server status, formatter status, and tracked-file git
+    status. Empty LSP/formatter means none is configured/running for this project's
+    language (configure `lsp`/`formatter` in opencode.json to populate)."""
+    out = {}
+    for label, path in [("lsp", "/lsp"), ("formatter", "/formatter"),
+                        ("file_status", "/file/status")]:
+        try:
+            out[label] = await _req("GET", path)
+        except Exception as e:  # noqa: BLE001
+            out[label] = _err(e)
+    return _dump(out, limit=10000)
+
+# ================================================================ PROJECTS / WORKTREES
+
+@mcp.tool()
+async def oc_projects(action: str = "list", project_id: str = "", name: str = "",
+                      confirm: bool = False) -> str:
+    """Projects opencode knows about. action = list | current | directories | init_git | update.
+      list/current/directories are reads. init_git initializes a git repo for the current
+      project (confirm=true). update renames project_id to `name` (confirm=true)."""
+    a = action.lower()
+    try:
+        if a == "list":
+            return _dump(await _req("GET", "/project"))
+        if a == "current":
+            return _dump(await _req("GET", "/project/current"))
+        if a == "directories":
+            return _dump(await _req("GET", f"/project/{project_id}/directories"))
+        if not confirm:
+            return f"'{a}' needs confirm=true."
+        if a == "init_git":
+            return _dump(await _req("POST", "/project/git/init", body={}))
+        if a == "update":
+            return _dump(await _req("PATCH", f"/project/{project_id}", body={"name": name}))
+        return "action must be list|current|directories|init_git|update"
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+async def oc_worktree(action: str = "list", name: str = "", start_command: str = "",
+                      worktree_id: str = "", confirm: bool = False) -> str:
+    """Manage git worktrees (isolated checkouts for parallel work). action =
+    list | create | remove | reset. create makes a worktree named `name` (confirm=true);
+    remove/reset act on worktree_id (confirm=true)."""
+    a = action.lower()
+    try:
+        if a == "list":
+            return _dump(await _req("GET", "/experimental/worktree"))
+        if not confirm:
+            return f"'{a}' needs confirm=true."
+        if a == "create":
+            body = {"name": name}
+            if start_command:
+                body["startCommand"] = start_command
+            return _dump(await _req("POST", "/experimental/worktree", body=body))
+        if a == "remove":
+            return _dump(await _req("DELETE", "/experimental/worktree",
+                                    params={"id": worktree_id}))
+        if a == "reset":
+            return _dump(await _req("POST", "/experimental/worktree/reset",
+                                    body={"id": worktree_id}))
+        return "action must be list|create|remove|reset"
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+# ================================================================ REVERT (UNDO/REDO) / MESSAGES
+
+@mcp.tool()
+async def oc_revert(session_id: str, action: str = "revert", message_id: str = "",
+                    part_id: str = "", confirm: bool = False) -> str:
+    """Undo/redo within a session. action = revert (roll back to before message_id) |
+    unrevert (restore reverted messages). Needs confirm=true (it changes session state
+    and can discard edits opencode made)."""
+    if not confirm:
+        return "revert/unrevert needs confirm=true."
+    a = action.lower()
+    try:
+        if a == "revert":
+            body = {"messageID": message_id}
+            if part_id:
+                body["partID"] = part_id
+            return _dump(await _req("POST", f"/session/{session_id}/revert", body=body))
+        if a == "unrevert":
+            return _dump(await _req("POST", f"/session/{session_id}/unrevert", body={}))
+        return "action must be revert|unrevert"
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+async def oc_message(session_id: str, message_id: str, delete: bool = False,
+                     confirm: bool = False) -> str:
+    """Get one full message (all parts) by id, or delete it (delete=true, confirm=true)."""
+    try:
+        if delete:
+            if not confirm:
+                return "delete needs confirm=true."
+            return _dump(await _req("DELETE", f"/session/{session_id}/message/{message_id}"))
+        m = await _req("GET", f"/session/{session_id}/message/{message_id}")
+        return _dump(m, limit=12000)
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+async def oc_session_diff(session_id: str, message_id: str = "") -> str:
+    """Get the diff of file changes an agent made in a session (optionally up to message_id)."""
+    params = {"messageID": message_id} if message_id else None
+    try:
+        return _dump(await _req("GET", f"/session/{session_id}/diff", params=params),
+                     limit=14000)
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+# ================================================================ PTY (terminal sessions — no live I/O)
+
+@mcp.tool()
+async def oc_pty(action: str = "list", command: str = "", args: Optional[list] = None,
+                 cwd: str = "", pty_id: str = "", confirm: bool = False) -> str:
+    """Manage opencode PTY (pseudo-terminal) sessions. action = shells | list | create |
+    get | remove. NOTE: interactive terminal I/O runs over a ticket-authed WebSocket and
+    is NOT exposed here — this manages PTY lifecycle only (create/list/inspect/remove).
+    create/remove need confirm=true."""
+    a = action.lower()
+    try:
+        if a == "shells":
+            return _dump(await _req("GET", "/pty/shells"))
+        if a == "list":
+            return _dump(await _req("GET", "/pty"))
+        if a == "get":
+            return _dump(await _req("GET", f"/pty/{pty_id}"))
+        if not confirm:
+            return f"'{a}' needs confirm=true."
+        if a == "create":
+            body = {"command": command}
+            if args:
+                body["args"] = args
+            if cwd:
+                body["cwd"] = cwd
+            return _dump(await _req("POST", "/pty", body=body))
+        if a == "remove":
+            return _dump(await _req("DELETE", f"/pty/{pty_id}"))
+        return "action must be shells|list|create|get|remove"
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+# ================================================================ PLUGIN AUTHORING
+
+@mcp.tool()
+async def oc_plugin_write(name: str, body: str, scope: str = "global",
+                          project_dir: str = "", confirm: bool = False) -> str:
+    """Create/overwrite an opencode plugin (JS/TS hooks) at <dir>/plugin/<name>.js.
+    `body` is the full module source (must export a plugin function returning Hooks —
+    e.g. `export const MyPlugin = async ({client,$,directory}) => ({ 'tool.execute.before':
+    async (input,output)=>{...} })`). scope global -> <config>/plugin; project ->
+    <project_dir>/.opencode/plugin. Requires confirm=true."""
+    if not confirm:
+        return "Refusing to write plugin without confirm=true."
+    if scope == "project":
+        base = Path(project_dir or CFG.get("default_cwd") or Path.home()) / ".opencode" / "plugin"
+    else:
+        base = (await _config_dir()) / "plugin"
+    base.mkdir(parents=True, exist_ok=True)
+    ext = ".ts" if ("import type" in body or ": Plugin" in body) else ".js"
+    dest = base / f"{name}{ext}"
+    dest.write_text(body if body.endswith("\n") else body + "\n")
+    return f"Wrote plugin -> {dest}\n\n" + dest.read_text()[:1200]
+
+# ================================================================ MAINTENANCE / CLI-BACKED
+
+@mcp.tool()
+async def oc_upgrade(target: str = "", confirm: bool = False) -> str:
+    """Upgrade opencode to the latest (or a specific `target` version). Requires
+    confirm=true. Restarts may be needed for a running server to pick up the new binary."""
+    if not confirm:
+        return "Upgrade needs confirm=true."
+    try:
+        return _dump(await _req("POST", "/global/upgrade",
+                                body={"target": target} if target else {}, timeout=120))
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+async def _cli(args: list, timeout: float = 60) -> tuple:
+    proc = await asyncio.create_subprocess_exec(
+        CFG.get("opencode_bin", "opencode"), *args,
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+        cwd=CFG.get("default_cwd") or str(Path.home()))
+    try:
+        out, err = await asyncio.wait_for(proc.communicate(), timeout)
+    except asyncio.TimeoutError:
+        proc.kill()
+        return "", "timed out"
+    return out.decode(errors="replace"), err.decode(errors="replace")
+
+
+@mcp.tool()
+async def oc_stats() -> str:
+    """Token-usage and cost statistics across all sessions (via `opencode stats`)."""
+    out, err = await _cli(["stats"], timeout=60)
+    return out or f"(no output) {err[:300]}"
+
+
+@mcp.tool()
+async def oc_export(session_id: str = "") -> str:
+    """Export session data as JSON (via `opencode export [sessionID]`). Omit session_id
+    to be prompted/export the current context. Read-only."""
+    args = ["export"] + ([session_id] if session_id else [])
+    out, err = await _cli(args, timeout=60)
+    return _dump(out[:14000] if out else f"(no output) {err[:300]}")
+
+
+@mcp.tool()
+async def oc_import(file: str, confirm: bool = False) -> str:
+    """Import session data from a JSON file or URL (via `opencode import <file>`).
+    Requires confirm=true (it creates sessions)."""
+    if not confirm:
+        return "Import needs confirm=true."
+    out, err = await _cli(["import", file], timeout=120)
+    return out or f"(done/no output) {err[:300]}"
 
 # ================================================================ SERVER LIFECYCLE
 
@@ -878,7 +1239,8 @@ async def oc_server(action: str = "status") -> str:
 # ================================================================ ACP CONNECTOR
 
 @mcp.tool()
-async def oc_acp_prompt(prompt: str, cwd: str = "", mode: str = "", files: Optional[list] = None,
+async def oc_acp_prompt(prompt: str, cwd: str = "", mode: str = "", model: str = "",
+                        files: Optional[list] = None,
                         permission: str = "reject", confirm: bool = False,
                         timeout: int = 300) -> str:
     """Call opencode as an ACP agent (spawns `opencode acp`, JSON-RPC over stdio) and
@@ -888,6 +1250,7 @@ async def oc_acp_prompt(prompt: str, cwd: str = "", mode: str = "", files: Optio
 
       cwd        absolute project dir the agent operates in (defaults to config default_cwd/$HOME)
       mode       optional agent/mode to switch to (e.g. 'plan','build')
+      model      optional per-session model override 'provider/model' (best-effort)
       files      absolute paths to attach as resource links
       permission 'reject' (READ-ONLY: agent can read/plan/answer, all edits+bash rejected — DEFAULT),
                  'allow' (approve each action once), 'always' (approve+remember).
@@ -904,7 +1267,7 @@ async def oc_acp_prompt(prompt: str, cwd: str = "", mode: str = "", files: Optio
     try:
         out = await ACP.run_prompt(
             prompt, opencode_bin=CFG.get("opencode_bin", "opencode"), cwd=cwd,
-            files=files, mode=mode, permission=permission, timeout=timeout)
+            files=files, mode=mode, model=model, permission=permission, timeout=timeout)
         return _dump(out, limit=14000)
     except Exception as e:  # noqa: BLE001
         return f"ACP error: {type(e).__name__}: {e}"

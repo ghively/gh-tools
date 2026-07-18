@@ -50,12 +50,28 @@ endpoint, `oc_schema("<operationId>")` to get its params, then `oc_call(...)`.
 - `oc_agents` · `oc_agent_write(name, prompt, description, mode, model, tools, ...)`
 - `oc_commands` · `oc_command_write(name, template, ...)`
 - `oc_skills` · `oc_skill_write(name, description, body, ...)`
-- `oc_models(provider)` · `oc_providers` · `oc_mcp(action, name, config)`
+- `oc_plugin_write(name, body, ...)` — author a JS/TS plugin (hooks/custom tools)
+- `oc_models(provider)` · `oc_providers` · `oc_mcp(action, name, config)` · `oc_resources`
+- `oc_auth(action, provider, key)` — provider credentials (methods|set|remove)
 
-**Project & UI**
-- `oc_find(query, kind)` — text|file|symbol · `oc_file(path, read)` · `oc_vcs(action)`
-- `oc_tui(action, ...)` — drive a running TUI (submit-prompt, execute-command, show-toast…)
-- `oc_events(seconds)` — tail the SSE event bus briefly
+**Interaction with running agents**
+- `oc_permissions(action, ...)` — list/reply to pending permission requests (once|always|reject)
+- `oc_questions(action, ...)` — list/reply/reject agent questions
+- `oc_tools(provider, model, schemas)` — the tools opencode agents can call
+
+**Project, VCS & UI**
+- `oc_projects(action, ...)` — list|current|directories|init_git|update
+- `oc_worktree(action, ...)` — git worktrees (list|create|remove|reset)
+- `oc_find(query, kind)` — text|file|symbol · `oc_file(path, read)`
+- `oc_vcs(action, patch)` — status|diff|raw|info|apply · `oc_diagnostics` — lsp/formatter/file status
+- `oc_revert(session_id, action, message_id)` — undo/redo in a session
+- `oc_message` · `oc_session_diff` — inspect a single message / a session's file diff
+- `oc_pty(action, ...)` — PTY lifecycle (shells|list|create|get|remove; no live terminal I/O)
+- `oc_tui(action, ...)` — drive a running TUI · `oc_events(seconds)` — tail the SSE bus
+
+**Maintenance & data**
+- `oc_stats` — token usage & cost · `oc_export(session_id)` / `oc_import(file)` — session data
+- `oc_upgrade(target)` — upgrade opencode
 
 **ACP connector** (see `references/acp.md`)
 - `oc_acp_probe(cwd)` — prove the ACP channel (handshake only, no model call, always safe)
@@ -68,8 +84,12 @@ Reads are free. **Writes are confirm-gated in the tools and you must confirm int
 the user before calling them.** Specifically:
 
 - `oc_call` with a non-GET method needs `confirm=true`.
-- `oc_config_update`, `oc_agent_write`, `oc_command_write`, `oc_skill_write`,
-  `oc_mcp(add/connect/disconnect)`, and `oc_session_manage(delete/unshare)` need `confirm=true`.
+- These need `confirm=true`: `oc_config_update`, `oc_agent_write`, `oc_command_write`,
+  `oc_skill_write`, `oc_plugin_write`, `oc_mcp(add/connect/disconnect)`,
+  `oc_session_manage(delete/unshare)`, `oc_auth(set/remove)`, `oc_permissions(reply)`,
+  `oc_questions(reply/reject)`, `oc_projects(init_git/update)`, `oc_worktree(create/remove/reset)`,
+  `oc_revert`, `oc_message(delete)`, `oc_pty(create/remove)`, `oc_vcs(apply)`,
+  `oc_upgrade`, `oc_import`.
 - `oc_prompt` and `oc_acp_prompt` **run models and can change files/run commands**.
   `oc_acp_prompt` defaults to `permission='reject'` (read-only: opencode can read, plan,
   and answer, but every edit/bash is rejected). To let it modify the project, pass
