@@ -62,7 +62,13 @@ if not the default `opencode`) in `config.local.json` — auth is HTTP Basic.
   opencode-config, dozens of real plugins): multi-agent orchestration recipes, the plugin
   cookbook (real hook table + `tool()` helper + real examples), category-based model
   routing, GitHub-agent CI, ACP editor integration, and the permission/subagent security
-  gotchas from the issue tracker.
+  gotchas from the issue tracker. Plus `sdk-and-automation.md` (the SDK, headless automation,
+  raw-HTTP-from-any-language, and **forge CI** — GitHub agent + GitLab/other via `opencode
+  run`, incl. why there's no first-party GitLab agent + a working `.gitlab-ci.yml`),
+  `events-and-context.md` (the event streams + compaction/context cost tuning), and
+  `skills-eval-enterprise.md` (SKILL.md spec, agent/skill evaluation, and enterprise/security
+  — config precedence, sharing, the plaintext-`auth.json` risk, and the important fact that
+  **opencode's permission system is advisory, not an OS sandbox**).
 - `/oc-health` — full health & orientation check
 - `/oc-run <task>` — run a coding task through opencode (ACP)
 - `/oc-agent <role>` — design & author an agent

@@ -96,6 +96,13 @@ the user before calling them.** Specifically:
   `permission='allow'` (or `'always'`) **and** `confirm=true` — and confirm with the user first.
 - Never run a mutating write autonomously to "self-test." Prefer reversible proofs
   (create a throwaway agent/session, verify, delete) and only with the user's go-ahead.
+- **opencode's own permission system is advisory, not a security sandbox.** It has no
+  OS-level containment — an allowed `bash` can write outside `edit`/`external_directory`
+  rules (via `python`, redirects, `cp`, …). If you set up opencode to run untrusted or
+  semi-trusted code (e.g. `oc_acp_prompt(permission='allow')`, `--auto`, a CI bot), add
+  real isolation (container/VM) and warn the user — don't treat permissions as a boundary.
+- Secrets: keys from `/connect` land **plaintext** in `~/.local/share/opencode/auth.json`;
+  prefer `{env:...}` in config. Flag this for regulated/corporate environments.
 - `oc_config_update(scope='global')` rewrites the user's `~/.config/opencode` config on
   disk. Show the exact patch and confirm before writing. Back up substantial changes.
 
@@ -124,6 +131,17 @@ replaced). Restart of opencode is not needed — config is re-read per session.
   agent orchestration recipes, the plugin cookbook (real hook table + tool() helper),
   category-based model routing, GitHub-agent CI, ACP editor integration, and the
   **permission/subagent security gotchas**. **Read before building anything non-trivial.**
+- `references/sdk-and-automation.md` — the `@opencode-ai/sdk`, headless automation
+  (promptAsync + event stream), raw-HTTP from any language, real SDK-built projects, and
+  **forge CI** (GitHub agent, GitLab/other via `opencode run` — incl. why there's no
+  first-party GitLab agent and a working `.gitlab-ci.yml`).
+- `references/events-and-context.md` — the event system (which of the three SSE streams to
+  use, the event catalog, `session.idle`) and **compaction/context tuning** (the config
+  knobs + defaults, the two compaction hooks, the auto-continue cost gotcha, a cost cookbook).
+- `references/skills-eval-enterprise.md` — the SKILL.md spec (5 fields; no `allowed-tools`/
+  `model`), the 6 discovery paths, skill-scoped MCP, agent/skill **evaluation** tooling, and
+  **enterprise/security** (config precedence, `.well-known` org config, policies, sharing,
+  the plaintext-`auth.json` risk, and the sandboxing-is-advisory boundary).
 - `references/acp.md` — the ACP protocol, the connector's behavior, permission policy,
   and how to drive opencode as an agent.
 
