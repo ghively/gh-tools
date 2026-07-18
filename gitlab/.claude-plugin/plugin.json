@@ -1,7 +1,7 @@
 {
   "name": "gitlab",
-  "description": "Full control of a self-hosted GitLab CE instance (verified on 19.0.0) — MCP server with a generic REST+GraphQL passthrough reaching all ~170 API domains, ~35 curated tools for daily jobs (projects, repo files, MRs, issues, CI/CD, runners, users/admin, groups), a control skill, and workflow commands.",
-  "version": "0.1.0",
+  "description": "Deep control of a self-hosted GitLab CE instance (live-verified on 19.0.0). MCP server: generic REST+GraphQL passthrough reaching all 177 API resource groups, plus 56 curated tools (projects, repo files/commits/branches/tags, protected refs & environments, merge requests + approvals, issues/boards/labels/milestones, CI/CD pipelines/jobs/artifacts/triggers/schedules/variables, runners, environments/deployments, releases, feature flags, Pages + custom domains, users/tokens, project&group access tokens, groups/members/invitations, badges, packages & container registry, webhooks, wikis/snippets, admin settings, import/export, search). 8-reference control skill (CI/CD, projects/MRs/issues, admin & self-hosting with the SSH-only hard limits, honest CE-vs-EE gating, GraphQL) and workflow commands.",
+  "version": "0.2.0",
   "author": {
     "name": "poomonkey405"
   }
