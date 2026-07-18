@@ -1704,6 +1704,298 @@ def todos_and_events(action: str = "todos", target_id: Optional[int] = None,
     return {"error": True, "message": f"unknown action '{action}'"}
 
 
+@mcp.tool()
+def pages(project: str, action: str = "get", domain: Optional[str] = None,
+          params: Optional[dict] = None, confirm: bool = False) -> Any:
+    """GitLab Pages: settings + custom domains. action = get|update|unpublish|
+    domains|domain_get|domain_create|domain_update|domain_delete|instance_domains.
+    domain_create params={domain, auto_ssl_enabled?, certificate?, key?}.
+    instance_domains lists all Pages domains across the instance (admin). Writes need confirm=true."""
+    p = _proj(project)
+    if action == "get":
+        return rest("GET", f"/projects/{p}/pages")
+    if action == "domains":
+        return rest("GET", f"/projects/{p}/pages/domains")
+    if action == "domain_get":
+        return rest("GET", f"/projects/{p}/pages/domains/{domain}")
+    if action == "instance_domains":
+        return rest("GET", "/pages/domains", paginate=True)
+    g = _gate(confirm, f"pages {action} on {project} {domain or ''}")
+    if g:
+        return g
+    if action == "update":
+        return rest("PATCH", f"/projects/{p}/pages", body=params)
+    if action == "unpublish":
+        return rest("DELETE", f"/projects/{p}/pages")
+    if action == "domain_create":
+        return rest("POST", f"/projects/{p}/pages/domains", body=params)
+    if action == "domain_update":
+        return rest("PUT", f"/projects/{p}/pages/domains/{domain}", body=params)
+    if action == "domain_delete":
+        return rest("DELETE", f"/projects/{p}/pages/domains/{domain}")
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def boards(scope_type: str = "project", scope_id: Optional[str] = None,
+           action: str = "list", board_id: Optional[int] = None,
+           list_id: Optional[int] = None, params: Optional[dict] = None,
+           confirm: bool = False) -> Any:
+    """Issue boards + lists. scope_type: project|group. action = list|get|create|update|
+    delete|lists|list_create|list_update|list_delete. list_create params={label_id} (or
+    milestone_id/assignee_id/iteration_id). Writes need confirm=true."""
+    base = f"/{'groups' if scope_type == 'group' else 'projects'}/{_proj(scope_id)}/boards"
+    if action == "list":
+        return rest("GET", base)
+    if action == "get":
+        return rest("GET", f"{base}/{board_id}")
+    if action == "lists":
+        return rest("GET", f"{base}/{board_id}/lists")
+    g = _gate(confirm, f"board {action} on {scope_type} {scope_id}")
+    if g:
+        return g
+    if action == "create":
+        return rest("POST", base, body=params)
+    if action == "update":
+        return rest("PUT", f"{base}/{board_id}", body=params)
+    if action == "delete":
+        return rest("DELETE", f"{base}/{board_id}")
+    if action == "list_create":
+        return rest("POST", f"{base}/{board_id}/lists", body=params)
+    if action == "list_update":
+        return rest("PUT", f"{base}/{board_id}/lists/{list_id}", body=params)
+    if action == "list_delete":
+        return rest("DELETE", f"{base}/{board_id}/lists/{list_id}")
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def feature_flags(project: str, action: str = "list", name: Optional[str] = None,
+                  params: Optional[dict] = None, confirm: bool = False) -> Any:
+    """Feature flags (CE): list|get|create|update|delete, and user lists via
+    lists|list_get|list_create|list_update|list_delete (list_id in params).
+    create params={name, active?, description?, version?, strategies?[{name,parameters,scopes}]}.
+    Writes need confirm=true."""
+    p = _proj(project)
+    if action == "list":
+        return rest("GET", f"/projects/{p}/feature_flags")
+    if action == "get":
+        return rest("GET", f"/projects/{p}/feature_flags/{name}")
+    if action == "lists":
+        return rest("GET", f"/projects/{p}/feature_flags_user_lists")
+    if action == "list_get":
+        return rest("GET", f"/projects/{p}/feature_flags_user_lists/{(params or {}).get('list_id')}")
+    g = _gate(confirm, f"feature_flags {action} on {project} {name or ''}")
+    if g:
+        return g
+    if action == "create":
+        return rest("POST", f"/projects/{p}/feature_flags", body=params)
+    if action == "update":
+        return rest("PUT", f"/projects/{p}/feature_flags/{name}", body=params)
+    if action == "delete":
+        return rest("DELETE", f"/projects/{p}/feature_flags/{name}")
+    if action == "list_create":
+        return rest("POST", f"/projects/{p}/feature_flags_user_lists", body=params)
+    if action == "list_update":
+        lid = (params or {}).get("list_id")
+        return rest("PUT", f"/projects/{p}/feature_flags_user_lists/{lid}", body=params)
+    if action == "list_delete":
+        lid = (params or {}).get("list_id")
+        return rest("DELETE", f"/projects/{p}/feature_flags_user_lists/{lid}")
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def pipeline_triggers(project: str, action: str = "list", trigger_id: Optional[int] = None,
+                      params: Optional[dict] = None, confirm: bool = False) -> Any:
+    """Pipeline trigger tokens: list|get|create|update|delete, and 'run' to fire a pipeline
+    with a trigger token. create params={description}. run params={token, ref, variables?{...}}.
+    Writes need confirm=true."""
+    p = _proj(project)
+    if action == "list":
+        return rest("GET", f"/projects/{p}/triggers")
+    if action == "get":
+        return rest("GET", f"/projects/{p}/triggers/{trigger_id}")
+    g = _gate(confirm, f"trigger {action} on {project}")
+    if g:
+        return g
+    if action == "create":
+        return rest("POST", f"/projects/{p}/triggers", body=params)
+    if action == "update":
+        return rest("PUT", f"/projects/{p}/triggers/{trigger_id}", body=params)
+    if action == "delete":
+        return rest("DELETE", f"/projects/{p}/triggers/{trigger_id}")
+    if action == "run":
+        return rest("POST", f"/projects/{p}/trigger/pipeline", body=params)
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def access_tokens(scope_type: str = "project", scope_id: Optional[str] = None,
+                  action: str = "list", token_id: Optional[int] = None,
+                  params: Optional[dict] = None, confirm: bool = False) -> Any:
+    """Project/Group access tokens (bot service tokens; both Free on CE).
+    scope_type: project|group. action = list|get|create|rotate|revoke.
+    create params={name, scopes:[...], access_level?, expires_at?}. The create/rotate
+    response holds the ONLY copy of the secret — relay it immediately. Writes need confirm=true."""
+    base = f"/{'groups' if scope_type == 'group' else 'projects'}/{_proj(scope_id)}/access_tokens"
+    if action == "list":
+        return rest("GET", base)
+    if action == "get":
+        return rest("GET", f"{base}/{token_id}")
+    g = _gate(confirm, f"access_token {action} on {scope_type} {scope_id}")
+    if g:
+        return g
+    if action == "create":
+        return rest("POST", base, body=params)
+    if action == "rotate":
+        return rest("POST", f"{base}/{token_id}/rotate", body=params)
+    if action == "revoke":
+        return rest("DELETE", f"{base}/{token_id}")
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def membership_requests(scope_type: str = "project", scope_id: Optional[str] = None,
+                        kind: str = "invitations", action: str = "list",
+                        email: Optional[str] = None, user_id: Optional[int] = None,
+                        params: Optional[dict] = None, confirm: bool = False) -> Any:
+    """Invitations & access requests. scope_type: project|group. kind: invitations|access_requests.
+    invitations action=list|invite|update|revoke (invite params={email, access_level, expires_at?}).
+    access_requests action=list|request|approve|deny (approve params={access_level?}). Writes need confirm=true."""
+    base = f"/{'groups' if scope_type == 'group' else 'projects'}/{_proj(scope_id)}"
+    if kind == "invitations":
+        if action == "list":
+            return rest("GET", f"{base}/invitations")
+        g = _gate(confirm, f"invitation {action} on {scope_type} {scope_id} {email or ''}")
+        if g:
+            return g
+        if action == "invite":
+            return rest("POST", f"{base}/invitations", body=params)
+        if action == "update":
+            return rest("PUT", f"{base}/invitations/{quote(email or '', safe='')}", body=params)
+        if action == "revoke":
+            return rest("DELETE", f"{base}/invitations/{quote(email or '', safe='')}")
+    elif kind == "access_requests":
+        if action == "list":
+            return rest("GET", f"{base}/access_requests")
+        g = _gate(confirm, f"access_request {action} on {scope_type} {scope_id} user={user_id}")
+        if g:
+            return g
+        if action == "request":
+            return rest("POST", f"{base}/access_requests")
+        if action == "approve":
+            return rest("PUT", f"{base}/access_requests/{user_id}/approve", body=params)
+        if action == "deny":
+            return rest("DELETE", f"{base}/access_requests/{user_id}")
+    return {"error": True, "message": f"unknown kind/action '{kind}/{action}'"}
+
+
+@mcp.tool()
+def project_import_export(project: Optional[str] = None, action: str = "export_status",
+                          params: Optional[dict] = None, confirm: bool = False) -> Any:
+    """Project migration. action = export_start|export_status|export_download|import_status|
+    remote_import. export_start schedules an export (poll export_status until 'finished', then
+    export_download). remote_import params={url, path, namespace?, name?} imports from a remote
+    export tarball URL (JSON; file-upload import is multipart — use the UI or gitlab_rest for that).
+    Writes need confirm=true."""
+    p = _proj(project) if project else None
+    if action == "export_status":
+        return rest("GET", f"/projects/{p}/export")
+    if action == "export_download":
+        return rest("GET", f"/projects/{p}/export/download")
+    if action == "import_status":
+        return rest("GET", f"/projects/{p}/import")
+    g = _gate(confirm, f"project import/export {action}")
+    if g:
+        return g
+    if action == "export_start":
+        return rest("POST", f"/projects/{p}/export", body=params)
+    if action == "remote_import":
+        return rest("POST", "/projects/remote-import", body=params)
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def protected(project: str, kind: str = "branches", action: str = "list",
+              name: Optional[str] = None, params: Optional[dict] = None,
+              confirm: bool = False) -> Any:
+    """Protected branches/tags/environments with GRANULAR rules. kind: branches|tags|environments
+    (environments is EE — 404s on CE). action = list|get|create|update|delete.
+    branches create params={name, allowed_to_push:[{access_level|user_id|group_id}],
+    allowed_to_merge:[...], allow_force_push?, code_owner_approval_required?(EE)}.
+    tags create params={name, create_access_level|allowed_to_create:[...]}. Writes need confirm=true."""
+    p = _proj(project)
+    seg = {"branches": "protected_branches", "tags": "protected_tags",
+           "environments": "protected_environments"}.get(kind)
+    if not seg:
+        return {"error": True, "message": "kind must be branches|tags|environments"}
+    if action == "list":
+        return rest("GET", f"/projects/{p}/{seg}")
+    if action == "get":
+        return rest("GET", f"/projects/{p}/{seg}/{quote(name or '', safe='')}")
+    g = _gate(confirm, f"protected {kind} {action} '{name}' in {project}")
+    if g:
+        return g
+    if action == "create":
+        return rest("POST", f"/projects/{p}/{seg}", body=params)
+    if action == "update":  # only protected_branches supports PATCH
+        return rest("PATCH", f"/projects/{p}/{seg}/{quote(name or '', safe='')}", body=params)
+    if action == "delete":
+        return rest("DELETE", f"/projects/{p}/{seg}/{quote(name or '', safe='')}")
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def badges(scope_type: str = "project", scope_id: Optional[str] = None, action: str = "list",
+           badge_id: Optional[int] = None, params: Optional[dict] = None,
+           confirm: bool = False) -> Any:
+    """Project/Group badges (pipeline/coverage/custom, shown on the project page).
+    scope_type: project|group. action = list|get|create|update|delete|render.
+    create params={link_url, image_url, name?}. render params={link_url, image_url} previews
+    placeholder expansion. Writes need confirm=true."""
+    base = f"/{'groups' if scope_type == 'group' else 'projects'}/{_proj(scope_id)}/badges"
+    if action == "list":
+        return rest("GET", base)
+    if action == "get":
+        return rest("GET", f"{base}/{badge_id}")
+    if action == "render":
+        return rest("GET", f"{base}/render", params=params)
+    g = _gate(confirm, f"badge {action} on {scope_type} {scope_id}")
+    if g:
+        return g
+    if action == "create":
+        return rest("POST", base, body=params)
+    if action == "update":
+        return rest("PUT", f"{base}/{badge_id}", body=params)
+    if action == "delete":
+        return rest("DELETE", f"{base}/{badge_id}")
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def repo_extras(project: str, action: str = "contributors", ref: Optional[str] = None,
+                file_path: Optional[str] = None, params: Optional[dict] = None) -> Any:
+    """Repository extras (all read-only): contributors|languages|merge_base|changelog|blame.
+    merge_base params={refs:['a','b']}. changelog params={version, from?, to?}. blame needs
+    file_path (+ ref, optional range[start]/range[end] in params)."""
+    p = _proj(project)
+    if action == "contributors":
+        return rest("GET", f"/projects/{p}/repository/contributors", params=_clean({"ref": ref, **(params or {})}))
+    if action == "languages":
+        return rest("GET", f"/projects/{p}/languages")
+    if action == "merge_base":
+        refs = (params or {}).get("refs", [])
+        return rest("GET", f"/projects/{p}/repository/merge_base", params={"refs[]": refs})
+    if action == "changelog":
+        return rest("GET", f"/projects/{p}/repository/changelog", params=params)
+    if action == "blame":
+        fp = quote(file_path or "", safe="")
+        return rest("GET", f"/projects/{p}/repository/files/{fp}/blame",
+                    params=_clean({"ref": ref, **(params or {})}))
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
 # --------------------------------------------------------------------------- #
 # Selftest — live read-only audit of every domain (no mutations)              #
 # --------------------------------------------------------------------------- #
