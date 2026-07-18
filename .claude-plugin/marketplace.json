@@ -20,9 +20,9 @@
     {
       "name": "gitlab",
       "source": "./gitlab",
-      "description": "Deep control of a self-hosted GitLab CE instance (live-verified on 19.0.0) \u2014 generic REST+GraphQL passthrough over all 177 API resource groups + 56 curated tools (projects, repo/commits/branches/tags/protected-refs, MRs+approvals, issues/boards/labels/milestones, CI/CD pipelines/jobs/artifacts/triggers/schedules/variables/runners/environments/releases/feature-flags, Pages+domains, users/tokens/access-tokens, groups/members/invitations/badges, packages/registry, webhooks, wikis/snippets, admin, import/export), an 8-reference control skill (CI/CD, projects/MRs/issues, admin & self-hosting hard limits, CE-vs-EE gating, GraphQL) and workflow commands.",
+      "description": "Deep control of a self-hosted GitLab CE instance (live-verified on 19.0.0) \u2014 REST+GraphQL passthrough over all 177 API resource groups + 59 curated tools (incl. Pages, ML model registry+MLflow, CI catalog, protected refs, feature flags, project/group access tokens, badges, import/export), an 11-reference control skill (CI/CD, admin & self-hosting hard limits, CE-vs-EE gating, GraphQL, templates, workflows, AI/model-registry), 20 bulletproof templates (10 .gitlab-ci.yml live-validated valid:true on 19.0.0 via the CI Lint API + project scaffolding + config presets), and 13 workflow commands.",
       "category": "development",
-      "version": "0.2.0"
+      "version": "0.3.0"
     },
     {
       "name": "emby",

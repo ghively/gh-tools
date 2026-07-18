@@ -1,0 +1,13 @@
+# MR-only pipelines: run ONLY on merge requests, never duplicate branch pipelines.
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+stages: [test]
+
+test:
+  stage: test
+  script:
+    - echo "Runs on MRs, tags, and the default branch — but not on redundant branch pushes."

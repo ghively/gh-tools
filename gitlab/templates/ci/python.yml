@@ -1,0 +1,41 @@
+# Python — ruff lint + pytest, pip cache. Runs on MRs and the default branch.
+default:
+  image: python:3.12-slim
+  cache:
+    key:
+      files: [requirements.txt]
+    paths: [.cache/pip/]
+
+stages: [test]
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+.setup: &setup
+  - python -m pip install --upgrade pip
+  - pip install -r requirements.txt || true
+
+lint:
+  stage: test
+  script:
+    - *setup
+    - pip install ruff
+    - ruff check .
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+test:
+  stage: test
+  script:
+    - *setup
+    - pip install pytest
+    - pytest -q --junitxml=report.xml
+  artifacts:
+    when: always
+    reports:
+      junit: report.xml
+    expire_in: 1 week
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'

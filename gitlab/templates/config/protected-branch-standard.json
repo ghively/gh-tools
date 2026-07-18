@@ -1,0 +1,8 @@
+{
+  "_comment": "Standard default-branch protection: developers push directly is DENIED, merges via MR by maintainers, no force-push. Apply with: protected(project, kind='branches', action='create', params=<this minus _keys>, confirm=true).",
+  "_apply_with": "protected",
+  "name": "main",
+  "allowed_to_push": [{ "access_level": 0 }],
+  "allowed_to_merge": [{ "access_level": 40 }],
+  "allow_force_push": false
+}

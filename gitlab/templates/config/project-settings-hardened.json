@@ -1,0 +1,11 @@
+{
+  "_comment": "Hardened project settings: MR-only merges that require green pipelines + resolved threads, squash on, source branch auto-deleted. Apply with: manage_project(project, action='update', params=<this minus _keys>, confirm=true).",
+  "_apply_with": "manage_project",
+  "merge_method": "merge",
+  "squash_option": "default_on",
+  "only_allow_merge_if_pipeline_succeeds": true,
+  "only_allow_merge_if_all_discussions_are_resolved": true,
+  "remove_source_branch_after_merge": true,
+  "auto_cancel_pending_pipelines": "enabled",
+  "shared_runners_enabled": true
+}
