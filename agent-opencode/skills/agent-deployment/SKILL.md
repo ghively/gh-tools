@@ -155,6 +155,7 @@ When an agent misbehaves in production, the first 15 minutes are for containing 
 | `references/operating-live-agents.md` | Diagnosing a deployed behavior surprise from transcripts, traces, policy logs, and layer mapping |
 | `references/tweaking-live-agents.md` | Making one targeted fix to a live agent without destabilizing adjacent behavior |
 | `references/self-improvement-loop.md` | Turning observed failures into regression evals, fixes, and curated durable lessons |
+| `references/infrastructure-and-scaling.md` | Production infrastructure layer: Kubernetes (StatefulSet/Deployment/CronJob, multi-replica, HPA, PDB), multi-region DR, container security (seccomp, AppArmor, read-only root, capabilities, admission control), sidecar patterns (OTel, Vault Agent, egress proxy), queue-based scaling (SQS/Kafka/Redis), provider rate limiting, FinOps (Helicone/Lunar/Portkey/Cloudflare, per-tenant cost attribution, spend alerts, chargeback/showback) |
 
 ## Pitfalls
 
