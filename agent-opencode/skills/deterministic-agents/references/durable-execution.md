@@ -53,7 +53,8 @@ Managed state machines defined in ASL (JSON/YAML), not general code — the most
 |---|---|
 | Polyglot org, complex long-lived workflows, ops capacity or budget for Cloud | **Temporal** |
 | TypeScript team on serverless, want durable agents shipping this week, zero infra | **Inngest AgentKit** |
-| Want self-hosted + lightweight; conversation/session-keyed agents; keep your existing agent SDK | **Restate** |
+| Want self-hosted + lightweight; conversation/session-keyed agents; keep your existing agent SDK | **Restate** or **DBOS** |
+
 | Already deep in LangGraph, need pause/resume + time-travel, single-worker or willing to buy Platform | **LangGraph checkpointer (+ Platform for production)** |
 | Edge/Workers stack; agents that generate plans to execute durably; per-agent stateful actors | **Cloudflare Workflows + DO/Agents SDK** |
 | AWS shop, audit-heavy, orchestrating Bedrock/AgentCore + AWS services, minimal custom code | **Step Functions** |

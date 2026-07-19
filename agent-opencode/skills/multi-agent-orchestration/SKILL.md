@@ -103,6 +103,46 @@ The parent reads the artifact; "done" alone is not accepted.
 
 The ambient parent context (open conversation, private reasoning, local assumptions) usually does **not** transfer into the subagent — the spawn prompt is the entire briefing. Full role, cost, and tool-policy rules live in `references/subagent-design.md`.
 
+## Review Panels
+
+High-risk output needs independent critique. A review panel deploys two or
+more agents to evaluate the same output independently, then collates. The
+pattern: the orchestrator produces a draft → N reviewers examine it in
+parallel (each read-only, each with a different specialty or threat-model
+lens) → the orchestrator reads all findings and decides.
+
+**When to use review panels:**
+- A single-agent review is insufficient (the reviewer has the same blind
+  spots as the author).
+- The output has compliance, legal, or safety implications.
+- You need adversarial verification — what does a hostile reviewer catch
+  that a friendly one would miss?
+- The cost of a false positive (rejecting something good) is acceptable
+  weighed against the cost of a false negative (shipping something bad).
+
+**Panel composition:**
+| Reviewer | Specialty | Provides |
+|---|---|---|
+| Peer reviewer | Same domain | "Is this technically correct?" |
+| Security auditor | Threat-model lens | "What can an attacker do with this?" |
+| Compliance reviewer | Regulatory lens | "Does this violate any policy?" |
+| Adversarial reviewer | "How would I break this?" | Jailbreak and edge-case probing |
+
+**Consensus vs collation:**
+- **Collation** (recommended): The orchestrator reads all findings and
+  decides. "Reviewer A found X, Reviewer B found Y; I'm not shipping
+  until X is fixed; Y is acceptable risk." Each reviewer is a tool the
+  orchestrator consults.
+- **Consensus** (limited utility): All reviewers must agree before the
+  output ships. Consensus amplifies false positives (one overcautious
+  reviewer blocks everything) and adds latency (N agents in series wait
+  on each other). Use consensus only when the cost of a false negative
+  is catastrophic (safety-critical systems) and combine it with a bypass
+  path for the operator.
+
+Full panel patterns, thresholds, and the `review-panels.md` reference
+cover composition, evidence, and verdict mechanics.
+
 ## Routing Rules
 
 Route by task, risk, data boundary, user/team, channel, and model need. Document precedence. Keep credentials, workspaces, and memory isolated when agents have different authorities.
