@@ -1,0 +1,74 @@
+# sabnzbd-control
+
+Full control of a SABnzbd usenet downloader (v4+/5+ HTTP API) from Claude Code / opencode.
+
+Verified against **SABnzbd 5.0.4** on the homelab NAS (`192.168.0.133:8080`).
+
+## What this plugin does
+
+A two-layer MCP server for SABnzbd:
+
+- **Generic passthrough** — `sabnzbd_call` reaches any `/api?mode=...` endpoint;
+  `sabnzbd_list_modes` is the hand-enumerated master index (SABnzbd has no
+  OpenAPI; the catalog is built from the official API wiki + live probes).
+- **Curated tools** (~14) covering the common jobs:
+
+| Area | Tools |
+|---|---|
+| Status | `sabnzbd_status`, `sabnzbd_version`, `sabnzbd_queue`, `sabnzbd_history`, `sabnzbd_server_stats`, `sabnzbd_warnings`, `sabnzbd_get_config` |
+| Queue control | `sabnzbd_pause`, `sabnzbd_resume`, `sabnzbd_speed_limit` |
+| Job management | `sabnzbd_add_url`, `sabnzbd_delete_jobs`, `sabnzbd_retry_job`, `sabnzbd_set_config` |
+| Dangerous (double-gated) | `sabnzbd_restart`, `sabnzbd_shutdown` |
+
+**Confirm-gating is layered:**
+
+- All writes (`confirm=True`).
+- `sabnzbd_restart` and `sabnzbd_shutdown` are DOUBLY gated — they need both
+  `confirm=true` AND a typed `acknowledge="restart"` / `"shutdown"` token.
+  This is intentional: SABnzbd honors these modes literally. During initial
+  development, a probe of `mode=shutdown` actually shut the server down (no
+  auto-restart). That mistake is now structurally prevented.
+
+## Configuration
+
+1. Get the API key from SABnzbd **Config > General > API Key**.
+2. Store it in 1Password (vault: `Gregory`, item: `SABnzbd API Key`).
+3. Copy `config.example.json` → `config.local.json` (git-ignored).
+
+```bash
+op item get '<item-id>' --vault Gregory --field credential --reveal
+```
+
+Env vars (`SABNZBD_HOST`, `SABNZBD_PORT`, `SABNZBD_HTTPS`, `SABNZBD_URL_BASE`,
+`SABNZBD_API_KEY`, `SABNZBD_VERIFY_SSL`, `SABNZBD_TIMEOUT`) override the file.
+
+## Run
+
+```bash
+cd sabnzbd-control && uv run --script mcp/_smoketest.py
+```
+
+## Conventions encoded
+
+- Auth: API key as the `apikey` query param (`output=json` is always attached).
+- Modes that change state accept their inputs as query params
+  (`pause?minutes=60`, `addurl?name=<url>`, `delete?value=<nzo_id>`).
+- Server returns `{"error": "..."}` on most failures (HTTP 200, error in body)
+  — the client surfaces this as a raised exception.
+- Wraps the "queue delete" / "history delete" subtlety: SABnzbd deletes via
+  `mode=queue&name=delete&value=<ids>` (the catalog notes this).
+
+## Honesty notes (gap taxonomy)
+
+- **Works (live-verified, GETs):** all reads in the smoke test pass against
+  the live server (status, queue empty, history, server stats, full config).
+- **Method-verified, not live-executed:** confirm-gated writes (pause, resume,
+  addurl, delete, retry, set_config) — the HTTP shape is correct; the
+  decline path is verified; live execution requires explicit owner approval.
+- **Not implemented:** `addfile` (multipart NZB upload) and `addlocalfile`
+  (server-side path) — could be added in a future revision; the generic
+  `sabnzbd_call` mode can still reach them for users who know the params.
+- **Hard limits:** SABnzbd honors `mode=shutdown` literally with no
+  auto-restart; recovery requires DSM/Container Manager intervention.
+
+Built with the **deep-integration-builder** methodology.
