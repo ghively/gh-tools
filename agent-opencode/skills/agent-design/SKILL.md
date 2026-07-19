@@ -138,6 +138,12 @@ If this artifact feels too heavy, the proposed agent is probably underspecified,
 
 Run the first working version through a narrow smoke test before adding capabilities:
 
+This is the **canonical Standard 8** smoke sequence. The contract in
+`references/design-artifact-contract.md`, the template at
+`assets/foundry-template/smoke.md`, and the `/agent-foundry-smoke-test`
+command all reference this list. "Smoke-test additions beyond the
+Standard 8" in `design.md` means additions beyond **this** list.
+
 1. **Reachability:** can the user invoke it on the intended surface?
 2. **Context inspection:** does it know only the intended rules and memory?
 3. **Tool inventory:** does it report the expected tools and authority?
@@ -175,6 +181,7 @@ Do not add more tools until this sequence passes.
 | `references/workflow-vs-agent.md` | Deciding whether an agent is needed at all |
 | `references/agent-type-taxonomy.md` | Mapping the design to production agent categories and constraints |
 | `references/research-discipline.md` | Knowing when to fetch current docs instead of relying on memory |
+| `references/domain-patterns.md` | Worked patterns for three common agent domains — customer-support, RPA, deep-research — covering tool surface, authority floor, eval emphasis, framework fit, and pitfalls |
 
 ## Pitfalls
 

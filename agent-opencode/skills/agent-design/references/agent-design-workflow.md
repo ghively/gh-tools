@@ -125,8 +125,8 @@ Map the Stage 5 matrix into enforcement: allowlists, ask-on-miss approval, files
 ### Step F — One surface first
 Wire ONE interaction surface. Don't connect five messaging apps on day one. Get one working, then expand. Inbound policy: pairing/allowlist by default, never open; in group contexts require explicit mention; use a dedicated account/number for the agent, never the user's personal one.
 
-### Step G — Smoke test
-In order: (1) status/reachability, (2) inspect what's actually in context, (3) basic turn — does the voice match the persona?, (4) "what do you know about me?" — context injection check, (5) "what tools do you have?" — policy check against expectations, (6) write a fact to memory, (7) reset the session, (8) ask for the fact back — persistence check. If (8) fails, memory is broken; fix before anything else.
+### Step G — Smoke test (the Standard 8)
+Run the **canonical Standard 8** from `SKILL.md`: (1) Reachability — can the user invoke it on the intended surface? (2) Context inspection — does it know only the intended rules and memory? (3) Tool inventory — does it report the expected tools and authority? (4) Read path — can it perform a harmless read/query task? (5) Write path — can it draft or apply a low-risk change with verification? (6) Escalation path — does it ask before a high-impact action? (7) Failure path — does it handle a tool error without looping or fabricating success? (8) Persistence path — if memory/state exists, does it survive a session restart? If (8) fails, memory is broken; fix before anything else. The template at `assets/foundry-template/smoke.md` and the `/agent-foundry-smoke-test` command both reference this same list — do not invent a different one.
 
 ### Step H — Lock down and iterate
 Restrict file permissions on config containing secrets; enable command/tool-call audit logging; commit. Then run the system for a week before adding anything:

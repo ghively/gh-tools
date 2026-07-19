@@ -59,7 +59,8 @@ What persists (memory, files, DB rows), where it lives, and how it is pruned.
 
 ## Verification
 
-Smoke-test additions beyond the standard 8 steps; the proof contract (what
+Smoke-test additions beyond the Standard 8 (the canonical list lives in
+the `agent-design` SKILL.md and the `.foundry/smoke.md` template); the proof contract (what
 evidence means "done"); eval seeds (governance cases come from the Failure
 modes + Authority tables above).
 

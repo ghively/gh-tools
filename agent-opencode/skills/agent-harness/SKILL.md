@@ -119,6 +119,7 @@ about what the harness does, regardless of which framework wraps it.
 | `references/harness-cache.md` | Prompt cache, response cache, tool-result cache, cache invalidation, the cache hierarchy |
 | `references/doom-loop-prevention.md` | Step caps, repetition detection, cost ceilings, the doom-loop taxonomy and defenses |
 | `references/harness-deploy-patterns.md` | How each of the nine harness concerns changes in production container deploys (multi-replica safety, externalized sessions, distributed cache, async HITL, cross-replica doom-loop detection); single-host vs multi-host vs multi-tenant topologies; the production deploy checklist. Pair with `agent-deployment/references/framework-deploy-matrix.md` for the per-framework Docker recipes |
+| `references/cross-platform-surfaces.md` | Porting agent-foundry skills, commands, hooks, MCP, and safety doctrine to IDE coding-agent platforms (Cursor, Windsurf, Aider, Cline, Continue, Cody) — the translation map, per-platform notes, ZAI wiring, and what does NOT translate (deterministic hooks, subagents, trajectory capture) |
 
 ## Pitfalls
 
