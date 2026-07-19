@@ -1,0 +1,21 @@
+# Build artifacts
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Runtime logs (audit trails — keep local)
+*.log
+*.jsonl
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
+
+# Local env files
+.env
+.env.local
+.env.*.local

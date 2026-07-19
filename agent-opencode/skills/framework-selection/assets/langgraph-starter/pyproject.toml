@@ -1,0 +1,9 @@
+[project]
+name = "my-graph-agent"
+version = "0.1.0"
+description = "LangGraph agent — replace with your job sentence"
+requires-python = ">=3.10"
+dependencies = [
+  "langgraph>=1.2,<2",
+  "langchain-anthropic>=0.3",
+]

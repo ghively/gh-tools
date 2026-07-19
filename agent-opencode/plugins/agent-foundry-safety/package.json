@@ -1,0 +1,19 @@
+{
+  "name": "agent-foundry-safety",
+  "version": "1.0.0",
+  "description": "OpenCode port of agent-foundry deterministic safety floor",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "test": "node --import tsx/esm --test tests/safety.test.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@opencode-ai/plugin": "^1.17.15"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2"
+  }
+}

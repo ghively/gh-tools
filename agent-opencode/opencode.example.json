@@ -1,0 +1,110 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "skills": {
+    "paths": [
+      "~/.config/opencode/agent-opencode/skills"
+    ]
+  },
+  "permission": {
+    "bash": {
+      "curl * | *sh*": "deny",
+      "curl * | *bash*": "deny",
+      "wget * | *sh*": "deny",
+      "wget * | *bash*": "deny",
+      "rm -rf /": "deny",
+      "rm -rf /*": "deny",
+      "dd * of=/dev/*": "deny",
+      "mkfs*": "deny",
+      ":*": "deny",
+      "*": "ask"
+    },
+    "edit": {
+      "/etc/sudoers*": "deny",
+      "/etc/passwd*": "deny",
+      "/etc/shadow*": "deny",
+      "/etc/group*": "deny",
+      "/boot/*": "deny",
+      "/proc/*": "deny",
+      "/sys/*": "deny",
+      "/etc/cron*": "deny",
+      "/etc/systemd/*": "deny",
+      "~/.ssh/*": "deny",
+      "*": "ask"
+    }
+  },
+  "agent": {
+    "agent-foundry": {
+      "description": "Agent engineering workstation. Design, build, test, audit, and ship agents using the 13-skill agent-foundry library covering design, harness, frameworks, deterministic agents, prompt/context engineering, model selection, memory/RAG, multi-agent orchestration, tools/MCP, evals, safety, deployment, and OpenCode authoring.",
+      "mode": "primary",
+      "permission": {
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "edit": "ask",
+        "bash": "ask",
+        "webfetch": "allow",
+        "websearch": "allow",
+        "task": "allow",
+        "external_directory": "ask"
+      }
+    },
+    "agent-foundry-agent-architect": {
+      "description": "Read-only agent-systems design specialist. Use when the user wants an agent system designed, an architecture reviewed, or a requirements interview conducted BEFORE any code is written.",
+      "mode": "subagent",
+      "permission": {
+        "*": "deny",
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "webfetch": "allow",
+        "websearch": "allow",
+        "edit": "deny",
+        "bash": "deny",
+        "external_directory": "ask"
+      }
+    },
+    "agent-foundry-security-auditor": {
+      "description": "Read-only security auditor for agent systems and their configs. Use for auditing an agent project before deployment, vetting third-party skills/plugins/MCP servers before install, secret scanning, and attack-surface review.",
+      "mode": "subagent",
+      "permission": {
+        "*": "deny",
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "webfetch": "allow",
+        "websearch": "allow",
+        "edit": "deny",
+        "bash": "ask",
+        "external_directory": "ask"
+      }
+    },
+    "agent-foundry-rag-engineer": {
+      "description": "Retrieval/memory pipeline design and diagnosis specialist. Use when designing RAG systems, diagnosing retrieval quality issues, choosing vector backends, or planning knowledge-base architecture.",
+      "mode": "subagent",
+      "permission": {
+        "*": "deny",
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "webfetch": "allow",
+        "websearch": "allow",
+        "edit": "deny",
+        "bash": "ask",
+        "external_directory": "ask"
+      }
+    },
+    "agent-foundry-eval-runner": {
+      "description": "Runs eval suites, reports pass/fail with diagnosis. Use when executing golden eval tests, regression tests, or capability checks.",
+      "mode": "subagent",
+      "permission": {
+        "*": "deny",
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "edit": "deny",
+        "bash": "ask",
+        "external_directory": "ask"
+      }
+    }
+  }
+}
