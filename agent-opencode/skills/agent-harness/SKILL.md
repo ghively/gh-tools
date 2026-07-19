@@ -118,6 +118,7 @@ about what the harness does, regardless of which framework wraps it.
 | `references/harness-observability.md` | Spans, token accounting, cost tracking, trace export, the harness-level signals that matter |
 | `references/harness-cache.md` | Prompt cache, response cache, tool-result cache, cache invalidation, the cache hierarchy |
 | `references/doom-loop-prevention.md` | Step caps, repetition detection, cost ceilings, the doom-loop taxonomy and defenses |
+| `references/harness-deploy-patterns.md` | How each of the nine harness concerns changes in production container deploys (multi-replica safety, externalized sessions, distributed cache, async HITL, cross-replica doom-loop detection); single-host vs multi-host vs multi-tenant topologies; the production deploy checklist. Pair with `agent-deployment/references/framework-deploy-matrix.md` for the per-framework Docker recipes |
 
 ## Pitfalls
 

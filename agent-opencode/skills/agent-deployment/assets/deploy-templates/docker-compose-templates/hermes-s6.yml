@@ -1,0 +1,47 @@
+# Hermes container with s6-overlay supervision tree.
+# Pair with the Hermes Dockerfile in hermes-container-deploy.md.
+
+services:
+  hermes:
+    build: .
+    container_name: hermes
+    restart: unless-stopped
+    volumes:
+      - hermes-data:/data
+      - ./config.yaml:/data/config.yaml:ro
+      - ./skills:/hermes/skills:ro
+      - ./AGENTS-system-prompt.md:/hermes/AGENTS-system-prompt.md:ro
+    environment:
+      # Provider (ZAI primary)
+      ZAI_API_KEY: ${ZAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # Gateway
+      HERMES_GATEWAY_TOKEN: ${HERMES_GATEWAY_TOKEN}
+      # Optional Telegram bot
+      HERMES_TELEGRAM_TOKEN: ${HERMES_TELEGRAM_TOKEN:-}
+      # Backup (restic)
+      RESTIC_REPOSITORY: ${RESTIC_REPOSITORY:-}
+      RESTIC_PASSWORD: ${RESTIC_PASSWORD:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      # Ops
+      TZ: ${TZ:-UTC}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_ENDPOINT:-}
+      OTEL_SERVICE_NAME: hermes
+    ports:
+      - "8000:8000"           # gateway
+      - "8001:8001"           # dashboard (if enabled)
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf -H 'Authorization: Bearer ${HERMES_GATEWAY_TOKEN}' http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options: {max-size: "50m", max-file: "5"}
+
+volumes:
+  hermes-data: {}

@@ -1,0 +1,71 @@
+# Multi-tenant: one agent container per tenant, shared Postgres.
+# Each tenant has its own provider key (Secret) and config volume.
+
+x-agent-base: &agent-base
+  build: .
+  restart: unless-stopped
+  depends_on:
+    postgres:
+      condition: service_healthy
+  environment: &agent-env
+    DATABASE_URL: postgresql://${PGUSER:-agent}:${PGPASSWORD}@postgres:5432/${PGDB:-agent}
+    OTEL_SERVICE_NAME: multi-tenant-agent
+    LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    TZ: ${TZ:-UTC}
+  volumes:
+    - ./workspace:/workspace:ro
+  logging:
+    driver: json-file
+    options: {max-size: "50m", max-file: "5"}
+
+services:
+  tenant-a:
+    <<: *agent-base
+    container_name: agent-tenant-a
+    environment:
+      <<: *agent-env
+      ZAI_API_KEY: ${TENANT_A_ZAI_KEY}
+      AGENT_NAME: agent-tenant-a
+      TENANT_ID: tenant-a
+      TENANT_NAMESPACE: tenant_a
+    ports: ["8001:8000"]
+
+  tenant-b:
+    <<: *agent-base
+    container_name: agent-tenant-b
+    environment:
+      <<: *agent-env
+      ZAI_API_KEY: ${TENANT_B_ZAI_KEY}
+      AGENT_NAME: agent-tenant-b
+      TENANT_ID: tenant-b
+      TENANT_NAMESPACE: tenant_b
+    ports: ["8002:8000"]
+
+  tenant-c:
+    <<: *agent-base
+    container_name: agent-tenant-c
+    environment:
+      <<: *agent-env
+      ZAI_API_KEY: ${TENANT_C_ZAI_KEY}
+      AGENT_NAME: agent-tenant-c
+      TENANT_ID: tenant-c
+      TENANT_NAMESPACE: tenant_c
+    ports: ["8003:8000"]
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: multi-tenant-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PGUSER:-agent}
+      POSTGRES_PASSWORD: ${PGPASSWORD}
+      POSTGRES_DB: ${PGDB:-agent}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PGUSER:-agent}"]
+      interval: 10s
+      retries: 5
+
+volumes:
+  pg-data: {}

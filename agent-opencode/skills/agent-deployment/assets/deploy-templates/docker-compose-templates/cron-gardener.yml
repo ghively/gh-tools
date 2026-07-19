@@ -1,0 +1,25 @@
+# Cron gardener: one-shot agent run on a schedule.
+# Pair with any framework's Dockerfile; the entrypoint is `run` not `serve`.
+
+services:
+  gardener:
+    build: .
+    container_name: agent-gardener
+    # ONE-SHOT — no restart policy
+    restart: "no"
+    environment:
+      ZAI_API_KEY: ${ZAI_API_KEY}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://open.bigmodel.cn/api/paas/v4/}
+      OPENAI_API_KEY: ${ZAI_API_KEY}
+      PROMPT_FILE: /workspace/prompts/gardener.md
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./workspace:/workspace
+      - ./prompts:/workspace/prompts:ro
+      - ./runs:/runs                # run-record artifacts
+    working_dir: /workspace
+    # Read prompt file, run, exit
+    command: ["python", "-m", "my_agent", "--prompt-file", "/workspace/prompts/gardener.md", "--output", "/runs/$(date +%Y%m%d-%H%M%S).json"]
+    logging:
+      driver: json-file
+      options: {max-size: "50m", max-file: "3"}
