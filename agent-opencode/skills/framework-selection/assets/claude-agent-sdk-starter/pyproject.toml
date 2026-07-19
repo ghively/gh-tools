@@ -1,0 +1,9 @@
+[project]
+name = "my-agent"
+version = "0.1.0"
+description = "Agent built on the Claude Agent SDK — replace with your job sentence"
+requires-python = ">=3.10"
+dependencies = ["claude-agent-sdk>=0.2,<0.3"]
+
+[project.scripts]
+my-agent = "agent:cli"

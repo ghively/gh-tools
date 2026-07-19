@@ -1,0 +1,41 @@
+# Scheduled agent as a GitHub Actions workflow — headless `claude -p`.
+# Copy to .github/workflows/, adapt the schedule and prompt file.
+#
+# Doctrine notes (scheduled-event-driven-agents.md):
+# - The wake-up prompt lives IN THE REPO (prompts/scheduled-run.md) so it's
+#   versioned and reviewable like any release artifact.
+# - concurrency: prevents overlapping runs (the Actions-native lock).
+# - The run log uploads as an artifact — that's the per-run record.
+name: scheduled-agent
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # daily 06:00 UTC — match to how fast the world changes
+  workflow_dispatch: # always keep the manual trigger for testing
+
+concurrency:
+  group: scheduled-agent
+  cancel-in-progress: false # skip-not-queue semantics: let the active run finish
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30 # the wall-clock budget
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Run the agent
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude -p "$(cat prompts/scheduled-run.md)" \
+            --max-turns 25 \
+            --output-format json | tee run-record.json
+      - name: Upload run record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-record-${{ github.run_id }}
+          path: run-record.json
+          retention-days: 30

@@ -1,0 +1,20 @@
+# Scheduled agent run — paired with my-agent.timer. Rename both files.
+[Unit]
+Description=my-agent scheduled run
+# Fail closed if the network story matters to the job:
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=agent
+WorkingDirectory=/opt/my-agent
+# The wrapper owns lock/heartbeat/budget; the unit owns identity and env.
+ExecStart=/opt/my-agent/cron-wrapper.sh /usr/bin/python3 src/agent.py "wake-up prompt here"
+# Secrets from a root-owned env file, never inline in the unit:
+EnvironmentFile=/etc/my-agent/env
+# Belt-and-braces hardening for an agent process:
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/my-agent /home/agent/.local/state
+PrivateTmp=true

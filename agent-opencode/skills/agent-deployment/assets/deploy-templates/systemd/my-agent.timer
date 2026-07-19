@@ -1,0 +1,16 @@
+# Schedule for my-agent.service. Enable with:
+#   systemctl enable --now my-agent.timer
+[Unit]
+Description=my-agent schedule
+
+[Timer]
+# Prefer calendar expressions over cron strings — they log readably.
+OnCalendar=hourly
+# Jitter avoids the top-of-the-hour stampede when many timers share a host:
+RandomizedDelaySec=120
+# Run missed firings after downtime ONLY if the job is idempotent
+# (see scheduled-event-driven-agents.md — it must be):
+Persistent=true
+
+[Install]
+WantedBy=timers.target
