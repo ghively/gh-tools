@@ -1,0 +1,10 @@
+{
+  "_comment": "Copy to config.local.json (git-ignored) and fill in. Every field can also come from env vars (RADARR_HOST, RADARR_PORT, RADARR_HTTPS, RADARR_API_KEY, RADARR_URL_BASE, RADARR_VERIFY_SSL, RADARR_TIMEOUT), which override the file. Create the API key in Radarr under Settings > General > Security > API Key (it grants full admin). host/port/url_base together form the base URL; if your Radarr is at http://nas:8310/radarr use url_base=\"/radarr\". Secrets are normally pulled from 1Password (Gregory vault item 'Radarr API Key (GH-Storage)') rather than hardcoded here.",
+  "host": "192.168.0.133",
+  "port": 8310,
+  "https": false,
+  "url_base": "",
+  "api_key": "your-radarr-api-key",
+  "verify_ssl": false,
+  "timeout": 30
+}

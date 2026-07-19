@@ -62,6 +62,27 @@
       "description": "Deep control of a self-hosted SearXNG metasearch instance (built with deep-integration-builder, live-verified on SearXNG 2026.5.7). Three layers: generic HTTP passthrough over the hand-enumerated runtime surface (/search json/csv/rss, /autocompleter, /config, /stats, /stats/errors, /healthz, /info); curated tools for search (all query params), the 249-engine inventory, autocomplete, and engine-failure diagnostics; and a config-management layer that edits settings.yml in the container over SSH and applies it with a restart (enable/disable engines, add config-only custom engines, deploy/remove custom Python engine modules with a syntax check, tune outgoing/limiter/search/server, backup & restore) \u2014 every write confirm-gated + auto-backed-up (write + module-deploy paths proven reversibly). Skill with a full settings.yml reference, a datacenter-IP engine-reliability/CAPTCHA playbook, and a complete engine-authoring knowledgebase (all search-resource types, the request/response API, result-dict schema & templates), plus workflows (health, diagnose-empty-results, tune-reliability, add-engine).",
       "category": "infrastructure",
       "version": "0.2.0"
+    },
+    {
+      "name": "radarr-control",
+      "source": "./radarr-control",
+      "description": "Full control of a Radarr movie manager (built with deep-integration-builder, live-verified on Radarr 6.3.0.10514). Generic passthrough over all ~50 hand-enumerated /api/v3 endpoints (Radarr publishes no OpenAPI) plus ~22 curated tools for status, library (movies, collections, files, lookup/add/update/delete with confirm-gating), activity (wanted missing/cutoff, calendar, queue, history, blocklist), commands (RefreshMovie/MoviesSearch/etc), and config (quality profiles, root folders, tags, languages, notifications, download clients, indexers, import lists, custom formats). API key from 1Password (Gregory vault). All writes confirm-gated; POST /command triggers active work.",
+      "category": "media",
+      "version": "0.1.0"
+    },
+    {
+      "name": "sonarr-control",
+      "source": "./sonarr-control",
+      "description": "Full control of a Sonarr TV-series manager (built with deep-integration-builder, live-verified on Sonarr 4.0.18.2978). Generic passthrough over all ~55 hand-enumerated /api/v3 endpoints plus ~24 curated tools for status, library (series with seasons and episodes, per-season monitoring toggle, lookup/add/update/delete with confirm-gating), activity (wanted missing/cutoff per-episode, calendar per-airing, queue, history incl per-series, blocklist), commands (RefreshSeries/SeriesSearch/SeasonSearch/EpisodeSearch/etc), and config (quality + language profiles, root folders, tags, notifications, download clients, indexers, import lists). API key from 1Password (Gregory vault). All writes confirm-gated.",
+      "category": "media",
+      "version": "0.1.0"
+    },
+    {
+      "name": "sabnzbd-control",
+      "source": "./sabnzbd-control",
+      "description": "Full control of a SABnzbd usenet downloader (built with deep-integration-builder, live-verified on SABnzbd 5.0.4). Generic passthrough over the hand-enumerated mode-based HTTP API plus ~14 curated tools for status, version, queue, history, server stats, warnings, get_config; queue control (pause/resume/speed limit), job management (add by URL, delete, retry, set_config); and lifecycle control (restart/shutdown DOUBLY-gated with a typed acknowledge token, because SABnzbd honors mode=shutdown literally with no auto-restart on this homelab). API key from 1Password (Gregory vault).",
+      "category": "media",
+      "version": "0.1.0"
     }
   ]
 }
