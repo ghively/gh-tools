@@ -1,17 +1,26 @@
-<!-- Feature request. Applied via .gitlab/issue_templates/Feature.md. -->
-## Problem
-<!-- What user problem or need does this address? Not the solution — the problem. -->
+---
+name: Feature
+about: Propose a new capability or improvement
+title: "[feature] "
+labels: ["type::feature", "priority::med"]
+---
 
-## Proposed solution
-<!-- What you'd build. Keep it outcome-focused. -->
+## The problem
+<!-- What current state is painful, slow, missing, or wrong? Who feels it? -->
+
+## Proposed change
+<!-- The shape of the solution — what should exist / happen / be different. -->
 
 ## Alternatives considered
+<!-- What else could solve this, and why is this proposal better? -->
 
-## Acceptance criteria
-- [ ]
-- [ ]
+## Definition of done
+- [ ] Implementation merged to the default branch
+- [ ] Tests cover the new behavior (unit + integration where relevant)
+- [ ] Docs / README / runbook updated
+- [ ] Release-notes-worthy? (yes / no)
 
 ## Out of scope
-<!-- Explicitly list what this does NOT include, to keep it bounded. -->
+<!-- Explicitly NOT doing in this issue — split into follow-ups. -->
 
-/label ~feature
+/label ~"type::feature"

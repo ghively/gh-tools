@@ -1,0 +1,33 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":dependencyDashboard", ":semanticCommits"],
+  "timezone": "America/Chicago",
+  "schedule": ["before 6am on Monday"],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "rangeStrategy": "replace",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on the first day of the month"]
+  },
+  "packageRules": [
+    {
+      "groupName": "linters (dev)",
+      "matchDepTypes": ["devDependencies", "dev-dependencies", "dependencyDevelopment"]
+    },
+    {
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash"
+    },
+    {
+      "matchDatasources": ["docker"],
+      "groupName": "container images"
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security", "type::bug", "priority::high"]
+  }
+}

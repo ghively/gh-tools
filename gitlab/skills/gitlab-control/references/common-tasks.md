@@ -3,6 +3,13 @@
 All via `gitlab_rest` (writes need `confirm=true` + user approval). These paths
 were live-verified (reads) or 400-probed (writes) on 19.0.0 CE.
 
+> **Many of these now have curated tools** (v0.4.0/v0.5.0) — prefer the curated tool when it
+> exists. Mapping: emoji reactions → `award_emoji`, draft notes → `draft_notes`, suggestions →
+> `suggestions`, time tracking → `time_tracking`, resource events → `resource_events`, secure
+> files → `secure_files`, custom attributes → `custom_attributes`, markdown → `markdown`,
+> remote mirrors → `remote_mirrors`, bulk imports → `bulk_imports`. The raw paths below remain
+> the escape hatch for params the curated tools don't expose.
+
 ## Repo & files
 
 ```
