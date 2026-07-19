@@ -1,0 +1,48 @@
+# Android (Gradle) — lint, unit test (JUnit), assemble release APK. Caches Gradle + build outputs.
+default:
+  image: cimg/android:2024.07
+  cache:
+    key:
+      files: [gradle.lockfile, build.gradle.kts]
+    paths: [.gradle/, build/, app/build/]
+
+stages: [test, build]
+
+variables:
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.caching=true"
+  GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle"
+
+.rules: &rules
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+lint:
+  stage: test
+  script:
+    - ./gradlew lintDebug
+  artifacts:
+    paths: [app/build/reports/]
+    expire_in: 1 week
+  rules: *rules
+
+test:
+  stage: test
+  script:
+    - ./gradlew testDebugUnitTest
+  artifacts:
+    when: always
+    reports:
+      junit: app/build/test-results/*/TEST-*.xml
+    expire_in: 1 week
+  rules: *rules
+
+assemble:
+  stage: build
+  script:
+    - ./gradlew assembleRelease
+  artifacts:
+    paths: [app/build/outputs/apk/release/]
+    expire_in: 1 week
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_TAG'

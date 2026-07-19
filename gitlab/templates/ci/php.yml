@@ -1,0 +1,37 @@
+# PHP (Composer) — install (cached), phpcs (advisory), phpunit (JUnit).
+default:
+  image: php:8.3-cli
+  cache:
+    key:
+      files: [composer.lock]
+    paths: [vendor/]
+
+stages: [test]
+
+before_script:
+  - apt-get update -yqq && apt-get install -yqq git libzip-dev unzip zip >/dev/null
+  - docker-php-ext-install zip >/dev/null
+  - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+  - composer install --prefer-dist --no-interaction --no-progress
+
+.rules: &rules
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+phpcs:
+  stage: test
+  script:
+    - vendor/bin/phpcs --standard=PSR12 --report=junit src || true
+  allow_failure: true
+  rules: *rules
+
+test:
+  stage: test
+  script:
+    - vendor/bin/phpunit --log-junit phpunit.xml --colors=never
+  artifacts:
+    when: always
+    reports:
+      junit: phpunit.xml
+    expire_in: 1 week
+  rules: *rules

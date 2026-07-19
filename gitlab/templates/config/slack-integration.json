@@ -1,0 +1,15 @@
+{
+  "_comment": "Slack integration via the built-in service — apply via integrations(project=<ns/name>, name='slack', action='update', params=<strip-underscore-keys>, confirm=true). Posts MR/push/pipeline events to a Slack channel using an incoming webhook.",
+  "_apply_with": "integrations(project=<ns/name>, name='slack', action='update', params=<strip-underscore-keys>, confirm=true)",
+  "_keys": ["webhook", "username", "channel", "notify_only_broken_pipelines", "notify_only_default_branch", "push_events", "merge_requests_events", "issues_events", "confidential_issues_events", "tag_push_events", "note_events", "confidential_note_events", "pipeline_events", "wiki_page_events"],
+  "webhook": "https://hooks.slack.com/services/REPLACE/REPLACE/REPLACE",
+  "username": "GitLab",
+  "channel": "#eng",
+  "notify_only_broken_pipelines": true,
+  "notify_only_default_branch": true,
+  "push_events": false,
+  "merge_requests_events": true,
+  "issues_events": false,
+  "pipeline_events": true,
+  "note_events": false
+}

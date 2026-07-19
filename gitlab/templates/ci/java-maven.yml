@@ -1,0 +1,38 @@
+# Java (Maven) — verify (compile+test) and package, with the local Maven repo cached.
+default:
+  image: maven:3.9-eclipse-temurin-21
+  cache:
+    key:
+      files: [pom.xml]
+    paths: [.m2/repository/]
+
+stages: [test, build]
+
+variables:
+  MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+
+.rules: &rules
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+verify:
+  stage: test
+  script:
+    - mvn -B -V verify
+  artifacts:
+    when: always
+    reports:
+      junit: target/surefire-reports/TEST-*.xml
+    expire_in: 1 week
+  rules: *rules
+
+package:
+  stage: build
+  script:
+    - mvn -B -DskipTests package
+  artifacts:
+    paths: [target/*.jar]
+    expire_in: 1 week
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_TAG'

@@ -1,0 +1,13 @@
+{
+  "_comment": "Jira integration via the built-in service — apply via integrations(project=<ns/name>, name='jira', action='update', params=<strip-underscore-keys>, confirm=true). Links MRs to Jira issues by key (e.g. ENG-123); commits/MRs reference the Jira issue and Jira shows dev panel cross-links.",
+  "_apply_with": "integrations(project=<ns/name>, name='jira', action='update', params=<strip-underscore-keys>, confirm=true)",
+  "_keys": ["url", "api_url", "username", "password", "project_key", "issues_enabled", "commit_events", "merge_requests_events"],
+  "url": "https://REPLACE.atlassian.net",
+  "api_url": "https://REPLACE.atlassian.net/rest/api/2",
+  "username": "REPLACE@example.com",
+  "password": "REPLACE_API_TOKEN",
+  "project_key": "ENG",
+  "issues_enabled": true,
+  "commit_events": true,
+  "merge_requests_events": true
+}

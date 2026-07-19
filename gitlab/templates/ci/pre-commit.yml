@@ -1,0 +1,18 @@
+# Pre-commit — run hooks defined in .pre-commit-config.yaml across all files.
+# Pairs with a local `pre-commit install` for developer-side enforcement.
+pre-commit:
+  stage: test
+  image: python:3.12-slim
+  variables:
+    PRE_COMMIT_HOME: "$CI_PROJECT_DIR/.cache/pre-commit"
+  cache:
+    key:
+      files: [.pre-commit-config.yaml]
+    paths: [.cache/pre-commit/]
+  before_script:
+    - pip install pre-commit
+  script:
+    - pre-commit run --all-files --show-diff-on-failure
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'

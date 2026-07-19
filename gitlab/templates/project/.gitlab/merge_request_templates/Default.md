@@ -1,23 +1,32 @@
-<!-- Default MR template. Applied via .gitlab/merge_request_templates/Default.md. -->
-## What & why
-<!-- What does this change and why. Link the issue: Closes #NNN -->
+## Summary
+<!-- One to three sentences: what does this MR do, and why? Link the issue. -->
 
 Closes #
 
-## How
-<!-- Notable implementation decisions a reviewer should know. -->
+## Changes
+<!-- Bullet list of concrete changes — file-by-file or behavior-by-behavior. -->
+-
+-
+-
 
-## Testing
-<!-- How you verified it. Commands, screenshots, or "CI covers it". -->
+## How to test
+1. <!-- Step-by-step so a reviewer can verify in <5 minutes. -->
+2.
+3.
+
+## Screenshots / evidence
+<!-- Drag in screenshots, curl output, before/after diffs. Delete section if n/a. -->
+
+## Risk & rollback
+- **Risk:** <!-- data-migration? auth change? perf? backward-compat? -->
+- **Rollback:** <!-- revert the MR? feature flag? DB change reversal? -->
 
 ## Checklist
-- [ ] Tests added/updated (or N/A)
-- [ ] Docs updated (or N/A)
-- [ ] CI green
-- [ ] No secrets/keys committed
-- [ ] Breaking changes called out below (or none)
+- [ ] Linked the issue (Closes #...)
+- [ ] Added/updated tests
+- [ ] Updated docs / README
+- [ ] No secrets / credentials in the diff
+- [ ] Branch is up to date with the default branch
+- [ ] CI is green
 
-## Breaking changes
-<!-- None, or describe migration steps. -->
-
-/assign me
+/cc <!-- @reviewer-handle -->

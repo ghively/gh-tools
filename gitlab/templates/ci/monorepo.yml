@@ -1,0 +1,40 @@
+# Monorepo parent pipeline — triggers a child pipeline per package, only on path changes.
+# Each package ships its own .gitlab-ci.yml at packages/<name>/.gitlab-ci.yml.
+# Add/remove `*-changes` anchors + trigger jobs to match your package layout.
+stages: [trigger]
+
+.api-changes: &api-changes
+  changes:
+    - packages/api/**/*
+
+.web-changes: &web-changes
+  changes:
+    - packages/web/**/*
+
+api:
+  stage: trigger
+  trigger:
+    include:
+      - project: $CI_PROJECT_PATH
+        file: packages/api/.gitlab-ci.yml
+        ref: $CI_COMMIT_SHA
+    strategy: depend
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      <<: *api-changes
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      <<: *api-changes
+
+web:
+  stage: trigger
+  trigger:
+    include:
+      - project: $CI_PROJECT_PATH
+        file: packages/web/.gitlab-ci.yml
+        ref: $CI_COMMIT_SHA
+    strategy: depend
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      <<: *web-changes
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      <<: *web-changes

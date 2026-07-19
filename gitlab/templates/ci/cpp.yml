@@ -1,0 +1,39 @@
+# C/C++ — cmake configure + build + ctest, with ccache.
+default:
+  image: gcc:14
+  cache:
+    key:
+      files: [CMakeLists.txt]
+    paths: [.ccache/]
+
+stages: [build, test]
+
+variables:
+  CCACHE_DIR: "$CI_PROJECT_DIR/.ccache"
+
+.rules: &rules
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+build:
+  stage: build
+  script:
+    - apt-get update -yqq && apt-get install -yqq cmake ccache ninja-build >/dev/null
+    - cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+    - cmake --build build --parallel
+  artifacts:
+    paths: [build/]
+    expire_in: 1 week
+  rules: *rules
+
+test:
+  stage: test
+  needs: [build]
+  script:
+    - cd build && ctest --output-junit ../ctest.xml --parallel
+  artifacts:
+    when: always
+    reports:
+      junit: ctest.xml
+    expire_in: 1 week
+  rules: *rules

@@ -288,6 +288,32 @@ API_CATALOG: dict[str, list[str]] = {
                            ".../pipeline_schedules/:sid/variables"],
     "pipeline triggers": ["GET/POST/PUT/DELETE /projects/:id/triggers", "POST /projects/:id/trigger/pipeline"],
     "ci lint": ["POST /projects/:id/ci/lint {content|dry_run}"],
+    "resource groups": ["GET /projects/:id/resource_groups",
+                        "GET /projects/:id/resource_groups/:key",
+                        "GET .../resource_groups/:key/upcoming_jobs",
+                        "PUT .../resource_groups/:key {process_mode: unordered|ordered|oldest_first}"],
+    "time tracking": ["GET /projects/:id/{issues|merge_requests}/:iid/time_stats",
+                      "POST .../add_spent_time {duration} | reset_spent_time",
+                      "POST .../time_estimate {duration} | reset_time_estimate"],
+    "issue links": ["GET/POST /projects/:id/issues/:iid/links",
+                    "DELETE .../links/:link_id", "link_type: relates_to|blocks|is_blocked_by"],
+    "draft notes": ["GET/POST/PUT/DELETE /projects/:id/merge_requests/:iid/draft_notes[/:dnid]",
+                    "POST .../draft_notes/bulk_publish"],
+    "cluster agents": ["GET/POST/DELETE /projects/:id/cluster_agents[/:aid]",
+                       "GET/POST /projects/:id/cluster_agents/:aid/tokens[/:tid]"],
+    "dependency proxy": ["GET /groups/:id/dependency_proxy/manifests",
+                         "DELETE /groups/:id/dependency_proxy/cache",
+                         "pull: /groups/:id/dependency_proxy/containers (registry auth)"],
+    "suggestions": ["GET /projects/:id/suggestions/:sid",
+                    "PUT .../suggestions/:sid/apply", "PUT .../suggestions/batch_apply {ids[]}"],
+    "custom attributes": ["GET /{users|projects|groups}/:id/custom_attributes[/:key]",
+                          "PUT /.../custom_attributes/:key {value}", "DELETE ..."],
+    "resource events": ["GET /projects/:id/{issues|merge_requests}/:iid/resource_label_events",
+                        ".../resource_state_events", ".../resource_milestone_events"],
+    "uploads": ["GET /projects/:id/uploads", "GET .../uploads/:id",
+                "POST (multipart) /projects/:id/uploads", "DELETE .../uploads/:id"],
+    "error tracking": ["GET/PATCH /projects/:id/error_tracking/settings",
+                       "GET/POST /projects/:id/error_tracking/client_keys"],
     "runners": ["GET /runners", "GET /runners/all (admin)", "GET/PUT/DELETE /runners/:id", "GET /runners/:id/jobs",
                 "POST /user/runners (create, 16.0+)", "GET/POST/DELETE /projects/:id/runners",
                 "GET /groups/:id/runners", "POST /runners/verify"],
@@ -2085,6 +2111,510 @@ def templates(kind: str = "gitlab_ci_ymls", action: str = "list",
     return {"error": True, "message": f"unknown action '{action}'"}
 
 
+@mcp.tool()
+def secure_files(project: str, action: str = "list", file_id: Optional[int] = None,
+                 confirm: bool = False) -> Any:
+    """CI/CD secure files (full-file credentials: kubeconfig, .npmrc, signing keys, gcloud JSON —
+    distinct from CI variables which are short strings). action = list | get | download | delete.
+    Adding a file is multipart upload (POST /projects/:id/secure_files with file=@...);
+    use the shell or UI for upload — this tool only lists/reads/deletes.
+    download returns the file bytes base64-encoded. Deletes require confirm=true."""
+    p = _proj(project)
+    if action == "list":
+        return rest("GET", f"/projects/{p}/secure_files", params={"per_page": 100})
+    if action == "get":
+        return rest("GET", f"/projects/{p}/secure_files/{file_id}")
+    if action == "download":
+        r = _client.get(f"/api/v4/projects/{p}/secure_files/{file_id}/download")
+        if r.status_code >= 400:
+            return _err(r)
+        return {"file_id": file_id, "size": len(r.content),
+                "content_type": r.headers.get("content-type", ""),
+                "base64": base64.b64encode(r.content).decode(),
+                "note": "decode the base64 field to recover the original file bytes"}
+    g = _gate(confirm, f"delete secure_file {file_id} in {project}")
+    if g:
+        return g
+    if action == "delete":
+        return rest("DELETE", f"/projects/{p}/secure_files/{file_id}")
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def terraform_state(project: str, action: str = "list", name: Optional[str] = None,
+                    confirm: bool = False) -> Any:
+    """Terraform state registry (CE): get | delete | lock | unlock. (list is unsupported — see note.)
+    The terraform CLI creates and reads states via its own backend protocol; this tool does the
+    admin actions (delete/lock/unlock) and a single-state read. name is required for all actions
+    except list. Writes require confirm=true.
+
+    NOTE on `list`: there is no REST endpoint to enumerate a project's terraform states. The
+    states are created by `terraform` itself (via the backend protocol at
+    /projects/:id/terraform/state/:name with basic auth). To inventory, use the UI
+    (Operate → Terraform) or `terraform state list` against the project's backend.
+    """
+    p = _proj(project)
+    if action == "list":
+        return {"error": True, "not_supported": True,
+                "message": "GitLab has no REST endpoint to list terraform states. They're created "
+                           "by the terraform CLI backend protocol at "
+                           "/projects/:id/terraform/state/:name. Use the project's "
+                           "Operate → Terraform UI page or `terraform state list` to inventory."}
+    if not name:
+        return {"error": True, "message": f"action '{action}' needs a state name"}
+    base = f"/projects/{p}/terraform/state/{quote(name, safe='')}"
+    if action == "get":
+        return rest("GET", base)
+    g = _gate(confirm, f"{action} terraform state '{name}' in {project}")
+    if g:
+        return g
+    if action == "delete":
+        return rest("DELETE", base)
+    if action == "lock":
+        return rest("PUT", f"{base}/lock")
+    if action == "unlock":
+        return rest("DELETE", f"{base}/lock")
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def bulk_imports(action: str = "list", import_id: Optional[int] = None,
+                 params: Optional[dict] = None, confirm: bool = False) -> Any:
+    """Direct-transfer instance-to-instance migration (/bulk_imports — CE, needs
+    bulk_import_enabled in admin settings). action = list | get | entities | create.
+    create: params = {configuration: {url, access_token}, entities: [{source_type,
+    source_full_path, destination_slug, destination_namespace}, ...]}. Requires confirm=true.
+    The source access_token is a secret — handle params with care and don't echo it back.
+    """
+    if action == "list":
+        return rest("GET", "/bulk_imports", params={"per_page": 50})
+    if action == "get":
+        return rest("GET", f"/bulk_imports/{import_id}")
+    if action == "entities":
+        return rest("GET", f"/bulk_imports/{import_id}/entities", params={"per_page": 100})
+    g = _gate(confirm, "create a bulk import (direct transfer from another GitLab instance)")
+    if g:
+        return g
+    if action == "create":
+        return rest("POST", "/bulk_imports", body=params)
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def resource_groups(project: str, action: str = "list", key: Optional[str] = None,
+                    params: Optional[dict] = None, confirm: bool = False) -> Any:
+    """CI/CD resource groups (concurrency control): list | get | upcoming_jobs | update.
+    list/get need nothing or key. upcoming_jobs lists queued jobs for a group (key required).
+    update: params = {process_mode: "unordered"|"ordered"|"oldest_first"}. Writes require confirm.
+    See `resource_group_default_process_mode` on the project for the default.
+    """
+    p = _proj(project)
+    if action == "list":
+        return rest("GET", f"/projects/{p}/resource_groups")
+    if action == "get":
+        return rest("GET", f"/projects/{p}/resource_groups/{quote(key or '', safe='')}")
+    if action == "upcoming_jobs":
+        return rest("GET", f"/projects/{p}/resource_groups/{quote(key or '', safe='')}/upcoming_jobs")
+    g = _gate(confirm, f"update resource_group '{key}' in {project}")
+    if g:
+        return g
+    if action == "update":
+        return rest("PUT", f"/projects/{p}/resource_groups/{quote(key or '', safe='')}", body=params)
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def award_emoji(project: str, target_type: str, target_id: int,
+                action: str = "list", emoji: Optional[str] = None,
+                award_id: Optional[int] = None, confirm: bool = False) -> Any:
+    """Award-emoji reactions on issues, merge_requests, or snippets.
+    target_type: "issue" | "merge_request" | "snippet" (the URL segment is auto-pluralized).
+    target_id: the issue/MR/snippet IID (NOT the global id). action: list | get | add | remove.
+    add: pass emoji="thumbsup" / "heart" / "tada" / etc. (GitLab dedupes per user per name).
+    remove needs award_id (from list). Writes require confirm=true.
+    For emoji on notes, use gitlab_rest (nested under the parent noteable).
+    """
+    p = _proj(project)
+    base = f"/projects/{p}/{target_type}s/{target_id}/award_emoji"
+    if action == "list":
+        return rest("GET", base, params={"per_page": 100})
+    if action == "get":
+        return rest("GET", f"{base}/{award_id}")
+    g = _gate(confirm, f"{action} award emoji '{emoji}' on {target_type} {target_id} in {project}")
+    if g:
+        return g
+    if action == "add":
+        return rest("POST", base, body={"name": emoji})
+    if action == "remove":
+        return rest("DELETE", f"{base}/{award_id}")
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def notes(project: str, target_type: str, target_id: int, action: str = "list",
+          note_id: Optional[int] = None, body: Optional[str] = None,
+          confirm: bool = False) -> Any:
+    """Notes (comments) on issues, merge_requests, or snippets.
+    target_type: "issue" | "merge_request" | "snippet" (auto-pluralized for the URL).
+    target_id: the IID. action: list | get | add | update | delete. add/update: body=string.
+    Writes require confirm=true. For MR discussion threads (resolve/reply/inline diff comments),
+    use mr_discussions instead — that's the thread-aware surface.
+    """
+    p = _proj(project)
+    base = f"/projects/{p}/{target_type}s/{target_id}/notes"
+    if action == "list":
+        return rest("GET", base, params={"per_page": 100, "sort": "asc", "order_by": "created_at"})
+    if action == "get":
+        return rest("GET", f"{base}/{note_id}")
+    g = _gate(confirm, f"{action} note on {target_type} {target_id} in {project}")
+    if g:
+        return g
+    if action == "add":
+        return rest("POST", base, body={"body": body})
+    if action == "update":
+        return rest("PUT", f"{base}/{note_id}", body={"body": body})
+    if action == "delete":
+        return rest("DELETE", f"{base}/{note_id}")
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def markdown(text: str, gfm: bool = True, project: Optional[str] = None) -> Any:
+    """Render text as GitLab-Flavored Markdown to HTML (POST /markdown). Side-effect-free
+    rendering — no confirm needed. With project set (full path like "group/proj"), renders in
+    that project's context so references like !42, #123, $main, and group mentions resolve.
+    """
+    body: dict = {"text": text, "gfm": gfm}
+    if project:
+        body["project"] = project  # API wants the raw full path string here, not URL-encoded
+    return rest("POST", "/markdown", body=body)
+
+
+@mcp.tool()
+def remote_mirrors(project: str, action: str = "list", mirror_id: Optional[int] = None,
+                   params: Optional[dict] = None, confirm: bool = False) -> Any:
+    """Pull/push remote repository mirrors. action: list | create | update | delete | sync.
+    create params: {url, enabled?, only_protected_branches?, keep_divergent_refs?,
+    mirror_trigger_url?, mirror_branch_regex?}. sync triggers an immediate push to the remote.
+    Writes require confirm=true. The mirror url may embed credentials (https://user:token@host);
+    treat params as a secret — don't echo it back in full.
+    """
+    p = _proj(project)
+    if action == "list":
+        return rest("GET", f"/projects/{p}/remote_mirrors")
+    if action == "get" and mirror_id:
+        return rest("GET", f"/projects/{p}/remote_mirrors/{mirror_id}")
+    g = _gate(confirm, f"{action} remote_mirror in {project}")
+    if g:
+        return g
+    if action == "create":
+        return rest("POST", f"/projects/{p}/remote_mirrors", body=params)
+    if action == "update" and mirror_id:
+        return rest("PUT", f"/projects/{p}/remote_mirrors/{mirror_id}", body=params)
+    if action == "delete" and mirror_id:
+        return rest("DELETE", f"/projects/{p}/remote_mirrors/{mirror_id}")
+    if action == "sync" and mirror_id:
+        return rest("POST", f"/projects/{p}/remote_mirrors/{mirror_id}/sync")
+    return {"error": True, "message": f"unknown action '{action}' (or missing mirror_id)"}
+
+
+@mcp.tool()
+def notifications(scope_type: str = "user", scope_id: Optional[str] = None,
+                  action: str = "get", params: Optional[dict] = None,
+                  confirm: bool = False) -> Any:
+    """Notification settings: get | update at user (global), group, or project scope.
+    scope_type: "user" (no scope_id — /notification_settings) | "group" | "project".
+    update params: {level: "disabled"|"participating"|"watch"|"global"|"mention"|"custom",
+    and for custom: notification_email?, new_note?, new_issue?, etc.}.
+    Writes require confirm=true.
+    """
+    if scope_type == "user":
+        base = "/notification_settings"
+    elif scope_type == "group":
+        base = f"/groups/{_proj(scope_id)}/notification_settings"
+    else:
+        base = f"/projects/{_proj(scope_id)}/notification_settings"
+    if action == "get":
+        return rest("GET", base)
+    g = _gate(confirm, f"update {scope_type} notification settings")
+    if g:
+        return g
+    if action == "update":
+        return rest("PUT", base, body=params)
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def freeze_periods(project: str, action: str = "list", freeze_id: Optional[int] = None,
+                   params: Optional[dict] = None, confirm: bool = False) -> Any:
+    """Deployment freeze windows (CE): list | get | create | update | delete.
+    During a freeze, deploy jobs are blocked — use for release/launch/holiday blackouts.
+    create params: {freeze_start_name?, freeze_start (ISO 8601), freeze_end (ISO 8601),
+    crontz? (defaults to UTC)}. Writes require confirm=true.
+    """
+    p = _proj(project)
+    if action == "list":
+        return rest("GET", f"/projects/{p}/freeze_periods")
+    if action == "get":
+        return rest("GET", f"/projects/{p}/freeze_periods/{freeze_id}")
+    g = _gate(confirm, f"{action} freeze_period in {project}")
+    if g:
+        return g
+    if action == "create":
+        return rest("POST", f"/projects/{p}/freeze_periods", body=params)
+    if action == "update":
+        return rest("PUT", f"/projects/{p}/freeze_periods/{freeze_id}", body=params)
+    if action == "delete":
+        return rest("DELETE", f"/projects/{p}/freeze_periods/{freeze_id}")
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def time_tracking(project: str, target_type: str, target_id: int,
+                  action: str = "list", duration: Optional[str] = None,
+                  confirm: bool = False) -> Any:
+    """Time tracking on issues and merge_requests.
+    target_type: "issue" | "merge_request" (auto-pluralized for the URL). target_id: the IID.
+    action: list | add_spent | reset_spent | set_estimate | reset_estimate.
+    add_spent/set_estimate: duration = "1h30m" / "2d4h" / "30m" (humanized).
+    list is read-only (returns time_estimate, total_time_spent, human_*). Writes require confirm.
+    """
+    p = _proj(project)
+    base = f"/projects/{p}/{target_type}s/{target_id}"
+    if action == "list":
+        return rest("GET", f"{base}/time_stats")
+    g = _gate(confirm, f"{action} on {target_type} {target_id} in {project}")
+    if g:
+        return g
+    if action == "add_spent":
+        return rest("POST", f"{base}/add_spent_time", body={"duration": duration})
+    if action == "reset_spent":
+        return rest("POST", f"{base}/reset_spent_time")
+    if action == "set_estimate":
+        return rest("POST", f"{base}/time_estimate", body={"duration": duration})
+    if action == "reset_estimate":
+        return rest("POST", f"{base}/reset_time_estimate")
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def issue_links(project: str, issue_iid: int, action: str = "list",
+                target_project_id: Optional[int] = None, target_issue_iid: Optional[int] = None,
+                link_type: Optional[str] = None, link_id: Optional[int] = None,
+                confirm: bool = False) -> Any:
+    """Issue relationships: blocks / is blocked by / relates to. Cross-project links work.
+    action: list | relate | delete. relate: target_project_id (omit for same-project) +
+    target_issue_iid + link_type ("relates_to" | "blocks" | "is_blocked_by", default relates_to).
+    delete needs link_id (from list). Writes require confirm=true.
+    """
+    p = _proj(project)
+    base = f"/projects/{p}/issues/{issue_iid}/links"
+    if action == "list":
+        return rest("GET", base)
+    g = _gate(confirm, f"{action} issue link on #{issue_iid} in {project}")
+    if g:
+        return g
+    if action == "relate":
+        body = _clean({"target_project_id": target_project_id,
+                       "target_issue_iid": target_issue_iid,
+                       "link_type": link_type or "relates_to"})
+        return rest("POST", base, body=body)
+    if action == "delete":
+        return rest("DELETE", f"{base}/{link_id}")
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def draft_notes(project: str, merge_request_iid: int, action: str = "list",
+                draft_id: Optional[int] = None, body: Optional[str] = None,
+                confirm: bool = False) -> Any:
+    """Draft notes on a merge request (review comments saved as draft, published in bulk).
+    action: list | get | create | update | delete | publish.
+    create/update: body=string (GFM). publish = bulk-publish ALL the author's drafts on this MR.
+    Drafts are visible only to the author until published. Writes require confirm=true.
+    For inline-on-diff draft notes, use mr_discussions with position + draft=true.
+    """
+    p = _proj(project)
+    base = f"/projects/{p}/merge_requests/{merge_request_iid}/draft_notes"
+    if action == "list":
+        return rest("GET", base, params={"per_page": 100})
+    if action == "get":
+        return rest("GET", f"{base}/{draft_id}")
+    g = _gate(confirm, f"{action} draft note on MR !{merge_request_iid} in {project}")
+    if g:
+        return g
+    if action == "create":
+        return rest("POST", base, body={"body": body})
+    if action == "update":
+        return rest("PUT", f"{base}/{draft_id}", body={"body": body})
+    if action == "delete":
+        return rest("DELETE", f"{base}/{draft_id}")
+    if action == "publish":
+        return rest("POST", f"{base}/bulk_publish", body={})
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def cluster_agents(project: str, action: str = "list", agent_id: Optional[int] = None,
+                   params: Optional[dict] = None, confirm: bool = False) -> Any:
+    """GitLab Kubernetes Agents (cluster_agents): list | get | create | delete | tokens | create_token.
+    The agent bridges a cluster to GitLab (flux-like pull model; agentk runs in-cluster).
+    create: params={name}. tokens lists an agent's auth tokens (agent_id required).
+    create_token: params={name, description?, access_level?}. Writes require confirm=true.
+    """
+    p = _proj(project)
+    if action == "list":
+        return rest("GET", f"/projects/{p}/cluster_agents")
+    if action == "get":
+        return rest("GET", f"/projects/{p}/cluster_agents/{agent_id}")
+    if action == "tokens":
+        return rest("GET", f"/projects/{p}/cluster_agents/{agent_id}/tokens")
+    g = _gate(confirm, f"{action} cluster agent in {project}")
+    if g:
+        return g
+    if action == "create":
+        return rest("POST", f"/projects/{p}/cluster_agents", body=params)
+    if action == "delete":
+        return rest("DELETE", f"/projects/{p}/cluster_agents/{agent_id}")
+    if action == "create_token":
+        return rest("POST", f"/projects/{p}/cluster_agents/{agent_id}/tokens", body=params)
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def dependency_proxy(group: str, action: str = "settings", confirm: bool = False) -> Any:
+    """Group dependency proxy (CE-working): settings | manifests | purge_cache.
+    settings: GraphQL read of enabled state + recent manifests (better than REST for this).
+    manifests: list cached Docker images proxied through the group registry.
+    purge_cache clears the group's proxy cache (write — requires confirm).
+    Actual pulls go through /groups/:id/dependency_proxy/containers with registry auth.
+    """
+    g_path = group  # GraphQL wants the raw full path, not URL-encoded
+    g = _proj(group)
+    if action == "settings":
+        q = ("query($fp:ID!){ group(fullPath:$fp){ dependencyProxySetting{ enabled identity } "
+             "dependencyProxyManifests(first: 20){ nodes { name digest size } } } }")
+        return gql(q, {"fp": g_path})
+    if action == "manifests":
+        return rest("GET", f"/groups/{g}/dependency_proxy/manifests", params={"per_page": 50})
+    gate = _gate(confirm, f"purge dependency_proxy cache for group {group}")
+    if gate:
+        return gate
+    if action == "purge_cache":
+        return rest("DELETE", f"/groups/{g}/dependency_proxy/cache")
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def suggestions(project: str, action: str = "get", suggestion_id: Optional[int] = None,
+                suggestion_ids: Optional[list] = None, confirm: bool = False) -> Any:
+    """Apply code-review suggestions made inline on an MR diff (the ```suggestion code blocks).
+    action: get (single, needs suggestion_id) | apply (single) | batch_apply (all in suggestion_ids).
+    Applying creates a commit on the MR's source branch. Writes require confirm=true.
+    Suggestions are created via MR diff notes; this tool applies them.
+    """
+    p = _proj(project)
+    if action == "get":
+        if not suggestion_id:
+            return {"error": True, "message": "get needs suggestion_id"}
+        return rest("GET", f"/projects/{p}/suggestions/{suggestion_id}")
+    g = _gate(confirm, f"apply suggestion(s) in {project}")
+    if g:
+        return g
+    if action == "apply":
+        if not suggestion_id:
+            return {"error": True, "message": "apply needs suggestion_id"}
+        return rest("PUT", f"/projects/{p}/suggestions/{suggestion_id}/apply")
+    if action == "batch_apply":
+        return rest("PUT", f"/projects/{p}/suggestions/batch_apply",
+                    body={"suggestion_ids": suggestion_ids or []})
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def custom_attributes(target_type: str, target_id: int, action: str = "list",
+                      key: Optional[str] = None, value: Optional[str] = None,
+                      confirm: bool = False) -> Any:
+    """Custom attributes (admin key/value metadata) on users, projects, or groups.
+    target_type: "user" | "project" | "group" (auto-pluralized for the URL).
+    target_id: the NUMERIC ID (not path / iid). action: list | get | set | delete.
+    set: key + value. get/delete: key. Writes require confirm=true (admin).
+    Common use: tagging source-of-truth, cost-center, owner-team, lifecycle-stage.
+    """
+    base = f"/{target_type}s/{target_id}/custom_attributes"
+    if action == "list":
+        return rest("GET", base)
+    if action == "get":
+        return rest("GET", f"{base}/{quote(key or '', safe='')}")
+    g = _gate(confirm, f"set custom attribute '{key}' on {target_type} {target_id}")
+    if g:
+        return g
+    if action == "set":
+        return rest("PUT", f"{base}/{quote(key or '', safe='')}", body={"value": value})
+    if action == "delete":
+        return rest("DELETE", f"{base}/{quote(key or '', safe='')}")
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def resource_events(project: str, target_type: str, target_id: int,
+                    action: str = "label_events") -> Any:
+    """Resource events (audit trail of changes) on issues and merge_requests.
+    target_type: "issue" | "merge_request" (auto-pluralized for the URL). target_id: the IID.
+    action: label_events | state_events | milestone_events. All read-only.
+    Use to reconstruct the lifecycle of an issue/MR (when labels were added/removed, state
+    transitions, milestone assignments) — feeds time-in-state / cycle-time analysis.
+    """
+    p = _proj(project)
+    return rest("GET", f"/projects/{p}/{target_type}s/{target_id}/resource_{action}",
+                params={"per_page": 100, "sort": "asc", "order_by": "created_at"})
+
+
+@mcp.tool()
+def uploads(project: str, action: str = "list", upload_id: Optional[str] = None,
+            confirm: bool = False) -> Any:
+    """Project uploads (managed attachments returned by Markdown image/file references).
+    action: list | get | delete. Upload itself is multipart — use the shell or the Markdown editor.
+    delete needs upload_id (from list — it's a string id, not int). Writes require confirm=true.
+    Uploaded files serve at /uploads/:id/:filename and are referenced as ![alt](uploads/<id>/<file>).
+    """
+    p = _proj(project)
+    if action == "list":
+        return rest("GET", f"/projects/{p}/uploads", params={"per_page": 100})
+    if action == "get":
+        return rest("GET", f"/projects/{p}/uploads/{upload_id}")
+    g = _gate(confirm, f"delete upload {upload_id} in {project}")
+    if g:
+        return g
+    if action == "delete":
+        return rest("DELETE", f"/projects/{p}/uploads/{upload_id}")
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def error_tracking(project: str, action: str = "settings",
+                   params: Optional[dict] = None, confirm: bool = False) -> Any:
+    """Project error-tracking (Sentry-like) settings + client keys.
+    action: settings | client_keys | update | create_client_key.
+    update: params={enabled, integrated, api_host, sentry_external_url?}. Writes require confirm.
+    Client keys are issued to SDKs to send errors back. CE: works if a backend is configured;
+    a 404 'Setting Not Found' means error tracking isn't enabled for the project yet.
+    """
+    p = _proj(project)
+    if action == "settings":
+        return rest("GET", f"/projects/{p}/error_tracking/settings")
+    if action == "client_keys":
+        return rest("GET", f"/projects/{p}/error_tracking/client_keys")
+    g = _gate(confirm, f"{action} error_tracking in {project}")
+    if g:
+        return g
+    if action == "update":
+        return rest("PATCH", f"/projects/{p}/error_tracking/settings", body=params)
+    if action == "create_client_key":
+        return rest("POST", f"/projects/{p}/error_tracking/client_keys")
+    return {"error": True, "message": f"unknown action '{action}'"}
+
+
 # --------------------------------------------------------------------------- #
 # Selftest — live read-only audit of every domain (no mutations)              #
 # --------------------------------------------------------------------------- #
@@ -2187,7 +2717,8 @@ def _selftest() -> int:  # pragma: no cover
     chk("badges", "project", rest("GET", f"/projects/{_proj(tp)}/badges"))
     chk("mirrors", "remote_mirrors", rest("GET", f"/projects/{_proj(tp)}/remote_mirrors"))
     chk("feature flags", "project", rest("GET", f"/projects/{_proj(tp)}/feature_flags"))
-    chk("error tracking", "settings", rest("GET", f"/projects/{_proj(tp)}/error_tracking/settings"))
+    chk("error tracking", "settings", rest("GET", f"/projects/{_proj(tp)}/error_tracking/settings"),
+        ok_when=(404,))
     chk("pages", "project pages", rest("GET", f"/projects/{_proj(tp)}/pages"))
     chk("clusters", "cluster_agents", rest("GET", f"/projects/{_proj(tp)}/cluster_agents"))
     chk("notifications", "settings", rest("GET", "/notification_settings"))
@@ -2229,6 +2760,40 @@ def _selftest() -> int:  # pragma: no cover
         rest("POST", f"/projects/{_proj(tp)}/variables"), ok_when=(400,))
     chk("write-probe", "PUT app settings (no params)", rest("PUT", "/application/settings"),
         ok_when=(400,))
+
+    print("== v0.4.0 curated-tool domains (read-only probes) ==", file=sys.stderr)
+    chk("secure_files", "list", rest("GET", f"/projects/{_proj(tp)}/secure_files"))
+    chk("terraform_state", "get-nonexistent (404 = handler alive)",
+        rest("GET", f"/projects/{_proj(tp)}/terraform/state/__selftest__"), ok_when=(404,))
+    chk("bulk_imports", "list", rest("GET", "/bulk_imports", params={"per_page": 2}))
+    chk("resource_groups", "list", rest("GET", f"/projects/{_proj(tp)}/resource_groups"))
+    chk("award_emoji", "project-scope probe (404 expected, valid path is per-issue)",
+        rest("GET", f"/projects/{_proj(tp)}/issues", params={"per_page": 1}))
+    chk("notes", "issue-list proxy", rest("GET", f"/projects/{_proj(tp)}/issues", params={"per_page": 1}))
+    chk("markdown", "render", rest("POST", "/markdown", body={"text": "**hi**", "gfm": True}))
+    chk("remote_mirrors", "list", rest("GET", f"/projects/{_proj(tp)}/remote_mirrors"))
+    chk("notifications", "user settings", rest("GET", "/notification_settings"))
+    chk("freeze_periods", "list", rest("GET", f"/projects/{_proj(tp)}/freeze_periods"))
+
+    print("== v0.5.0 curated-tool domains (read-only probes) ==", file=sys.stderr)
+    chk("time_tracking", "time_stats needs an issue (proxy via issues list)",
+        rest("GET", f"/projects/{_proj(tp)}/issues", params={"per_page": 1}))
+    chk("issue_links", "needs an issue (proxy via issues list)",
+        rest("GET", f"/projects/{_proj(tp)}/issues", params={"per_page": 1}))
+    chk("draft_notes", "needs an MR (proxy via MR list)",
+        rest("GET", f"/projects/{_proj(tp)}/merge_requests", params={"per_page": 1}))
+    chk("cluster_agents", "list", rest("GET", f"/projects/{_proj(tp)}/cluster_agents"))
+    chk("dependency_proxy", "GraphQL settings", gql(
+        'query($fp:ID!){ group(fullPath:$fp){ dependencyProxySetting{ enabled } } }',
+        {"fp": tg}))
+    chk("suggestions", "no list endpoint (apply-only); probe a bogus id",
+        rest("GET", f"/projects/{_proj(tp)}/suggestions/0"), ok_when=(404,))
+    chk("custom_attributes", "user attrs", rest("GET", "/users/4/custom_attributes"))
+    chk("resource_events", "needs an issue (proxy via issues list)",
+        rest("GET", f"/projects/{_proj(tp)}/issues", params={"per_page": 1}))
+    chk("uploads", "list", rest("GET", f"/projects/{_proj(tp)}/uploads"))
+    chk("error_tracking", "settings (404 'not enabled' is OK)",
+        rest("GET", f"/projects/{_proj(tp)}/error_tracking/settings"), ok_when=(404,))
 
     fails = [c for c in checks if c[2].startswith("FAIL")]
     print(f"\n{len(checks)} checks, {len(fails)} failures", file=sys.stderr)

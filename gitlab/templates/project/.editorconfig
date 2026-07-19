@@ -1,4 +1,5 @@
-# https://editorconfig.org — consistent whitespace across editors.
+# EditorConfig — https://editorconfig.org — keeps everyone's editor honest.
+# Root = true stops upward directory search here.
 root = true
 
 [*]
@@ -9,14 +10,26 @@ trim_trailing_whitespace = true
 indent_style = space
 indent_size = 2
 
-[*.{py,go}]
+# Python: PEP 8.
+[*.py]
 indent_size = 4
+max_line_length = 100
 
-[*.go]
+# Go, Rust, protobuf: tabs.
+[*.{go,rs,proto}]
+indent_style = tab
+
+# Shell + makefiles: tabs (required for Makefile).
+[*.{sh,bash,zsh}]
 indent_style = tab
 
 [Makefile]
 indent_style = tab
 
+# YAML / TOML / JSON / markdown / JS-family / Ruby / Helm: 2-space.
+[*.{yml,yaml,toml,json,md,js,ts,jsx,tsx,rb,tpl}]
+indent_size = 2
+
+# Long-form docs: hard wrap ~100.
 [*.md]
-trim_trailing_whitespace = false
+max_line_length = 100

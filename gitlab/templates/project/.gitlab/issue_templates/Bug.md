@@ -1,22 +1,37 @@
-<!-- Bug report. Applied via .gitlab/issue_templates/Bug.md — selectable in the issue "Description" template dropdown. -->
-## Summary
-<!-- One sentence: what's broken. -->
+---
+name: Bug
+about: Report something that's broken or behaving unexpectedly
+title: "[bug] "
+labels: ["type::bug", "priority::med"]
+---
+
+## What happened?
+<!-- Brief, concrete description of the observed (wrong) behavior. -->
+
+## What did you expect?
+<!-- The behavior you expected instead. -->
 
 ## Steps to reproduce
 1.
 2.
 3.
 
-## Expected vs actual
-- **Expected:**
-- **Actual:**
-
 ## Environment
-- Version / commit:
-- OS / browser / runtime:
+- **Component / file**:
+- **Version / commit / tag**:
+- **Browser / OS / runtime**:
+- **Logged-in user** (if relevant):
 
 ## Evidence
-<!-- Logs, screenshots, stack traces. Wrap logs in ``` fences. -->
+<!-- Stack trace, screenshot, log excerpt, request id, or link to the failing pipeline/job. -->
 
-/label ~bug
-/assign me
+```
+paste trace / log here
+```
+
+## Severity
+- [ ] Blocks work (cannot proceed)
+- [ ] Workaround exists (describe)
+- [ ] Cosmetic / minor
+
+/label ~"type::bug"

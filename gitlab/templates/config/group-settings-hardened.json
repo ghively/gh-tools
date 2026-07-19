@@ -1,0 +1,12 @@
+{
+  "_comment": "Hardened group settings — apply via gitlab_rest('PUT', '/groups/:id', body=<this stripped>, confirm=true). Enforces 2FA, restricts subgroup/project creation to maintainers, protects the default branch on new projects.",
+  "_apply_with": "gitlab_rest(method='PUT', path='/groups/<id>', body=<strip-underscore-keys>, confirm=true)",
+  "_keys": ["description", "project_creation_level", "subgroup_creation_level", "require_two_factor_authentication", "default_branch_protection", "default_branch_protection_defaults", "shared_runners_setting", "visibility"],
+  "description": "",
+  "project_creation_level": "maintainer",
+  "subgroup_creation_level": "maintainer",
+  "require_two_factor_authentication": true,
+  "default_branch_protection": 2,
+  "shared_runners_setting": "enabled",
+  "visibility": "private"
+}
