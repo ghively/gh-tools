@@ -1,0 +1,11 @@
+{
+  "name": "sabnzbd-control",
+  "description": "Full control of a SABnzbd usenet downloader (v4+ HTTP API) from Claude Code. Bundles an MCP server authenticated with a SABnzbd API key (apikey= query param), exposing both a generic passthrough reaching every /api mode and curated tools for status, version, queue, history, server stats, warnings, pause/resume (confirm-gated), add-by-URL, delete/retry jobs, speed limit, get/set config, and shutdown/restart (heavily gated). Tested against SABnzbd 5.0.4.",
+  "version": "0.1.0",
+  "author": {
+    "name": "ghively"
+  },
+  "keywords": ["sabnzbd", "usenet", "nzb", "downloader", "mcp", "homelab", "media"],
+  "skills": "./skills/",
+  "commands": "./commands/"
+}
