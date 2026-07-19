@@ -124,9 +124,79 @@ Keep fallback chains short. A broken primary provider should fail over by task c
 4. **Observable.** Every fallback must log: trigger, from-model, to-model, reason (429 / 5xx / timeout / verifier-fail), and whether the user saw degraded behavior.
 5. **Tested.** Inject provider outages in staging and confirm the chain actually fires. An untested fallback is a wish.
 
-### Decision: Fail Open vs. Fail Closed
+## A/B Testing and Champion-Challenger Rollout
 
-| Situation | Choose | Why |
+Model changes must be eval-gated. The skill's doctrine specifies thresholds
+(tool-call exactness ≥ 0.95, faithfulness ≥ 0.9, confidence < 0.6), but
+does not specify the rollout mechanism. This section fills that gap.
+
+### Champion-Challenger Pattern
+
+Deploy the new model (challenger) alongside the current model (champion).
+Route a percentage of traffic to the challenger; compare on the eval
+metrics. Grow challenger share only when the metrics hold.
+
+1. **Canary at 5% for one monitoring interval.** Baseline: champion's
+   pass rate on the eval suite. Challenger must match within a
+   pre-declared margin (e.g., ±3 percentage points). If the challenger
+   drifts outside, roll back.
+2. **Shadow at 100% traces, 0% decisions.** The challenger runs on every
+   request in shadow mode: traces are recorded, metrics computed, but
+   tool calls are NOT dispatched from the challenger. Compare champion
+   vs challenger on the same inputs.
+3. **Ramp: 5% → 25% → 50% → 100%. Every ramp waits one monitoring
+   window (hour, day, week depending on volume) and checks the dashboard
+   for drift in: eval pass rate, tool-call exactness, latency p50/p99,
+   cost-per-run, and doom-loop rate.
+4. **Declare victory only at 100% for one full monitoring period.**
+   After that, the challenger becomes the new champion; the old model
+   stays registered for one more period as a fast-rollback target.
+
+### Statistical Thresholds
+
+- **Pass-rate delta**: use a bootstrapped confidence interval on the
+  eval pass rate. If the challenger's 95% CI overlaps the champion's,
+  the delta is not statistically significant. Sample the CI after every
+  ramp window.
+- **Tool-call exactness**: compare per-tool; a 2-point drop in
+  function-calling accuracy on any critical tool is a stop-ramp signal
+  regardless of overall pass rate.
+- **Cost**: the challenger must be within the cost budget. A model that
+  passes more often but burns 5× the tokens is not a win; compute the
+  cost-per-successful-run metric.
+
+### Pre-Declared Margin
+
+Declare the acceptable delta BEFORE the ramp starts. "We'll decide if
+it looks good" is how a bad model deployment drifts through. The
+margin is in the release record; the ship-check verifies it.
+
+### Canary vs Shadow vs A/B
+
+| Pattern | Best for | Risk |
+|---|---|---|
+| Canary | New model; unknown risk | Low (5% blast radius) |
+| Shadow | Comparing models on identical inputs | Very low (no effect) |
+| A/B | Comparing two production models on different users | Medium (per-user experience branches) |
+| Champion-challenger | Ongoing evaluation; gradual migration | Low (ramp + rollback) |
+
+### Rollback Triggers
+
+A model rollout triggers rollback when:
+
+- Pass-rate delta exceeds the pre-declared margin for two consecutive
+  windows.
+- Tool-call exactness on any critical tool drops by ≥ 3 points.
+- P99 latency increases by ≥ 2× from champion baseline.
+- Cost-per-run increases by ≥ 20%.
+- Doom-loop rate increases (the detector fires more often).
+
+Rollback is instant: switch the router's champion field back to the
+old model ID. No code change; model IDs are config, not code.
+
+See `../../agent-deployment/references/versioning-rollout.md` for the
+broader rollout doctrine and `cost-tracking.md` for the per-model cost
+accounting this pattern requires.
 |---|---|---|
 | Read-only summary, best-effort | Fail open (degraded answer, flag it) | User experience matters more than perfection. |
 | Extraction feeding a deterministic pipeline | Fail closed (queue, retry later) | Bad extraction poisons downstream state. |

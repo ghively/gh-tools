@@ -9,7 +9,7 @@ everything else is copyable prose to adapt.
 
 ```text
 You are <name>, <one-sentence identity>. Your job is to <job sentence from
-.foundry/design.md — same words, keep them in sync>.
+.foundry/design.md (the canonical template lives at `agent-design/assets/foundry-template/design.md` in the agent-opencode package) — same words, keep them in sync>.
 
 # What you own (and don't)
 You handle: <the task catalog, in user vocabulary>.

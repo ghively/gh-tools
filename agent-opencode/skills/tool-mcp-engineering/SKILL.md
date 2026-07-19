@@ -85,6 +85,7 @@ The handshake the minimum bar protects is short and worth memorizing: the client
 |---|---|
 | `references/tool-design.md` | Designing names, schemas, returns, errors, and idempotent side effects. |
 | `references/when-to-build-what.md` | Choosing built-in tools, skill+script, existing MCP, new MCP, or full plugin. |
+| `references/mcp-security-and-primitives.md` | Advanced: server-side security (tool-result injection, description poisoning), OAuth for remote MCP (DCR + PKCE), Streamable HTTP, prompts vs resources vs tools, tool annotations, outputSchema, sampling/roots/elicitation, MCP client patterns |
 | `references/mcp-server-authoring.md` | Building MCP servers against the current protocol and official SDKs. |
 | `references/mcp-debugging.md` | Diagnosing startup, `tools/list`, auth, package, and timeout failures. |
 | `references/api2mcp-guide.md` | Adapting HTTP APIs with the bundled template and OpenAPI tool generation. |

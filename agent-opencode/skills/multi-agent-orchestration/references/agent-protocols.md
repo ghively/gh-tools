@@ -55,8 +55,9 @@ At the protocol level, the flow A2A describes is conceptually: a caller fetches 
 | Mechanism | Model | Production posture |
 |---|---|---|
 | OpenAI Agents SDK handoffs | Agent transfers control to another agent/tool with state | Useful inside OpenAI stack; verify API surface and tracing. |
+| CrewAI | `Agent.allow_delegation` + `Agent.delegation` — agents delegate tasks to other agents in a Crew; sequential or hierarchical process types; the Crew shares context across agents. Flows (event-driven stateful ordering) are the production shape — a Crew embeds inside a Flow step | Evaluate delegation semantics; CrewAI delegation is asymmetric (A→B ≠ B→A); Flow state is per-step, not durable by default |
 | LangGraph handoff/Command patterns | Graph node returns control updates and next destination | Strong for explicit, durable orchestration in code. |
-| Microsoft Agent Framework | Enterprise multi-agent abstractions and integrations | Evaluate current SDK maturity and cloud coupling. |
+| Microsoft Agent Framework (MAF) | Enterprise multi-agent abstractions and integrations | Evaluate current SDK maturity and cloud coupling. AutoGen (predecessor) still widely deployed — `GroupChat` + `ConversableAgent` primitives map to MAF's runtime host |
 | A2A | Cross-vendor remote agent task protocol | Promising interop standard; verify per implementation. |
 | MCP | Tool/resource/prompt transport | Production-ready for tools; not an agent conversation protocol by itself. |
 

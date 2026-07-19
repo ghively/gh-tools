@@ -131,7 +131,8 @@ Adopt a hosted platform only when coordination, annotation, auditability, or pro
 | `references/eval-taxonomy.md` | Designing categories, case format, and verification layers |
 | `references/golden-suites.md` | Building the golden suite, assertions, canaries, and regression naming |
 | `references/integration-contracts.md` | Verifying delegated work and catching cross-module wiring bugs |
-| `references/eval-tooling-survey.md` | Choosing current eval tools, hosted platforms, benchmarks, and judge patterns |
+| `references/eval-tooling-survey.md` | Choosing current eval tools, hosted platforms, benchmarks, and judge patterns. Phoenix (Arize) is a notable open-source observability+eval platform — self-hostable, OTel-compatible, spans + traces + evals in one place. |
+| `references/eval-methodology.md` | Statistical significance (bootstrap CIs, calibrated confidence), eval drift consolidation (five types, detection signals, re-baseline cadence), online-vs-offline eval strategy, human-eval protocols (annotator instructions, double-blind, Cohen's kappa, gold-set calibration), dashboard requirements |
 | `references/framework-eval-matrix.md` | Per-framework trajectory capture and eval patterns for all 13 harnesses (Claude Agent SDK, OpenAI Agents SDK, Copilot SDK, Google ADK, MAF, LangGraph, CrewAI, LlamaIndex, Pydantic AI, smolagents, Vercel AI SDK, Mastra, custom loop); eval-platform integration matrix; replay-as-fixture support |
 | `references/eval-ci-wiring.md` | Running the suite in CI: the cost/determinism eval pyramid, flaky-LLM retry-with-quorum, per-run judge-call budgets, cassette replay, and gating strategy (block vs warn vs nightly) |
 | `scripts/run-evals.sh` | Merging JSONL cases and invoking a parameterized eval runner |

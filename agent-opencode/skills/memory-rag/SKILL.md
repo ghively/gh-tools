@@ -166,7 +166,7 @@ These are starting values to calibrate against your own eval, not laws:
 |---|---|
 | `references/rag-pipeline.md` | Designing chunking, embedding, retrieval, reranking, context assembly, and RAG metrics. |
 | `references/memory-system-design.md` | Designing layered durable/working/knowledge memory and consolidation policy. |
-| `references/memory-backend-matrix.md` | Choosing files, vector stores, graph memory, user-model memory, or managed offerings. |
+| `references/backend-and-architectures.md` | Expanded comparison: Pinecone, Weaviate, Milvus, FAISS, pgvector, Qdrant, Chroma; embedding model selection (MTEB leaderboard, late-interaction, ZAI/local); reranker guidance; cognitive memory taxonomy (episodic/semantic/procedural); MemGPT/Letta/Mem0/Cognee architectures; managed/hosted offerings |
 | `references/agentic-rag.md` | Using retrieval as a tool, query decomposition, Self-RAG/corrective loops, GraphRAG, and deep-research patterns. |
 
 ## Pitfalls
