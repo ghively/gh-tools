@@ -151,6 +151,7 @@ See the `agent-evals` skill for governance and regression case design. A layer t
 | `references/deterministic-hooks.md` | Understanding, testing, and safely extending the shipped safety hooks |
 | `references/tool-policy.md` | Writing OpenCode permission rules and choosing read-only/scoped/full operator posture |
 | `references/multi-tenant-isolation.md` | One agent deployment serves many tenants: per-tenant credential brokering, memory/RAG index isolation, per-tenant rate/cost limits, tenant-aware audit, and blast-radius design |
+| `references/incident-response.md` | The runbook when an agent is implicated in an active incident — severity classification, containment (SEV1 first 30 minutes + next 4 hours), postmortem within 48 hours, and common incident patterns (prompt-injection landing, runaway spend, permission drift, memory poisoning, tool-result injection) |
 
 ## Pitfalls
 

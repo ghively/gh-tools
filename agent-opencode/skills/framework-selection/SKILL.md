@@ -147,6 +147,11 @@ This record is what future maintainers need when the framework changes names, im
 | `references/langgraph-quickstart.md` | Current LangChain `create_agent`, hand-built `StateGraph`, checkpointer, HITL examples |
 | `references/crewai-llamaindex-quickstarts.md` | CrewAI Flow/Crew and LlamaIndex FunctionAgent/AgentWorkflow starts |
 | `references/dspy-msaf-nemo-quickstarts.md` | DSPy authoring, Microsoft Agent Framework migration, NeMo Agent Toolkit wrapper guidance |
+| `references/openai-agents-sdk-quickstart.md` | OpenAI Agents SDK (Swarm successor): `@function_tool`, handoffs, `Runner.run`, BYOK provider config |
+| `references/google-adk-quickstart.md` | Google ADK: `FunctionTool`, durable `Session` service, Vertex AI integration, Workload Identity auth |
+| `references/pydantic-ai-smolagents-quickstarts.md` | Pydantic AI (typed DI agents; type-safety as a safety boundary) + smolagents (HF's code-as-action; sandbox mandatory) |
+| `references/vercel-mastra-quickstarts.md` | Vercel AI SDK (`generateText` / `streamText` tool loop) + Mastra (workflows + memory in TypeScript) |
+| `references/copilot-sdk-quickstart.md` | GitHub Copilot SDK: cloud vs local sessions, hooks, fleet mode, custom agents, BYOK for ZAI |
 | `references/framework-build-matrix.md` | How to translate a `.foundry/design.md` into each of the 13 harness frameworks (Claude Agent SDK, OpenAI Agents SDK, Copilot SDK, Google ADK, MAF, LangGraph, CrewAI, LlamaIndex, Pydantic AI, smolagents, Vercel AI SDK, Mastra, custom loop) — tools, authority, state, failure modes, verification per framework; design pattern mappings (HITL gate, read-only specialist, cost-capped run) |
 
 ## CI-Resident Wiring
