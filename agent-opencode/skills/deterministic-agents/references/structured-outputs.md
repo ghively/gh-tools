@@ -115,4 +115,124 @@ Schemas are API contracts between the model, your code, and often a queue of sto
 3. **Parsing the text block when a `parse()` helper exists.** `json.loads(response.content[0].text)` works until a refusal or truncation; the SDK helpers handle those states.
 4. **Assuming JSON mode = structured outputs.** `json_object` (OpenAI) / `format: "json"` (Ollama) guarantee parseable JSON, not *your* JSON. Legacy; don't reach for them in new code.
 5. **Dynamic schemas defeating the grammar cache.** See schema evolution above — static schema, dynamic prompt.
+6. **Schemas that are too narrow for the task.** A schema that enforces one correct answer but the question is ambiguous forces the model to guess. Fix: add an `"uncertain"` variant; this is a real signal, not noise.
+
+## Function-Calling vs `response_format`
+
+When the agent needs a structured artifact, you choose between two channels:
+
+| Channel | How it works | When to use | Cost |
+|---|---|---|---|
+| **Function-calling (`tools`)** | The model emits a `tool_use` block; the harness dispatches a tool | The structure feeds into a downstream tool or side effect (deploy, search, insert). Only one producer per turn (the model). | 1 tool round-trip per structured output |
+| **`response_format` / `structured_outputs`** | The model emits the structure inline as part of its response text (JSON inside `content`). No tool dispatch | The structure is the deliverable — a classification, an extraction, a routing decision. No tool call needed. | 0 round-trips (inline); cheaper |
+
+**Decision rule:** if the structured output does not trigger a side effect,
+use `response_format` — it's cheaper and faster. If the output triggers a
+tool (the model says "deploy X" and the harness dispatches the deploy
+tool), use function-calling — the tool output enters the conversation and
+the model can respond to it.
+
+**Crossover cases:** the model needs both reasoning and a structured output.
+Options:
+
+1. **Native thinking mode + structured output.** Anthropic's `thinking`
+   blocks appear before the structured output. Reasoning tokens are not in
+   the structure. Best of both worlds if the provider supports it.
+2. **Separate calls.** First call: `response_format` for the reasoning
+   text. Second call: `tools` for the side effect. Two calls, higher
+   latency, but the reasoning is inspectable.
+3. **Tag-based.** `<thinking>...</thinking><output>...</output>` in a
+   single text response. Parse the tags. Works across all providers;
+   fragile if the tag syntax leaks into the content.
+
+**Structured outputs via grammars** (Guidance, Outlines, xgrammar, LMQL):
+these guarantee the exact format at the token level, not just validation
+post-hoc. Best for constrained-decoding use cases (form filling, codegen
+with syntax guarantees). These libraries sit between the harness and the
+provider, intercepting logit selection.
+
+## Streaming + Structured Outputs
+
+Structured outputs are typically delivered atomically (the full JSON
+arrives when the model finishes generating). Streaming changes this:
+
+**Partial JSON.** The harness can parse incomplete JSON as the model
+generates it, showing the structure filling in field-by-field. This is
+for UI feedback only — never dispatch a tool call or validate a schema
+against partial output.
+
+**Provider support:**
+- Anthropic: `tool_use` fields stream incrementally via `input_json_delta`
+  events. Structured outputs via `content_block_delta` for `text` blocks
+  containing JSON. Parse partial JSON at the client.
+- OpenAI: `response_format` with `stream: true` → partial JSON chunks.
+  Function-calling tool arguments stream incrementally.
+- Gemini: Structured output streaming via `GenerateContentResponse`.
+
+**Refusal interactions:** a streaming structured output can begin and then
+hit a refusal mid-stream. The partial output is invalid. The harness must
+detect the refusal (via `stop_reason` or a special refusal event) and
+discard the partial output, not attempt to validate it.
+
+**Truncation interactions:** a `max_tokens` truncation mid-structure
+produces invalid JSON. The harness detects the truncation (`stop_reason:
+max_tokens`) and retries with higher `max_tokens` or summarizes.
+
+## Replay Mechanics
+
+A deterministic agent records every model call and tool call so it can be
+replayed. The replay event log records:
+
+```json
+{"step": 0, "type": "model_call", "input": {"messages": [...], "tools": [...]}, "output": {"content": [...], "stop_reason": "tool_use", "usage": {...}}}
+{"step": 1, "type": "tool_call", "tool": "search", "args": {"query": "..."}, "output": {"results": [...]}, "duration_ms": 120}
+{"step": 2, "type": "model_call", "input": {...}, "output": {...}}
+```
+
+**Replay modes:**
+1. **Post-hoc debugging:** Replay the exact trajectory to understand what
+   the agent did and why.
+2. **Replay-as-fixture:** Replay the model calls with recorded responses
+   substituted (the harness never actually calls the model). This is the
+   eval fixture — deterministic replay for CI.
+3. **Counterfactual replay:** Change one tool result and replay to see
+   what the agent *would have* done. Useful for "what if the search had
+   returned different results?"
+4. **Durable-execution replay:** Resume a durable run from the journal.
+   See `durable-execution.md`.
+
+**What to record per call:**
+- Model call: `messages` (all context), `tools` (schemas), `model_id`,
+  `temperature`, `response` (full), `stop_reason`, `usage`, `latency_ms`,
+  `timestamp`.
+- Tool call: `tool` name, `args`, `result`, `duration_ms`, `timestamp`,
+  `idempotency_key`.
+
+**Timestamp handling during replay:** For replay-as-fixture, substitute
+the recorded timestamp (not `datetime.now()`). This keeps the replay
+byte-identical to the original run and prevents timestamp-dependent
+test flakiness.
+
+## Concurrency Control for Agent State
+
+When multiple sessions or replicas share the same durable state (e.g.,
+the same `thread_id` in LangGraph), the harness must prevent concurrent
+modification:
+
+| Pattern | How | When |
+|---|---|---|
+| **Optimistic concurrency** | Write with a version/etag; on conflict, re-read and re-apply | Low-contention workloads |
+| **Pessimistic locking** | Acquire a lock (Redis `SETNX`, Postgres `SELECT ... FOR UPDATE`) before modifying state | High-contention or critical-path writes |
+| **Single-writer** | Only one replica writes to a given state key (Restate Virtual Objects pattern) | The simplest correct answer |
+| **Last-writer-wins with merge** | Write the full new state; merge conflicts at read time with a conflict-resolution function | Append-only state (e.g., chat history) |
+
+The simplest correct default is **single-writer**: each `session_id` or
+`thread_id` routes to exactly one replica. The session store or LB pins
+the ID to the replica. If the replica dies, another replica picks up
+from the durable store.
+
+**Replay + concurrency**: when replaying records and a concurrent write
+occurred between the original run and the replay, the replay must either
+fail (detect the version difference and abort) or be marked as a replay
+(not a new write) in the audit log.
 6. **Enum sets that grow without review.** A 60-member routing enum is a classification task the model will do badly; past ~10–15 branches, use hierarchical routing (coarse enum → per-branch fine enum) instead.

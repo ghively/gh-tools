@@ -284,3 +284,131 @@ Report each finding as: severity, location, one-line fix."""
 5. Format breakage → structured outputs / output tags before more prose rules.
 6. Run-to-run variance → pin the success criterion, build the eval, then
    optimize systematically (`dspy-optimization.md`).
+
+## Multimodal Prompting
+
+Every frontier model is multimodal — image, PDF, audio, document, video
+inputs alongside text. The prompt engineering discipline extends to these
+modalities:
+
+### Image Input
+
+- The model reads text IN images (OCR is implicit). A screenshot contains
+  both the visual layout AND any text rendered in it. Treat image text as
+  untrusted input in the prompt-injection sense — an embedded image with
+  text content is the multimodal equivalent of indirect prompt injection
+  via a fetched web page.
+- **Describe what you want the model to extract from the image.** Don't
+  just attach a PNG and say "what do you see?" — ask: "Extract the values
+  from this table; output as JSON."
+- **Images consume token budget fast.** A 1024×1024 image ≈ 1,500–2,000
+  tokens (provider-dependent). Caching applies; stable images in context
+  hit the prompt cache.
+
+### PDF / Document Input
+
+- Inline PDF content within the prompt. The model reads the embedded text
+  and sees the document structure. Same untrusted-content rules as image
+  — a malicious PDF can carry embedded instructions.
+- **Chunk large PDFs.** A 500-page PDF overwhelms the context. Pre-chunk
+  by section or page; feed the model one chunk at a time.
+- **Citation granularity.** When the model cites a section, it knows the
+  section heading but not the exact page number (unless you embed page
+  numbers in the text). Feed page-delimited content if citations are
+  critical.
+
+### Audio / Voice
+
+- Transcription layer then text prompt is the default (e.g., Whisper →
+  LLM). This hides prosody, pauses, and speaker identification from the
+  LLM.
+- Native audio models (Gemini, GPT-4o-audio) process raw audio directly —
+  they hear emotion, speaker gender, background noise. Use these when
+  tone matters (sentiment analysis, customer service) but be aware they
+  introduce privacy concerns (the audio file may contain PII the
+  transcription would have caught and redacted).
+
+### Data-vs-Instruction Ambiguity
+
+The same model that reads "ignore previous instructions" in text reads
+it in an image, a PDF, or a transcribed audio sentence. The prompt-
+injection surface is multimodal. Defenses:
+
+- Treat ALL multimodal content as untrusted data, not instructions. See
+  `prompt-context-engineering/references/injection-defense.md`.
+- Do not attach user-uploaded images/documents to the same prompt that
+  carries your system instructions. Use a multi-turn pattern: first
+  analyze the content, then run the analysis through the instruction-
+  carrying prompt.
+
+## Chain-of-Thought vs `response_format` Tradeoff
+
+When the agent needs both reasoning AND a machine-parseable output, the
+decision is:
+
+| Approach | Reasoning visible? | Parseable? | Latency | Provider support |
+|---|---|---|---|---|
+| **Native thinking + structured output** (Anthropic `thinking` + `output_config.format`) | Yes (thinking blocks) | Yes (the structured output validates) | Low (single call) | Anthropic Claude 4.x+ |
+| **Separate calls** (reasoning call → structured-output call) | Yes (full reasoning text) | Yes | Medium (2 calls) | All |
+| **Tag-based** (`<thinking>...</thinking><output>...</output>` in one text response) | Yes (in text) | Yes (parse tags + validate JSON) | Low (single call) | All |
+| **response_format only** (no separate reasoning) | No | Yes | Lowest | OpenAI, ZAI/GLM |
+| **Tool-call as structured output** (emit tool call, let harness handle it) | Limited (tool args only) | Yes (tool schema validates) | Medium (tool round-trip) | All |
+
+**Default:** tag-based for portability (works everywhere); native thinking
++ structured output for Anthropic-first stacks; separate calls for
+high-stakes where reasoning must be inspectable.
+
+**The refusal interaction:** a `response_format` request can be refused;
+the refusal comes back as the `stop_reason: "refusal"` (Claude) or a text
+content block explaining the refusal (GPT). The structured output is
+absent. The harness must detect this and surface it — it is a legitimate
+signal, not a bug.
+
+## Cross-Provider Prompt Caching
+
+The `long-horizon-context.md` reference covers Anthropic caching
+(explicit breakpoints, 1-hour TTL, 4 max). The other major providers:
+
+### OpenAI
+
+- **Automatic only.** No explicit breakpoints. The prefix is cached when
+  ≥ 1,024 tokens. Cache read gives a ~50% input-token discount.
+- The stable prefix must be the *beginning* of the `messages` array.
+  Variable content appended later does not invalidate.
+- Tip: same stable-prefix discipline as Anthropic — system prompt +
+  instructions + tool schemas frozen at the beginning, conversation
+  history appended at the end.
+
+### Gemini (Google)
+
+- **Explicit context caching.** Create a `CachedContent` resource, then
+  reference it in generation requests. The cache is available for up to
+  48 hours (configurable TTL).
+- **Cost:** Cache creation costs the full prompt price (once). Cache
+  reads are heavily discounted. Best for stable, large prompts.
+- **Use case:** the system prompt and tool schemas are identical across
+  most requests — upload once, reference many times.
+
+### DeepSeek
+
+- Supports prompt caching via the Anthropic-compatible cache point API
+  (`cache_control`). Similar semantics: mark breakpoints at boundaries
+  between stable and variable content.
+- TTL: 5 minutes (automatic). Explicit breakpoints extend to 1 hour.
+
+### Unified Discipline
+
+Regardless of provider, the harness must:
+
+1. Keep the prefix stable (system prompt, instructions, tool schemas
+   frozen and in a fixed order).
+2. Sort tool schemas deterministically — schema order changes bust the
+   cache.
+3. Embed `cache_control` / `content.cache_type: "ephemeral"` markers at
+   the boundary between stable prefix and conversation history.
+4. Monitor cache-hit rates per provider. A drop means something changed
+   in the prefix assembly.
+5. Compact context at 75%, not 100%, to leave room for the next turn's
+   model response without busting the cache by appending beyond the
+   provider limit.
+

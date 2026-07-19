@@ -7,6 +7,9 @@ dist/
 *.log
 *.jsonl
 
+# Eval cases are jsonl files that MUST be committed
+!agent-opencode/skills/agent-evals/assets/eval-suite-template/cases.jsonl
+
 # OS / editor cruft
 .DS_Store
 Thumbs.db

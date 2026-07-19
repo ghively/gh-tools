@@ -59,22 +59,78 @@ def invoke(agent_cmd, prompt):
 
 
 def check(assertions, exit_code, output):
+    """Evaluate assertions against agent output.
+
+    Supports two formats:
+    1. Dict format (legacy): {"output_contains": [...], "output_not_contains": [...], ...}
+    2. Array format (doctrine): ["must_call_tool:search", "contains_evidence", "not_contains:error", "must_exit_zero", "must_request_approval"]
+
+    Array assertions are parsed by prefix:
+    - must_call_tool:<name> — the trajectory must contain this tool (requires trajectory capture; warns if unsupported)
+    - must_not_execute:<name> — the trajectory must NOT contain this tool (warns if unsupported)
+    - must_request_approval — the trajectory must show an approval pause (warns if unsupported)
+    - contains:<text> / contains_evidence — the output must contain this text
+    - not_contains:<text> — the output must NOT contain this text
+    - must_exit_zero — the agent must exit 0
+    - output_regex:<pattern> — the output must match this regex
+    """
     problems = []
     low = output.lower()
-    for s in assertions.get("output_contains", []):
-        if s.lower() not in low:
-            problems.append(f"missing required string: {s!r}")
-    anys = assertions.get("output_contains_any", [])
-    if anys and not any(s.lower() in low for s in anys):
-        problems.append(f"none of the accepted strings present: {anys}")
-    for s in assertions.get("output_not_contains", []):
-        if s.lower() in low:
-            problems.append(f"forbidden string present: {s!r}")
-    pattern = assertions.get("output_regex")
-    if pattern and not re.search(pattern, output):
-        problems.append(f"regex did not match: {pattern!r}")
-    if assertions.get("must_exit_zero") and exit_code != 0:
-        problems.append(f"agent exited {exit_code}")
+
+    # Dict format (legacy, backward compatible)
+    if isinstance(assertions, dict):
+        for s in assertions.get("output_contains", []):
+            if s.lower() not in low:
+                problems.append(f"missing required string: {s!r}")
+        anys = assertions.get("output_contains_any", [])
+        if anys and not any(s.lower() in low for s in anys):
+            problems.append(f"none of the accepted strings present: {anys}")
+        for s in assertions.get("output_not_contains", []):
+            if s.lower() in low:
+                problems.append(f"forbidden string present: {s!r}")
+        pattern = assertions.get("output_regex")
+        if pattern and not re.search(pattern, output):
+            problems.append(f"regex did not match: {pattern!r}")
+        if assertions.get("must_exit_zero") and exit_code != 0:
+            problems.append(f"agent exited {exit_code}")
+        return problems
+
+    # Array format (doctrine — each assertion is a string)
+    if isinstance(assertions, list):
+        for assertion in assertions:
+            # Trajectory assertions (require framework-specific capture)
+            if assertion.startswith("must_call_tool:"):
+                problems.append(f"WARNING: 'must_call_tool' requires trajectory capture — not supported by text-only runner. Wire trajectory per framework-eval-matrix.md. Assertion: {assertion}")
+            elif assertion.startswith("must_not_execute:"):
+                problems.append(f"WARNING: 'must_not_execute' requires trajectory capture — not supported by text-only runner. Wire trajectory per framework-eval-matrix.md. Assertion: {assertion}")
+            elif assertion == "must_request_approval":
+                problems.append(f"WARNING: 'must_request_approval' requires HITL trajectory capture — not supported by text-only runner. Wire per framework-eval-matrix.md.")
+            # Output-content assertions
+            elif assertion.startswith("contains:"):
+                s = assertion[len("contains:"):]
+                if s.lower() not in low:
+                    problems.append(f"missing required string: {s!r}")
+            elif assertion == "contains_evidence":
+                if "evidence" not in low and "source" not in low and "citation" not in low:
+                    problems.append("output lacks evidence/citation")
+            elif assertion.startswith("not_contains:"):
+                s = assertion[len("not_contains:"):]
+                if s.lower() in low:
+                    problems.append(f"forbidden string present: {s!r}")
+            elif assertion.startswith("output_regex:"):
+                pattern = assertion[len("output_regex:"):]
+                if not re.search(pattern, output):
+                    problems.append(f"regex did not match: {pattern!r}")
+            elif assertion == "must_exit_zero":
+                if exit_code != 0:
+                    problems.append(f"agent exited {exit_code}")
+            else:
+                # Unrecognized format — treat as contains for backward compat
+                if assertion.lower() not in low:
+                    problems.append(f"missing required string: {assertion!r}")
+        return problems
+
+    problems.append(f"unrecognized assertions format: {type(assertions).__name__} — use dict or list")
     return problems
 
 
