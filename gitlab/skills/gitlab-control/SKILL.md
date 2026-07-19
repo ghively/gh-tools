@@ -15,7 +15,7 @@ with an **admin** token — instance administration works, not just project acce
 
 ## Layered approach — pick the right tool
 
-1. **Curated tools first** (59): `list_projects`, `get_project`, `manage_project`,
+1. **Curated tools first** (79): `list_projects`, `get_project`, `manage_project`,
    `repo_tree`, `read_file`, `write_files`, `repo_extras`, `branches`, `tags`, `commits`,
    `compare_refs`, `protected`, `list_merge_requests`, `get_merge_request`,
    `manage_merge_request`, `mr_discussions`, `list_issues`, `get_issue`, `manage_issue`,
@@ -26,7 +26,16 @@ with an **admin** token — instance administration works, not just project acce
    `admin_ops`, `search_gitlab`, `webhooks`, `integrations`, `snippets`, `wikis`,
    `packages`, `container_registry`, `project_import_export`, `model_registry`,
    `ci_catalog`, `templates`, `todos_and_events`.
-   Most take an `action` parameter — read the tool description. New in v0.3.0:
+   Most take an `action` parameter — read the tool description. New in v0.5.0:
+   `time_tracking` (estimates/spent on issues & MRs), `issue_links` (blocks/relates),
+   `draft_notes` (MR draft review notes), `cluster_agents` (Kubernetes agents),
+   `dependency_proxy` (group Docker cache), `suggestions` (apply MR code-review suggestions),
+   `custom_attributes` (admin metadata), `resource_events` (label/state audit trail),
+   `uploads` (project file attachments), `error_tracking` (Sentry-like settings).
+   New in v0.4.0:
+   `secure_files`, `terraform_state`, `bulk_imports`, `resource_groups`, `award_emoji`,
+   `notes`, `markdown`, `remote_mirrors`, `notifications`, `freeze_periods`.
+   New in v0.3.0:
    `model_registry` (ML models + MLflow experiments — CE), `ci_catalog` (reusable CI
    components), `templates` (GitLab's built-in gitignore/license/dockerfile/CI templates).
    New in v0.2.0: `pages`
@@ -64,14 +73,38 @@ Start sessions (or debug auth issues) with `gitlab_status()`.
   empty without a license) and the CE security-scanning reality (run SAST/Secret-Detection
   templates → parse the raw job **artifact**, since findings never hit the MR widget on Free).
 - `references/graphql.md` — the GraphQL endpoint, live **introspection** as the version-exact
-  discovery path, when GraphQL beats REST (and vice versa), and the null-means-unauthorized gotcha.
+  discovery path, when GraphQL beats REST (and vice versa), the null-means-unauthorized gotcha,
+  and 8 verified query examples + 4 mutation examples.
 - `references/templates.md` — the **bulletproof templates** catalog: `templates/ci/*.yml`
   (all live-linted `valid:true` on 19.0.0), project scaffolding, and config presets, with how
   to apply each. **Read before scaffolding or adding CI.**
 - `references/workflows.md` — the `/gl-*` **workflow** playbooks and orchestration patterns
-  (onboard, ci-bootstrap, audit, cleanup, user-offboard, triage, release, model-registry).
+  (onboard, ci-bootstrap, audit, cleanup, user-offboard, triage, release, model-registry,
+  token-rotate, backup, bulk-import, pages-deploy, runner-manage, branch-strategy,
+  variables-sync, group-setup, secure-files, boards-setup).
 - `references/ai-and-model-registry.md` — the ML **Model Registry** + MLflow experiment tracking
   + CI Catalog (all CE), and the honest story that **GitLab Duo / AI is EE-gated and 404s here**.
+- `references/troubleshooting.md` — **failure-mode decision tree**: HTTP status → cause → test,
+  IID-vs-ID confusion, pagination, the delayed-deletion/requires-ref/never-contacted-runner
+  quirks, webhook delivery failures, GraphQL null/complexity errors, MCP-server-specific
+  failures, and the honest-reporting checklist. **Read first when any call misbehaves.**
+- `references/runners-deep.md` — runner types, the **v16+ `POST /user/runners` flow** (replaces
+  the deprecated registration token), tag matching, fleet-health signals, executor trade-offs,
+  the `/gl-runner-manage` playbook, and security boundaries.
+- `references/migrations-imports.md` — project/group export→download→import, **direct-transfer
+  `/bulk_imports`**, foreign (GitHub/Bitbucket) import, pre-migration checklist, post-migration
+  verification diff, the `/gl-backup` playbook, and what each method does/doesn't preserve.
+- `references/members-access-deep.md` — **access levels, inherited vs direct membership, group
+  sharing, the Owner-orphaning trap**, audit patterns, SSH/deploy keys, CE-vs-Premium role gaps.
+- `references/webhooks-deep.md` — **event payloads by type, X-Gitlab-Token signing, retry
+  behavior, SSL verification, `allow_local_requests` SSRF controls**, system hooks, debugging.
+- `references/packages-registry-deep.md` — **every package format (npm/pypi/maven/generic/helm/
+  conan/nuget/debian/composer/rubygems/terraform-modules)**, push/pull patterns, cleanup
+  policies, container registry, dependency proxy integration.
+- `references/work-items.md` — the **modern issue/task/incident/test-case surface**, work item
+  types, widgets, hierarchies as the CE epic replacement, GraphQL-first usage.
+- `references/search-advanced.md` — **search scopes, the Elasticsearch gate, per-project code
+  search on CE vs global needs ES**, filters, the instance-wide code search workaround.
 
 ## Templates & workflows
 
@@ -112,8 +145,9 @@ group dependency proxy (enabled on `gregory`), terraform state/module registry,
 service desk (needs incoming-email config), direct-transfer imports
 (`bulk_import_enabled` turned on 2026-07-15 — `/bulk_imports` live).
 
-## Instance facts (as of 2026-07-14)
+## Instance facts (as of 2026-07-19)
 
-115 projects, 9 groups (root: `gregory`, user ns `dadmonkey405`), 3 users
-(1 active), signup disabled, KAS enabled, registry API reachable. Token:
+134 projects, 40 groups (root: `gregory`, user ns `dadmonkey405`), 8 users
+(6 active), signup disabled, KAS enabled, registry API reachable, direct-transfer
+imports enabled (`bulk_import_enabled: true` since 2026-07-15). Token:
 `hermes-agent-20260625-v2` (admin, `api` scope, expires 2027-06-25).

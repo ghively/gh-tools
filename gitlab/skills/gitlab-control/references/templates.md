@@ -19,6 +19,18 @@ on your GitLab, not just plausible. Re-lint (`ci_lint(project, content=...)`) af
 | `release-on-tag.yml` | auto GitLab Release on a `vX.Y.Z` tag | uses release-cli + the `release:` keyword |
 | `terraform.yml` | validate → plan (artifact) → apply (manual, default branch) | |
 | `mr-only.yml` | run only on MRs/tags/default branch, no duplicate branch pipelines | the canonical `workflow:rules:` pattern |
+| `java-maven.yml` | Maven verify (JUnit) + package (.jar artifact) | Maven repo cache per `pom.xml` |
+| `rust.yml` | fmt (advisory) → clippy (strict) → test → release build | cargo registry + target cache per `Cargo.lock` |
+| `ruby.yml` | bundle install → rubocop → rspec (JUnit) | bundle cache per `Gemfile.lock` |
+| `dotnet.yml` | dotnet test (JUnit + Cobertura) + publish | .NET 8 SDK |
+| `monorepo.yml` | parent pipeline → per-package child pipelines | triggers only on changed package paths |
+| `pre-commit.yml` | run all hooks from `.pre-commit-config.yaml` | env cache per config file |
+| `helm.yml` | `helm lint` every chart in `charts/*` + package `.tgz` | push snippet included in comments |
+| `php.yml` | composer install + phpcs (advisory) + phpunit (JUnit) | vendor cache per `composer.lock` |
+| `cpp.yml` | cmake configure + build + ctest (JUnit), ccache | build→test stage order with `needs:` |
+| `scala.yml` | sbt scalafmt (advisory) + test + assembly (.jar) | coursier + target cache per `build.sbt` |
+| `android.yml` | gradle lintDebug + testDebugUnitTest (JUnit) + assembleRelease | APK artifact on default/tag |
+| `ios.yml` | Fastlane test + build | requires a macOS runner (tags: macos, xcode) |
 
 **Apply**: read the file, `ci_lint(project, content=<yaml>)` to reconfirm, then
 `write_files(project, [{action:"create", file_path:".gitlab-ci.yml", content:<yaml>}],
@@ -28,10 +40,13 @@ overwriting. `/gl-ci-bootstrap` does this end-to-end.
 ## Project scaffolding — `templates/project/`
 
 Drop-in repo files (mirror the repo root):
-- `.gitlab/issue_templates/Bug.md`, `.../Feature.md` — selectable in the issue description dropdown.
-- `.gitlab/merge_request_templates/Default.md` — MR checklist + `Closes #`.
+- `.gitlab/issue_templates/Bug.md`, `.../Feature.md` — selectable in the issue description dropdown; pre-labeled, with severity checkbox + evidence block.
+- `.gitlab/merge_request_templates/Default.md` — MR checklist + `Closes #` + risk/rollback section.
 - `CODEOWNERS` — auto-assign reviewers (owner *enforcement* is EE; assignment works on CE).
-- `.editorconfig`, `CONTRIBUTING.md`.
+- `.editorconfig` — cross-editor consistency (PEP 8 for Python, tabs for Go/Rust, 2-space for JS/YAML).
+- `CONTRIBUTING.md` — how to contribute.
+- `SECURITY.md` — vulnerability disclosure policy (private channel, scope, disclosure window).
+- `renovate.json` — dependency-update bot config (weekly schedule, patch auto-merge, vuln alerts).
 
 **Apply**: one commit via `write_files(project, [{action:"create", file_path:..., content:...}, ...],
 confirm=true)`. `/gl-onboard` writes the whole set.
@@ -44,6 +59,13 @@ Each JSON documents its target tool in `_apply_with` and holds the exact `params
 - `project-settings-hardened.json` → `manage_project(project, action="update", params=...)`.
 - `webhook-ci-notify.json` → `webhooks(scope_type="project", scope_id=project, action="create", params=...)`.
 - `ci-variables-example.json` → apply each entry via `ci_variables(..., action="create", params=<entry>)`.
+
+### v0.5.0 additions
+
+- `tag-protection-standard.json` → `protected(project, kind="tags", action="create", params=...)` — release-tag ruleset (maintainers create `v*` tags).
+- `group-settings-hardened.json` → `gitlab_rest("PUT", "/groups/:id", body=...)` — 2FA, restricted project/subgroup creation, default-branch protection.
+- `slack-integration.json` → `integrations(project, name="slack", action="update", params=...)` — MR + pipeline events to a Slack channel via incoming webhook.
+- `jira-integration.json` → `integrations(project, name="jira", action="update", params=...)` — link MRs to Jira issues by project key.
 
 ## GitLab's own built-in templates (`templates` tool)
 

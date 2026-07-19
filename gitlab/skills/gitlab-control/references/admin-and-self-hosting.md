@@ -68,3 +68,99 @@ fallback, and should say so plainly rather than pretend:
 
 If the user wants these driven, it's an SSH job on `gh-git`/`git.hively.dev`, gated and confirmed —
 not something the MCP REST layer can do. Name it as a hard limit.
+
+## Admin mode (newer GitLab security feature)
+
+Some admin endpoints additionally require **admin mode** active — a re-auth state that proves the
+admin is intentionally doing admin work (not just having the role). On CE this is a softer
+concept than on EE, but some calls may still gate behind `admin_mode` scope on the token. If a
+call that should work returns 403 with an admin-mode hint, the token needs the `admin_mode`
+scope AND the admin must have toggled admin mode on (UI: top-right → Admin Mode toggle; or
+`POST /user/admin_mode`/`/user/disable_admin_mode` with a token that has `admin_mode` scope).
+**Not commonly required on CE** — most admin endpoints work with a plain `api`-scoped admin PAT.
+
+## User lifecycle — the state machine
+
+Users move through states; each transition has different reversibility + access implications:
+
+```
+        ┌─ awaiting → approve ─→ active
+        │                       │
+        (signup)                ├─→ deactivate (reversible via activate)
+                                ├─→ block     (reversible via unblock)
+                                ├─→ ban       (reversible via unban)
+                                └─→ delete (IRREVERSIBLE; use hard_delete to wipe contributions
+                                            or soft-delete to reassign to Ghost User)
+```
+
+| State | Can sign in? | Can receive emails? | API token works? | Reversible? |
+|---|---|---|---|---|
+| `active` | yes | yes | yes | n/a |
+| `awaiting` (confirmation pending) | no | yes | no | approve / reject |
+| `deactivated` | no | no (until reactivated) | no | activate |
+| `blocked` | no | no | no | unblock |
+| `banned` | no | no | no | unban |
+| `deleted` | — | — | — | NEVER (hard_delete wipes; soft reassigns to Ghost) |
+
+**For offboarding** (`/gl-user-offboard`): prefer **deactivate** (leave of absence, reversible)
+or **block** (immediate cut, reversible) over **delete** (permanent). Only `delete` with
+`hard_delete=true` if contributions must be wiped; otherwise contributions reassign to the
+Ghost User and history is preserved.
+
+## Broadcast messages (instance-wide banner)
+
+`admin_ops(area="broadcast_messages", action="list"|"create"|"update"|"delete")` — banner shown
+at the top of every page. Fields: `message` (GFM), `starts_at`, `ends_at`, `broadcast_type`
+(`banner` | `notification`), `target_path` (optional — show only on a path regex), `dismissible`.
+Use for: maintenance windows, policy changes, security advisories.
+
+## Instance feature flags
+
+`admin_ops(area="features", action="list"|"set"|"delete")` — GitLab's internal feature gates
+(NOT the project-level `feature_flags` tool which is user-facing feature flags). These toggle
+GitLab's own behavior — `feature_flag_name`, `state: true|false|percentage`. **Can destabilize
+the instance** — confirm twice before flipping. Examples: `search_rate_limit`, `ci_live_trace`,
+`new_issue_dropdown`.
+
+## Topics (instance-wide project tagging)
+
+`admin_ops(area="topics", action="list"|"create"|"update"|"delete")` — projects can be tagged
+with topics for discovery (`/explore/projects?topic=docker`). Fields: `name`, `title`,
+`description`, `avatar` (uploaded separately). Use for org-level taxonomy ("team:payments",
+"criticality:high", "lifecycle:active").
+
+## OAuth applications
+
+`admin_ops(area="applications", action="list"|"create"|"update"|"delete")` — register OAuth
+apps that can authenticate users via GitLab (SSO for other services, bot integrations).
+Fields: `name`, `redirect_uri`, `scopes` (`api`, `read_user`, `openid`, `profile`, `email`,
+etc.), `confidential`. Returns `application_id` + `secret` (relay immediately).
+
+## Two-factor enforcement
+
+Per-group: `require_two_factor_authentication: true` on the group (enforces 2FA for members).
+Instance-wide: `admin_settings(action="update", params={require_two_factor_authentication: true,
+two_factor_grace_period: 48}, confirm=true)` — grace period (hours) before enforced. **On CE**,
+enforcement is a soft block (user sees a "you must enable 2FA" screen); strong enforcement
+needs Premium. Pair with `two_factor_authentication`-enabled users list (`users(action="list",
+params={two_factor: false})`).
+
+## Email configuration (instance-wide)
+
+Service Desk, notifications, and signup-confirmation depend on the instance's email config (SMTP
+in `gitlab.rb`). **No API to set this** — it's in the SSH-only surface. Verify delivery:
+`admin_ops(area="features")` for any mail-related feature flags, or send a test by creating a
+broadcast message and watching the logs.
+
+## The SSH handoff pattern (when the API genuinely can't)
+
+For every "I need to: backup / restore / reconfigure / repair Rails / query the DB directly"
+request, the integration should:
+
+1. **Name the limit clearly**: *"This needs `gitlab-ctl reconfigure` on gh-git — no API exists."*
+2. **Hand off to the `ansible` agent** for this host: it can run the SSH command in a
+   zero-drift, gated way (edit Ansible source → converge).
+3. **Verify after**: many SSH actions have an API-visible effect — `gitlab_status()` for
+   service health, `admin_ops(area="sidekiq")` for queue recovery, `pipelines` for CI recovery.
+
+Do NOT pretend to do it via the API; do NOT hang trying endpoints that 404.

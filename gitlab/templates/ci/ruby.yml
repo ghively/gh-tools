@@ -1,0 +1,35 @@
+# Ruby — bundle install (cached), rubocop, rspec with JUnit output.
+default:
+  image: ruby:3.3-slim
+  cache:
+    key:
+      files: [Gemfile.lock]
+    paths: [vendor/bundle/]
+
+stages: [test]
+
+variables:
+  BUNDLE_PATH: "vendor/bundle"
+
+.rules: &rules
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+rubocop:
+  stage: test
+  script:
+    - bundle install --jobs $(nproc)
+    - bundle exec rubocop
+  rules: *rules
+
+rspec:
+  stage: test
+  script:
+    - bundle install --jobs $(nproc)
+    - bundle exec rspec --format RspecJunitFormatter --out rspec.xml
+  artifacts:
+    when: always
+    reports:
+      junit: rspec.xml
+    expire_in: 1 week
+  rules: *rules

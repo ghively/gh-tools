@@ -1,0 +1,9 @@
+{
+  "_comment": "Protected-tag standard ruleset — apply via protected(project, kind='tags', action='create', params=<this>, confirm=true). Default-branch equivalent of the standard branch preset, but for release tags.",
+  "_apply_with": "protected(project=<ns/name>, kind='tags', action='create', params=<strip-underscore-keys>)",
+  "name": "v*",
+  "create_access_level": 40,
+  "allowed_to_create": [
+    {"access_level": 40}
+  ]
+}

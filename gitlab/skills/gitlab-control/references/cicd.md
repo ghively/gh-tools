@@ -86,7 +86,105 @@ central to cross-project CI and to the GitLab-CI opencode/agent recipes.
   `CI_API_V4_URL`, `CI_SERVER_URL`, `CI_DEFAULT_BRANCH`.
 - **Lint before commit**: `POST /projects/:id/ci/lint {content}` validates in the project's context.
 
+## Resource groups (concurrency control, Free)
+
+`resource_groups` tool — limits how many jobs referencing the same resource key run concurrently.
+Job declares `resource_group: deploy-prod` in `.gitlab-ci.yml`; GitLab serializes jobs with the
+same key. Process modes (`resource_group_default_process_mode` on the project):
+- `unordered` (default) — a queued job waits for the running one to finish; order not guaranteed.
+- `ordered` — queued jobs run in the order they were created.
+- `oldest_first` — the oldest pending job (by creation) goes first.
+
+Manage via `resource_groups(project, action="list"|"get"|"upcoming_jobs"|"update")`. Use cases:
+serialize prod deploys, throttle DB migrations, prevent concurrent Docker tag pushes.
+
+## DAG: `needs` / `dependencies` / `parallel:matrix`
+
+- **`needs: [job_a, job_b]`** — this job starts as soon as its needs finish, **without waiting
+  for the whole stage**. Stages become a fallback ordering; `needs` creates a DAG. Artifacts from
+  `needs` jobs are downloaded automatically.
+- **`dependencies: [job_a]`** — override artifact downloading. Use when you want stage ordering
+  but only specific artifacts (or `dependencies: []` to skip artifact download entirely).
+- **`parallel: N`** — runs N copies of the job with `CI_NODE_INDEX` / `CI_NODE_TOTAL` injected.
+  Good for test-sharding.
+- **`parallel: matrix:`** — runs the job once PER combination of variables:
+  ```yaml
+  test:
+    parallel:
+      matrix:
+        - REGION: [us, eu]
+          SUITE: [unit, integration]
+    script: ./run-tests "${REGION}" "${SUITE}"
+  ```
+  Produces 4 jobs (`us/unit`, `us/integration`, `eu/unit`, `eu/integration`), each with distinct
+  `CI_NODE_*` and the variables set. Pair with `needs:` referencing a specific matrix instance:
+  `needs: ["test: [us, unit]"]`.
+
+## Rules (the modern `if`/`changes`/`exists`/`when` system)
+
+- **`workflow: rules:`** — top-level; decides whether a pipeline runs AT ALL. Combine with
+  `auto_cancel_pending_pipelines` on the project to de-dupe branch pushes.
+- **Per-job `rules:`** — list of `{if, changes, exists, when, allow_failure, variables}`.
+  Evaluated in order; first match wins; if none match, the job is `never`.
+- **`changes:`** — paths (glob); job runs only if those paths changed in the push/MR. Pairs with
+  `if:` to scope: `if: $CI_PIPELINE_SOURCE == "merge_request_event"; changes: [src/**/*]`.
+- **`exists:`** — run only if a file exists at pipeline-creation time (e.g. `exists: [Dockerfile]`).
+- **Avoid mixing `rules:` with `only/except:`** — deprecated and confusing. `rules:` is the future.
+
+## Manual / delayed / retry / timeout
+
+- **`when: manual`** — job must be triggered by hand (UI or `jobs(action="play")`). The pipeline
+  shows as `blocked` until played. Pair with `environment:` for deploy gates.
+- **`when: delayed` + `start_in: 5 minutes`** — auto-run after a delay (rate limiting, blue/green).
+- **`retry: N`** or `retry: {max: 2, when: [runner_system_failure, stuck_or_timeout_failure]}` —
+  automatic retry on specific failure types. The job's `CI_JOB_STATUS` reflects the final attempt.
+- **`timeout: 2 hours`** (per-job) overrides the project default `build_timeout` (default 1h; cap
+  via `manage_project(..., params={build_timeout: SECONDS})`).
+
+## Environments & deployment jobs
+
+```yaml
+deploy:staging:
+  environment: { name: staging, url: https://staging.example.com }
+  script: ./deploy.sh staging
+  rules: [{if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH}]
+
+deploy:prod:
+  environment: { name: production, url: https://example.com }
+  script: ./deploy.sh prod
+  when: manual
+  rules: [{if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH}]
+```
+Environments are first-class via `environments(project, action=...)`. `deployment_tier` on the
+environment (production/staging/testing/development/other) drives the UI grouping. Stop an
+environment (spin down review apps): `environments(action="stop", environment_id=N, confirm=true)`.
+**Protected environments** (which roles can deploy) are Premium.
+
+## Secure files in CI
+
+Files managed via `secure_files(project, action=...)` are downloaded into the job workspace by
+the runner. Reference in `.gitlab-ci.yml`:
+```yaml
+prepare:
+  script:
+    - curl -s --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+        "$CI_API_V4_URL/projects/$CI_PROJECT_ID/secure_files/<id>/download" -o ~/.kube/config
+```
+Use for: kubeconfigs, .npmrc, gcloud service-account JSON, signing keys — anything too long or
+too binary for a masked variable.
+
+## `.gitlab-ci.yml` include patterns
+
+- **`include: local:`** — another file in the same repo. Good for splitting a long config.
+- **`include: project:` + `file:` + `ref:`** — from another project on this instance. Good for
+  org-wide job templates.
+- **`include: remote:`** — a URL. Avoid for security (the remote can change).
+- **`include: template:`** — GitLab's built-in templates (`Security/SAST.gitlab-ci.yml` etc.).
+- **`include: component:`** — CI Catalog components: `git.hively.dev/<path>@<version>`. Publish
+  your own via `git push` to a project with the catalog feature on; version by tag.
+
 ## CE vs EE (CI/CD)
 Free: pipelines, jobs, artifacts, triggers, schedules, variables, runners, environments, releases,
-feature flags, CI lint, child/parent pipelines. EE: merge trains, deployment approvals, protected-
-environment approval rules, release evidence, multi-project pipeline graph visualization.
+feature flags, CI lint, child/parent pipelines, resource groups, secure files, matrix, DAG.
+EE: merge trains, deployment approvals, protected-environment approval rules, release evidence,
+multi-project pipeline graph visualization, CI/CD for external repos (GitHub PR mirroring).
