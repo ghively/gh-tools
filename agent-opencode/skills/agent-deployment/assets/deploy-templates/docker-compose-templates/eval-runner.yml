@@ -1,0 +1,23 @@
+# Eval runner: batch evaluator that runs an eval suite and exits.
+# Pair with any framework's Dockerfile. Exit code 0 = pass; 1 = regression.
+
+services:
+  eval-runner:
+    build: .
+    container_name: agent-eval-runner
+    restart: "no"
+    environment:
+      ZAI_API_KEY: ${ZAI_API_KEY}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://open.bigmodel.cn/api/paas/v4/}
+      OPENAI_API_KEY: ${ZAI_API_KEY}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./evals:/evals:ro           # the eval cases
+      - ./baseline.json:/baseline.json:ro
+      - ./runs:/runs                # run records
+    working_dir: /evals
+    # Run the suite, compare to baseline, exit with status
+    command: ["python", "run_evals.py", "--baseline", "/baseline.json", "--output", "/runs/$(date +%Y%m%d-%H%M%S).json"]
+    logging:
+      driver: json-file
+      options: {max-size: "50m", max-file: "3"}

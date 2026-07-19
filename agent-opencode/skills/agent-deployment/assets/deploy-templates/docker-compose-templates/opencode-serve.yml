@@ -1,0 +1,42 @@
+# OpenCode in `serve` mode (headless server).
+# Pair with the OpenCode Dockerfile in opencode-container-deploy.md.
+
+services:
+  opencode:
+    build: .
+    container_name: opencode
+    restart: unless-stopped
+    volumes:
+      # The agent-opencode package (skills, agents, plugins)
+      - ./agent-opencode:/home/opencode/.config/opencode/agent-opencode:ro
+      # The 14 /agent-foundry-* commands
+      - ./commands:/home/opencode/.config/opencode/commands:ro
+      # The opencode.json (provider config + safety floor + agents)
+      - ./opencode.json:/home/opencode/.config/opencode/opencode.json:ro
+      # Persistent state (sessions, memory, traces)
+      - opencode-state:/home/opencode/.local/share/opencode
+      # Workspace
+      - ./workspace:/workspace
+    working_dir: /workspace
+    environment:
+      # Provider
+      ZAI_API_KEY: ${ZAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # Ops
+      TZ: ${TZ:-UTC}
+      OPENCODE_LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "4096:4096"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:4096/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: json-file
+      options: {max-size: "50m", max-file: "5"}
+
+volumes:
+  opencode-state: {}

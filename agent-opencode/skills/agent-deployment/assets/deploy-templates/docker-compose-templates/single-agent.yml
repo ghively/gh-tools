@@ -1,0 +1,77 @@
+# Single-agent production deploy: agent + Postgres + Redis
+# Pair with any framework's Dockerfile (see framework-deploy-matrix.md).
+
+services:
+  agent:
+    build: .
+    container_name: ${AGENT_NAME:-agent}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Provider (one or more — see zai-provider-config.md)
+      ZAI_API_KEY: ${ZAI_API_KEY}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://open.bigmodel.cn/api/paas/v4/}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Session store
+      DATABASE_URL: postgresql://${PGUSER:-agent}:${PGPASSWORD}@postgres:5432/${PGDB:-agent}
+      # Cache
+      REDIS_URL: redis://redis:6379/0
+      # Observability
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_ENDPOINT:-}
+      OTEL_SERVICE_NAME: ${AGENT_NAME:-agent}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - ./workspace:/workspace
+    working_dir: /workspace
+    ports:
+      - "${AGENT_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options: {max-size: "50m", max-file: "5"}
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: ${AGENT_NAME:-agent}-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PGUSER:-agent}
+      POSTGRES_PASSWORD: ${PGPASSWORD}
+      POSTGRES_DB: ${PGDB:-agent}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PGUSER:-agent} -d ${PGDB:-agent}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options: {max-size: "20m", max-file: "3"}
+
+  redis:
+    image: redis:7-alpine
+    container_name: ${AGENT_NAME:-agent}-cache
+    restart: unless-stopped
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  pg-data: {}
+  redis-data: {}
