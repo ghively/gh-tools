@@ -147,6 +147,7 @@ See the `agent-evals` skill for governance and regression case design. A layer t
 | `references/sandboxing-tiers.md` | Choosing rootless containers, hardening, gVisor, Kata, microVMs, egress, and filesystem scoping |
 | `references/guardrails.md` | Designing input/output/dialog/retrieval/tool rails and understanding their limits |
 | `references/security-audit-checklist.md` | Auditing third-party plugins, skills, scripts, hooks, and MCP servers before install |
+| `references/framework-safety-matrix.md` | Per-framework safety primitives for all 13 harnesses (Claude Agent SDK, OpenAI Agents SDK, Copilot SDK, Google ADK, MAF, LangGraph, CrewAI, LlamaIndex, Pydantic AI, smolagents, Vercel AI SDK, Mastra, custom loop) — tool allowlists, permission modes, pre/post-tool hooks, HITL gates, sandbox; universal patterns (permission wrapper, audit hook, destructive-tool gate); what the agent-foundry safety floor adds beneath each framework |
 | `references/deterministic-hooks.md` | Understanding, testing, and safely extending the shipped safety hooks |
 | `references/tool-policy.md` | Writing OpenCode permission rules and choosing read-only/scoped/full operator posture |
 | `references/multi-tenant-isolation.md` | One agent deployment serves many tenants: per-tenant credential brokering, memory/RAG index isolation, per-tenant rate/cost limits, tenant-aware audit, and blast-radius design |
