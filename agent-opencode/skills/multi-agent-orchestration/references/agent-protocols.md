@@ -129,6 +129,59 @@ Choosing between them is mostly a governance question. If you need a clear audit
 
 These compose. A common production shape is orchestrator-mediated *with* a shared state board (the orchestrator owns the board; workers read/write records with provenance). Pure peer-to-peer with no shared state is the hardest to operate and should be a deliberate choice, not an accident.
 
+## Consensus Mechanisms
+
+Consensus is the hardest coordination model to get right with LLM-based
+agents. The default posture: **prefer orchestrator-mediated collation over
+multi-agent voting.**
+
+### Consensus vs Collation
+
+| Pattern | How | Strengths | Weaknesses |
+|---|---|---|---|
+| **Collation** (recommended) | Orchestrator reads all reviewers' findings and decides. Each reviewer is a tool; the orchestrator is the decider | Cheap (N parallel reads, 1 decision); deterministic decision locus; easy audit | Orchestrator is the single point of failure; blind spots in the orchestrator carry through |
+| **Majority vote** | N agents vote; majority wins | Reduces individual agent bias | Generates false consensus (all agents share the same LLM bias); majority is not truth |
+| **Weighted vote** | Each agent's vote carries a weight (specialty, calibration) | Better when agents have genuinely different strengths | Weight calibration requires historical accuracy data; adding another tuneable |
+| **Unanimous consent** | All must agree to proceed. The most conservative posture | Highest safety on false negatives | Amplifies false positives; one overcautious agent blocks everything; slowest |
+
+### When Consensus Is Appropriate
+
+- The cost of a false negative (shipping a dangerous decision) is
+  catastrophic — safety-critical systems, financial settlement, medical
+  dosing.
+- Agents are genuinely independent — different models, different
+  providers, different prompt-engineering choices. Voting across
+  homogeneous agents is theater.
+- There is an operator bypass path — if consensus deadlocks, a human
+  breaks the tie.
+
+### When Consensus Is NOT Appropriate
+
+- All agents share the same model/provider/prompt family. The vote is
+  a single LLM's opinion repeated N times — no diversity, false sense of
+  security.
+- The cost of a false positive matters — one overcautious agent blocking
+  a legitimate action creates a bottleneck.
+- Latency budget is tight — consensus serializes the slowest agent.
+
+## Agent Marketplaces
+
+A marketplace (open agent discovery, dynamic registration, anyone-can-publish)
+is a supply-chain risk, not a protocol problem. Treat as untrusted code:
+
+| Concern | Mitigation |
+|---|---|
+| **Trust model** | Every agent from the marketplace is untrusted until audited. Run in a sandbox. Limit its tool surface. |
+| **Discovery** | A2A Agent Cards provide structured discovery (name, capabilities, version, attestation). Prefer A2A cards over ad-hoc discovery. |
+| **Execution boundary** | Never run a marketplace agent with your full tool surface. It gets exactly the tools it claims to need, verified against its agent card. |
+| **Audit requirement** | Audit marketplace agents against the `security-audit-checklist.md` in `agent-safety`. The checklist covers: source review, permission claims vs actual tools, dependency chain, sandbox profile. |
+| **Provenance** | Where did this agent come from? Who built it? When was it last updated? Is it signed? The marketplace must answer these before you trust it. |
+| **Containment** | Run marketplace agents in a container with: read-only root, no network egress (except provider API), drop all capabilities, seccomp profile. See `agent-safety/references/sandboxing-tiers.md`. |
+
+The posture: "discovery is the proxy; audit is the gate." Finding an agent
+in a marketplace is step 1; auditing it is step 2; deploying it is step 3.
+Never skip step 2.
+
 ## Honest Assessment
 
 Production-ready today: explicit orchestrator-worker code, LangGraph-style graphs, MCP tools, and framework-native handoffs where you control both ends. Emerging: cross-vendor A2A ecosystems and fully dynamic agent discovery. Treat open-ended agent marketplaces as untrusted code until audited.
