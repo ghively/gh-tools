@@ -7,14 +7,30 @@ discrepancies.
 
 ## 1Password
 
-**None.** Tdarr does not traditionally use API keys. The optional `api_key`
-config field is for users who front Tdarr with an auth proxy.
+**Tdarr Server is currently unauthenticated.** If you later enable Tdarr
+auth (set `auth=true` env on the server), generate an API key via the
+web UI's Tools → API Keys page, store it in 1Password (vault: `Gregory`),
+and reference it in `config.local.json` as `api_key` with
+`api_key_header: "X-API-Key"`.
+
+For automated deploys, the server takes a `seededApiKey` env var (must
+start with `tapi_`, ≥14 chars). See `integrations.md`.
 
 ## Auth
 
-Per the docs: **no authentication**. The API trusts the LAN like the *arr stack.
-Optional `api_key` field in config supports passing a token via configurable
-header (default `X-API-Key`) for users behind an auth proxy.
+Tdarr has **two modes**:
+
+1. **Unauthenticated (default, `auth=false`)**: API wide-open on the LAN.
+   Suitable for isolated home networks; same trust model as the *arr stack.
+   Your current setup.
+2. **Authenticated (`auth=true`)**: Tdarr Server prompts for username +
+   password on first web-UI visit; generate API keys via Tools → API Keys.
+   Nodes + this MCP plugin pass the key in the `X-API-Key` header (or
+   whatever you configure via `api_key_header`). **Required when
+   `enableUnmappedNodes=true`** — unmapped nodes expose library files over
+   the API.
+
+Always enable auth before exposing Tdarr outside the trusted LAN.
 
 ## Conventions
 
