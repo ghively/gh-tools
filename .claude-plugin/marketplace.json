@@ -66,23 +66,23 @@
     {
       "name": "radarr-control",
       "source": "./radarr-control",
-      "description": "Full control of a Radarr movie manager (built with deep-integration-builder, live-verified on Radarr 6.3.0.10514). Generic passthrough over all ~50 hand-enumerated /api/v3 endpoints (Radarr publishes no OpenAPI) plus ~22 curated tools for status, library (movies, collections, files, lookup/add/update/delete with confirm-gating), activity (wanted missing/cutoff, calendar, queue, history, blocklist), commands (RefreshMovie/MoviesSearch/etc), and config (quality profiles, root folders, tags, languages, notifications, download clients, indexers, import lists, custom formats). API key from 1Password (Gregory vault). All writes confirm-gated; POST /command triggers active work.",
+      "description": "Control of a Radarr movie manager (built with deep-integration-builder, live-verified on Radarr 6.3.0.10514). Generic passthrough over the FULL /api/v3 surface (467 operations, discovered live via /system/routes — Radarr publishes no OpenAPI) + 42 curated tools for status, library (movies/collections/files/lookup/add/update/delete/bulk-edit), activity (wanted missing+cutoff, calendar, queue with delete+grab, history, blocklist delete, manual import), commands, parse, filesystem browse, log files, config sections (host/ui/mediamanagement/indexer/etc), tag CRUD, provider test, system restart/shutdown (double-gated). Every operation annotated in radarr_list_endpoints as curated vs generic-only. API key from 1Password (Gregory vault). All writes confirm-gated.",
       "category": "media",
-      "version": "0.1.0"
+      "version": "0.2.0"
     },
     {
       "name": "sonarr-control",
       "source": "./sonarr-control",
-      "description": "Full control of a Sonarr TV-series manager (built with deep-integration-builder, live-verified on Sonarr 4.0.18.2978). Generic passthrough over all ~55 hand-enumerated /api/v3 endpoints plus ~24 curated tools for status, library (series with seasons and episodes, per-season monitoring toggle, lookup/add/update/delete with confirm-gating), activity (wanted missing/cutoff per-episode, calendar per-airing, queue, history incl per-series, blocklist), commands (RefreshSeries/SeriesSearch/SeasonSearch/EpisodeSearch/etc), and config (quality + language profiles, root folders, tags, notifications, download clients, indexers, import lists). API key from 1Password (Gregory vault). All writes confirm-gated.",
+      "description": "Control of a Sonarr TV-series manager (built with deep-integration-builder, live-verified on Sonarr 4.0.18.2978). Generic passthrough over the FULL /api/v3 surface (463 operations, discovered live via /system/routes) + 44 curated tools for status, library (series with seasons+episodes, per-season monitoring toggle, lookup/add/update/delete/bulk-edit, episode files), activity (wanted missing+cutoff per-episode, calendar per-airing, queue with delete+grab, history incl per-series+since, blocklist delete, manual import), commands, parse, filesystem, log files, config sections, tag CRUD, provider test, system restart/shutdown (double-gated). Every operation annotated as curated vs generic-only in sonarr_list_endpoints. API key from 1Password (Gregory vault). All writes confirm-gated.",
       "category": "media",
-      "version": "0.1.0"
+      "version": "0.2.0"
     },
     {
       "name": "sabnzbd-control",
       "source": "./sabnzbd-control",
-      "description": "Full control of a SABnzbd usenet downloader (built with deep-integration-builder, live-verified on SABnzbd 5.0.4). Generic passthrough over the hand-enumerated mode-based HTTP API plus ~14 curated tools for status, version, queue, history, server stats, warnings, get_config; queue control (pause/resume/speed limit), job management (add by URL, delete, retry, set_config); and lifecycle control (restart/shutdown DOUBLY-gated with a typed acknowledge token, because SABnzbd honors mode=shutdown literally with no auto-restart on this homelab). API key from 1Password (Gregory vault).",
+      "description": "Control of a SABnzbd usenet downloader (built with deep-integration-builder, live-verified on SABnzbd 5.0.4). Generic passthrough over the hand-enumerated mode-based HTTP API + 21 curated tools for status, version, queue, history, server stats, warnings, get_config, categories, scripts; queue control (pause/resume/speed limit), job management (add by URL or server-side local file, delete, retry, change category/priority, clear history), set_config, test_email; and lifecycle control (restart/shutdown DOUBLY-gated with a typed acknowledge token, because SABnzbd honors mode=shutdown literally with no auto-restart on this homelab). API key from 1Password (Gregory vault).",
       "category": "media",
-      "version": "0.1.0"
+      "version": "0.2.0"
     }
   ]
 }
