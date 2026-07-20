@@ -1561,6 +1561,229 @@ def radarr_system_shutdown(confirm: bool = False, acknowledge: str = "") -> Any:
         return _err(e)
 
 
+@mcp.tool()
+def radarr_crud(resource: str, action: str, id: Optional[int] = None,
+                data: str = "", confirm: bool = False) -> Any:
+    """Generic CRUD wrapper for Radarr resources that follow the standard
+    list/get/create/update/delete/bulk pattern. Use this for the long tail of
+    config entities — notifications, download clients, indexers, import lists,
+    metadata, quality profiles, custom formats, delay/release profiles, root
+    folders, remote path mappings, auto-tagging, custom filters, exclusions.
+
+    Most resources support: list, get, create, update, delete. Some support
+    bulk_update / bulk_delete (POST/PUT/DELETE on /{resource}/bulk). Providers
+    (notification / downloadclient / indexer / importlist / metadata) support
+    schema (the implementation templates) and testall (test every configured
+    instance).
+
+    Args:
+        resource: One of: notification, downloadclient, indexer, importlist,
+            metadata, qualityprofile, customformat, delayprofile,
+            releaseprofile, rootfolder, remotepathmapping, autoTagging,
+            customFilter, exclusions.
+        action: One of: list, get, schema, create, update, delete,
+            bulk_update, bulk_delete, testall.
+        id: Resource id (required for get/update/delete; ignored otherwise).
+        data: JSON body string. Required for create/update/bulk_update. For
+            bulk_delete pass '{"ids": [1, 2, 3]}'. For create/update of a
+            provider (notification/downloadclient/etc.), GET the schema first
+            to see required fields, then construct the definition. Example
+            for create: data='{"name":"Discord","implementation":"Discord",
+            "configContract":"discordSettings","fields":[{"name":"webhookUrl",
+            "value":"https://discord.com/api/webhooks/..."}],
+            "supportsOnGrab":true}'.
+        confirm: Must be true for create/update/delete/bulk_* (mutates live
+            config).
+    """
+    try:
+        RESOURCE_ALIASES = {
+            "qualityprofile": "qualityProfile",
+            "customformat": "customFormat",
+            "delayprofile": "delayProfile",
+            "releaseprofile": "releaseProfile",
+            "rootfolder": "rootFolder",
+            "remotepathmapping": "remotePathMapping",
+            "autotagging": "autoTagging",
+            "customfilter": "customFilter",
+            "exclusions": "exclusions",
+        }
+        res_lc = (resource or "").strip().lower()
+        if not res_lc:
+            raise RadarrError("resource is required")
+        res = RESOURCE_ALIASES.get(res_lc, res_lc)
+        valid_actions = ("list", "get", "schema", "create", "update", "delete",
+                         "bulk_update", "bulk_delete", "testall")
+        act = (action or "").strip().lower()
+        if act not in valid_actions:
+            raise RadarrError(f"action must be one of {valid_actions}; got {action!r}")
+        # Reads — no confirm needed
+        if act == "list":
+            return _finish(CLIENT.request("GET", f"/api/v3/{res}"))
+        if act == "schema":
+            return CLIENT.request("GET", f"/api/v3/{res}/schema")
+        if act == "get":
+            if id is None:
+                raise RadarrError("id is required for get")
+            return CLIENT.request("GET", f"/api/v3/{res}/{int(id)}")
+        if act == "testall":
+            return CLIENT.request("POST", f"/api/v3/{res}/testall")
+        # Writes — confirm-gated
+        if not confirm:
+            return _need_confirm(f"{act} {resource} id={id} data={data[:200]}")
+        body = _parse_json_arg("data", data)
+        if act == "create":
+            if body is None:
+                raise RadarrError("data is required for create")
+            return CLIENT.request("POST", f"/api/v3/{res}", body=body)
+        if act == "update":
+            if id is None:
+                raise RadarrError("id is required for update")
+            if body is None:
+                raise RadarrError("data is required for update (full object)")
+            return CLIENT.request("PUT", f"/api/v3/{res}/{int(id)}", body=body)
+        if act == "delete":
+            if id is None:
+                raise RadarrError("id is required for delete")
+            CLIENT.request("DELETE", f"/api/v3/{res}/{int(id)}")
+            return {"deleted": True, "resource": resource, "id": int(id)}
+        if act == "bulk_update":
+            if not isinstance(body, list):
+                raise RadarrError("data must be a JSON array of full objects for bulk_update")
+            return CLIENT.request("PUT", f"/api/v3/{res}/bulk", body=body)
+        if act == "bulk_delete":
+            if not isinstance(body, dict) or "ids" not in body:
+                raise RadarrError("data must be {\"ids\": [...]} for bulk_delete")
+            return CLIENT.request("DELETE", f"/api/v3/{res}/bulk", body=body)
+        raise RadarrError(f"unhandled action {act}")
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_blocklist_bulk_delete(ids: list, confirm: bool = False) -> Any:
+    """Remove multiple entries from the blocklist in one call. WRITES: confirm-gated."""
+    try:
+        if not ids:
+            raise RadarrError("ids must be non-empty")
+        if not confirm:
+            return _need_confirm(f"bulk-delete blocklist ids {ids}")
+        return CLIENT.request("DELETE", "/api/v3/blocklist/bulk", body={"ids": list(ids)})
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_movies_bulk_delete(movie_ids: list, delete_files: bool = False,
+                               add_import_exclusion: bool = False,
+                               confirm: bool = False) -> Any:
+    """Delete multiple movies in one call. WRITES: confirm-gated. IRREVERSIBLE
+    if delete_files=True.
+
+    Args:
+        movie_ids: List of Radarr movie ids.
+        delete_files: Also delete the movie files from disk.
+        add_import_exclusion: Add to import-exclusion list.
+        confirm: Must be true.
+    """
+    try:
+        if not movie_ids:
+            raise RadarrError("movie_ids must be non-empty")
+        if not confirm:
+            return _need_confirm(
+                f"bulk-delete movies {movie_ids} "
+                f"(delete_files={delete_files}, add_import_exclusion={add_import_exclusion})"
+            )
+        body: dict = {"movieIds": list(movie_ids),
+                      "addImportExclusion": bool(add_import_exclusion),
+                      "deleteFiles": bool(delete_files)}
+        return CLIENT.request("DELETE", "/api/v3/movie/editor", body=body)
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_queue_bulk_delete(queue_ids: list, blacklist: bool = False,
+                              remove_from_client: bool = False,
+                              confirm: bool = False) -> Any:
+    """Remove multiple items from the queue in one call. WRITES: confirm-gated.
+
+    Args:
+        queue_ids: List of queue record ids.
+        blacklist: Add releases to blocklist so they won't be re-grabbed.
+        remove_from_client: Also delete downloads from the download client.
+        confirm: Must be true.
+    """
+    try:
+        if not queue_ids:
+            raise RadarrError("queue_ids must be non-empty")
+        if not confirm:
+            return _need_confirm(
+                f"bulk-delete queue ids {queue_ids} "
+                f"(blacklist={blacklist}, remove_from_client={remove_from_client})"
+            )
+        body: dict = {"ids": list(queue_ids),
+                      "blacklist": bool(blacklist),
+                      "removeFromClient": bool(remove_from_client)}
+        return CLIENT.request("DELETE", "/api/v3/queue/bulk", body=body)
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_provider_action(provider_type: str, id: int, action_name: str,
+                            confirm: bool = False, **extra: Any) -> Any:
+    """Invoke a provider-specific action (e.g. importlist "refreshMovies" /
+    metadata "getMovies" / notification "test"). WRITE: confirm-gated.
+
+    Args:
+        provider_type: notification, downloadclient, indexer, importlist, metadata.
+        id: Provider id.
+        action_name: The action name (per the provider's contract).
+        confirm: Must be true.
+        extra: Pass-through extra params.
+    """
+    try:
+        pt = (provider_type or "").lower().strip()
+        if pt not in ("notification", "downloadclient", "indexer",
+                      "importlist", "metadata"):
+            raise RadarrError(f"provider_type must be notification/downloadclient/"
+                              f"indexer/importlist/metadata")
+        if not action_name:
+            raise RadarrError("action_name is required")
+        if not confirm:
+            return _need_confirm(f"action '{action_name}' on {pt}/{id}")
+        body = {"name": action_name, **extra}
+        return CLIENT.request("POST", f"/api/v3/{pt}/action/{int(id)}", body=body)
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_calendar_ics(start: str = "", end: str = "", tags: str = "",
+                        unmonitored: bool = False) -> Any:
+    """Fetch the iCalendar feed of upcoming movie releases (the .ics payload).
+    Returns the raw iCalendar text — useful for importing into a calendar app.
+
+    Args:
+        start: YYYY-MM-DD (default 7 days ago).
+        end: YYYY-MM-DD (default +90 days).
+        tags: Optional comma-separated tag filter.
+        unmonitored: Include unmonitored movies.
+    """
+    import datetime as dt
+    try:
+        today = dt.date.today()
+        params = {
+            "start": start or (today - dt.timedelta(days=7)).isoformat(),
+            "end": end or (today + dt.timedelta(days=90)).isoformat(),
+        }
+        if tags: params["tags"] = tags
+        if unmonitored: params["unmonitored"] = "true"
+        return CLIENT.request("GET", "/feed/v3/calendar/radarr.ics", params=params, raw=True)
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
 # --------------------------------------------------------------------------- #
 # Curated-tool registry — drives the `curated: True/False` annotation in      #
 # radarr_list_endpoints so the user sees at-a-glance what's ergonomic vs       #
@@ -1649,6 +1872,78 @@ CURATED_TOOLS: dict[tuple[str, str], str] = {
     ("POST", "/api/v3/indexer/test"):                 "radarr_provider_test",
     ("POST", "/api/v3/importlist/test"):              "radarr_provider_test",
     ("POST", "/api/v3/metadata/test"):                "radarr_provider_test",
+    # CRUD-wrapped resources (radarr_crud + bulk tools)
+    ("GET", "/api/v3/notification/{id}"):             "radarr_crud",
+    ("POST", "/api/v3/notification"):                 "radarr_crud",
+    ("PUT", "/api/v3/notification/{id}"):             "radarr_crud",
+    ("DELETE", "/api/v3/notification/{id}"):          "radarr_crud",
+    ("POST", "/api/v3/notification/testall"):         "radarr_crud",
+    ("POST", "/api/v3/notification/action/{id}"):     "radarr_provider_action",
+    ("GET", "/api/v3/downloadclient/{id}"):           "radarr_crud",
+    ("POST", "/api/v3/downloadclient"):               "radarr_crud",
+    ("PUT", "/api/v3/downloadclient/{id}"):           "radarr_crud",
+    ("DELETE", "/api/v3/downloadclient/{id}"):        "radarr_crud",
+    ("POST", "/api/v3/downloadclient/testall"):       "radarr_crud",
+    ("GET", "/api/v3/indexer/{id}"):                  "radarr_crud",
+    ("POST", "/api/v3/indexer"):                      "radarr_crud",
+    ("PUT", "/api/v3/indexer/{id}"):                  "radarr_crud",
+    ("DELETE", "/api/v3/indexer/{id}"):               "radarr_crud",
+    ("POST", "/api/v3/indexer/testall"):              "radarr_crud",
+    ("GET", "/api/v3/importlist/{id}"):               "radarr_crud",
+    ("POST", "/api/v3/importlist"):                   "radarr_crud",
+    ("PUT", "/api/v3/importlist/{id}"):               "radarr_crud",
+    ("DELETE", "/api/v3/importlist/{id}"):            "radarr_crud",
+    ("POST", "/api/v3/importlist/testall"):           "radarr_crud",
+    ("POST", "/api/v3/importlist/action/{id}"):       "radarr_provider_action",
+    ("GET", "/api/v3/metadata/{id}"):                 "radarr_crud",
+    ("POST", "/api/v3/metadata"):                     "radarr_crud",
+    ("PUT", "/api/v3/metadata/{id}"):                 "radarr_crud",
+    ("DELETE", "/api/v3/metadata/{id}"):              "radarr_crud",
+    ("POST", "/api/v3/metadata/testall"):             "radarr_crud",
+    ("POST", "/api/v3/metadata/action/{id}"):         "radarr_provider_action",
+    ("GET", "/api/v3/qualityProfile/{id}"):           "radarr_crud",
+    ("POST", "/api/v3/qualityProfile"):               "radarr_crud",
+    ("PUT", "/api/v3/qualityProfile/{id}"):           "radarr_crud",
+    ("DELETE", "/api/v3/qualityProfile/{id}"):        "radarr_crud",
+    ("GET", "/api/v3/qualityprofile/schema"):         "radarr_crud",
+    ("GET", "/api/v3/customFormat/{id}"):             "radarr_crud",
+    ("POST", "/api/v3/customFormat"):                 "radarr_crud",
+    ("PUT", "/api/v3/customFormat/{id}"):             "radarr_crud",
+    ("DELETE", "/api/v3/customFormat/{id}"):          "radarr_crud",
+    ("GET", "/api/v3/customformat/schema"):           "radarr_crud",
+    ("GET", "/api/v3/delayProfile/{id}"):             "radarr_crud",
+    ("POST", "/api/v3/delayProfile"):                 "radarr_crud",
+    ("PUT", "/api/v3/delayProfile/{id}"):             "radarr_crud",
+    ("DELETE", "/api/v3/delayProfile/{id}"):          "radarr_crud",
+    ("GET", "/api/v3/releaseProfile/{id}"):           "radarr_crud",
+    ("POST", "/api/v3/releaseProfile"):               "radarr_crud",
+    ("PUT", "/api/v3/releaseProfile/{id}"):           "radarr_crud",
+    ("DELETE", "/api/v3/releaseProfile/{id}"):        "radarr_crud",
+    ("GET", "/api/v3/rootFolder/{id}"):               "radarr_crud",
+    ("POST", "/api/v3/rootFolder"):                   "radarr_crud",
+    ("DELETE", "/api/v3/rootFolder/{id}"):            "radarr_crud",
+    ("GET", "/api/v3/remotePathMapping/{id}"):        "radarr_crud",
+    ("POST", "/api/v3/remotePathMapping"):            "radarr_crud",
+    ("PUT", "/api/v3/remotePathMapping/{id}"):        "radarr_crud",
+    ("DELETE", "/api/v3/remotePathMapping/{id}"):     "radarr_crud",
+    ("GET", "/api/v3/autoTagging/{id}"):              "radarr_crud",
+    ("POST", "/api/v3/autoTagging"):                  "radarr_crud",
+    ("PUT", "/api/v3/autoTagging/{id}"):              "radarr_crud",
+    ("DELETE", "/api/v3/autoTagging/{id}"):           "radarr_crud",
+    ("GET", "/api/v3/autotagging/schema"):            "radarr_crud",
+    ("GET", "/api/v3/customFilter/{id}"):             "radarr_crud",
+    ("POST", "/api/v3/customFilter"):                 "radarr_crud",
+    ("PUT", "/api/v3/customFilter/{id}"):             "radarr_crud",
+    ("DELETE", "/api/v3/customFilter/{id}"):          "radarr_crud",
+    ("GET", "/api/v3/exclusions/{id}"):               "radarr_crud",
+    ("POST", "/api/v3/exclusions"):                   "radarr_crud",
+    ("PUT", "/api/v3/exclusions/{id}"):               "radarr_crud",
+    ("DELETE", "/api/v3/exclusions/{id}"):            "radarr_crud",
+    # Bulk operations
+    ("DELETE", "/api/v3/blocklist/bulk"):             "radarr_blocklist_bulk_delete",
+    ("DELETE", "/api/v3/movie/editor"):               "radarr_movies_bulk_delete",
+    ("DELETE", "/api/v3/queue/bulk"):                 "radarr_queue_bulk_delete",
+    ("GET", "/feed/v3/calendar/radarr.ics"):          "radarr_calendar_ics",
 }
 
 
