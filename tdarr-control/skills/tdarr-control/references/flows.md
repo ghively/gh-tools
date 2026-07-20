@@ -139,6 +139,57 @@ END ◄────────────────────────�
 The flow version is more explicit about what happens after each step (vs the
 implicit "fall through to next plugin" of the stack).
 
+## Flow plugin system — TypeScript + templating
+
+Flow plugins are written in **TypeScript** (compiled to JavaScript). The
+source lives in `HaveAGitGat/Tdarr_Plugins/FlowPluginsTs/CommunityFlowPlugins/`,
+categorized by purpose (audio, video, helpers, tools, etc.).
+
+Each plugin receives an `args` object with the full file context.
+
+### Variable templating
+
+In any flow-plugin input field, you can template values from `args`:
+
+| Template | Resolves to |
+|---|---|
+| `{{{args.inputFileObj._id}}}` | Current file path |
+| `{{{args.inputFileObj.fileSize}}}` | File size in bytes |
+| `{{{args.inputFileObj.mediaInfo.track.0.BitRate}}}` | First track's bitrate (array index starts at 0) |
+| `{{{args.inputFileObj.mediaInfo.track.1.CodecID}}}` | Second track's codec ID |
+| `{{{args.userVariables.global.<name>}}}` | A global variable (set on Tools tab) |
+| `{{{args.userVariables.library.<name>}}}` | A per-library variable (set on Libraries tab) |
+
+This is **huge** for DRY. One flow can:
+- Use different CQ values per library (`{{{args.userVariables.library.cq}}}`).
+- Send a webhook with the filename in the body (`Send Web Request` plugin).
+- Decide based on stream count, codec, bitrate, etc.
+
+### Global vs library variables
+
+- **Global** (Tools tab): server-wide. Use for API keys, webhook URLs, "default" values.
+- **Library** (Libraries tab → Library Variables): per-library. Use for
+  per-library quality targets, language preferences, etc.
+
+### Flow plugin categories
+
+The flow plugin catalog (in `FlowPluginsTs/CommunityFlowPlugins/`) is
+organized by directory. Categories include:
+
+- `audio/` — audio-stream filters + actions (check bitrate, codec, channel
+  count, add/remove/convert audio).
+- `video/` — video-stream filters + actions (codec, resolution, bit depth,
+  HDR detection, transcode).
+- `containers/` — container filters + remux actions.
+- `subtitles/` — subtitle filters + actions.
+- `helpers/` — generic helpers (Send Web Request, Run Classic Plugin, etc.).
+- `tools/` — `Worker Type` (route to mapped/unmapped/etc. tagged nodes),
+  `Requeue` (loop back in the flow), `Tags` operations.
+
+The `Worker Type` flow node is what enables **flow-based worker routing**:
+set the node tag and only matching nodes pick up that step. Critical for
+mixed-node fleets (GPU node vs CPU node, mapped vs unmapped, etc.).
+
 ## Live flow data on gh-nvidia
 
 Currently (2026-07-20, fresh Tdarr deploy) there are **zero flows** in
