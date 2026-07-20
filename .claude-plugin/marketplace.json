@@ -66,16 +66,16 @@
     {
       "name": "radarr-control",
       "source": "./radarr-control",
-      "description": "Control of a Radarr movie manager (built with deep-integration-builder, live-verified on Radarr 6.3.0.10514). Generic passthrough over the FULL /api/v3 surface (467 operations, discovered live via /system/routes — Radarr publishes no OpenAPI) + 42 curated tools for status, library (movies/collections/files/lookup/add/update/delete/bulk-edit), activity (wanted missing+cutoff, calendar, queue with delete+grab, history, blocklist delete, manual import), commands, parse, filesystem browse, log files, config sections (host/ui/mediamanagement/indexer/etc), tag CRUD, provider test, system restart/shutdown (double-gated). Every operation annotated in radarr_list_endpoints as curated vs generic-only. API key from 1Password (Gregory vault). All writes confirm-gated.",
+      "description": "Control of a Radarr movie manager (built with deep-integration-builder, live-verified on Radarr 6.3.0.10514). Generic passthrough over the FULL /api/v3 surface (467 operations, discovered live via /system/routes — Radarr publishes no OpenAPI). 64 curated tools covering 31% of operations directly + a unified radarr_crud tool reaching all CRUD-shaped resources (14 resource types). Includes: status, library (movies/collections/files/lookup/add/update/delete/bulk-edit/bulk-delete), activity (wanted missing+cutoff, calendar incl .ics feed, queue with delete+grab+bulk, history incl since, blocklist with delete+bulk, manual import), commands, parse, filesystem browse, log files, config sections (8), tag CRUD, provider CRUD + test + action + testall, system restart/shutdown (double-gated). Every operation annotated curated vs generic-only in radarr_list_endpoints. API key from 1Password (Gregory vault). All writes confirm-gated.",
       "category": "media",
-      "version": "0.2.0"
+      "version": "0.3.0"
     },
     {
       "name": "sonarr-control",
       "source": "./sonarr-control",
-      "description": "Control of a Sonarr TV-series manager (built with deep-integration-builder, live-verified on Sonarr 4.0.18.2978). Generic passthrough over the FULL /api/v3 surface (463 operations, discovered live via /system/routes) + 44 curated tools for status, library (series with seasons+episodes, per-season monitoring toggle, lookup/add/update/delete/bulk-edit, episode files), activity (wanted missing+cutoff per-episode, calendar per-airing, queue with delete+grab, history incl per-series+since, blocklist delete, manual import), commands, parse, filesystem, log files, config sections, tag CRUD, provider test, system restart/shutdown (double-gated). Every operation annotated as curated vs generic-only in sonarr_list_endpoints. API key from 1Password (Gregory vault). All writes confirm-gated.",
+      "description": "Control of a Sonarr TV-series manager (built with deep-integration-builder, live-verified on Sonarr 4.0.18.2978). Generic passthrough over the FULL /api/v3 surface (463 operations, discovered live via /system/routes). 66 curated tools covering 31% of operations directly + a unified sonarr_crud tool reaching all CRUD-shaped resources (15 resource types including languageProfile). Includes: status, library (series/seasons/episodes, per-season monitoring toggle, lookup/add/update/delete/bulk-edit/bulk-delete, season-pass bulk monitoring), activity (wanted missing+cutoff per-episode, calendar incl .ics feed, queue with delete+grab+bulk, history incl per-series+since, blocklist with delete+bulk, manual import), commands, parse, filesystem, log files, config sections, tag CRUD, provider CRUD + test + action + testall, system restart/shutdown (double-gated). API key from 1Password (Gregory vault). All writes confirm-gated.",
       "category": "media",
-      "version": "0.2.0"
+      "version": "0.3.0"
     },
     {
       "name": "sabnzbd-control",

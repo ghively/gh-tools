@@ -1547,6 +1547,213 @@ def sonarr_system_shutdown(confirm: bool = False, acknowledge: str = "") -> Any:
         return _err(e)
 
 
+@mcp.tool()
+def sonarr_crud(resource: str, action: str, id: Optional[int] = None,
+                data: str = "", confirm: bool = False) -> Any:
+    """Generic CRUD wrapper for Sonarr resources that follow the standard
+    list/get/create/update/delete/bulk pattern. Use this for the long tail of
+    config entities — notifications, download clients, indexers, import lists,
+    metadata, quality profiles, language profiles, custom formats, delay/release
+    profiles, root folders, remote path mappings, auto-tagging, custom filters,
+    importlistexclusions.
+
+    Args:
+        resource: One of: notification, downloadclient, indexer, importlist,
+            metadata, qualityprofile, languageprofile, customformat,
+            delayprofile, releaseprofile, rootfolder, remotepathmapping,
+            autoTagging, customFilter, importlistexclusion.
+        action: One of: list, get, schema, create, update, delete,
+            bulk_update, bulk_delete, testall.
+        id: Resource id (required for get/update/delete).
+        data: JSON body string. Required for create/update/bulk_update. For
+            bulk_delete pass '{"ids": [1,2,3]}'.
+        confirm: Required for any write.
+    """
+    try:
+        RESOURCE_ALIASES = {
+            "qualityprofile": "qualityProfile",
+            "languageprofile": "languageProfile",
+            "customformat": "customFormat",
+            "delayprofile": "delayProfile",
+            "releaseprofile": "releaseProfile",
+            "rootfolder": "rootFolder",
+            "remotepathmapping": "remotePathMapping",
+            "autotagging": "autoTagging",
+            "customfilter": "customFilter",
+            "importlistexclusion": "importlistexclusion",
+        }
+        res_lc = (resource or "").strip().lower()
+        if not res_lc:
+            raise SonarrError("resource is required")
+        res = RESOURCE_ALIASES.get(res_lc, res_lc)
+        valid_actions = ("list", "get", "schema", "create", "update", "delete",
+                         "bulk_update", "bulk_delete", "testall")
+        act = (action or "").strip().lower()
+        if act not in valid_actions:
+            raise SonarrError(f"action must be one of {valid_actions}; got {action!r}")
+        if act == "list":
+            return _finish(CLIENT.request("GET", f"/api/v3/{res}"))
+        if act == "schema":
+            return CLIENT.request("GET", f"/api/v3/{res}/schema")
+        if act == "get":
+            if id is None:
+                raise SonarrError("id is required for get")
+            return CLIENT.request("GET", f"/api/v3/{res}/{int(id)}")
+        if act == "testall":
+            return CLIENT.request("POST", f"/api/v3/{res}/testall")
+        if not confirm:
+            return _need_confirm(f"{act} {resource} id={id} data={data[:200]}")
+        body = _parse_json_arg("data", data)
+        if act == "create":
+            if body is None:
+                raise SonarrError("data is required for create")
+            return CLIENT.request("POST", f"/api/v3/{res}", body=body)
+        if act == "update":
+            if id is None:
+                raise SonarrError("id is required for update")
+            if body is None:
+                raise SonarrError("data is required for update (full object)")
+            return CLIENT.request("PUT", f"/api/v3/{res}/{int(id)}", body=body)
+        if act == "delete":
+            if id is None:
+                raise SonarrError("id is required for delete")
+            CLIENT.request("DELETE", f"/api/v3/{res}/{int(id)}")
+            return {"deleted": True, "resource": resource, "id": int(id)}
+        if act == "bulk_update":
+            if not isinstance(body, list):
+                raise SonarrError("data must be a JSON array of full objects for bulk_update")
+            return CLIENT.request("PUT", f"/api/v3/{res}/bulk", body=body)
+        if act == "bulk_delete":
+            if not isinstance(body, dict) or "ids" not in body:
+                raise SonarrError("data must be {\"ids\": [...]} for bulk_delete")
+            return CLIENT.request("DELETE", f"/api/v3/{res}/bulk", body=body)
+        raise SonarrError(f"unhandled action {act}")
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_blocklist_bulk_delete(ids: list, confirm: bool = False) -> Any:
+    """Bulk-remove blocklist entries. WRITES: confirm-gated."""
+    try:
+        if not ids:
+            raise SonarrError("ids must be non-empty")
+        if not confirm:
+            return _need_confirm(f"bulk-delete blocklist ids {ids}")
+        return CLIENT.request("DELETE", "/api/v3/blocklist/bulk", body={"ids": list(ids)})
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_series_bulk_delete(series_ids: list, delete_files: bool = False,
+                               add_import_exclusion: bool = False,
+                               confirm: bool = False) -> Any:
+    """Delete multiple series in one call. WRITES: confirm-gated.
+    IRREVERSIBLE if delete_files=True."""
+    try:
+        if not series_ids:
+            raise SonarrError("series_ids must be non-empty")
+        if not confirm:
+            return _need_confirm(
+                f"bulk-delete series {series_ids} "
+                f"(delete_files={delete_files}, add_import_exclusion={add_import_exclusion})"
+            )
+        body: dict = {"seriesIds": list(series_ids),
+                      "addImportExclusion": bool(add_import_exclusion),
+                      "deleteFiles": bool(delete_files)}
+        return CLIENT.request("DELETE", "/api/v3/series/editor", body=body)
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_queue_bulk_delete(queue_ids: list, blacklist: bool = False,
+                              remove_from_client: bool = False,
+                              confirm: bool = False) -> Any:
+    """Remove multiple items from the queue in one call. WRITES: confirm-gated."""
+    try:
+        if not queue_ids:
+            raise SonarrError("queue_ids must be non-empty")
+        if not confirm:
+            return _need_confirm(
+                f"bulk-delete queue ids {queue_ids} "
+                f"(blacklist={blacklist}, remove_from_client={remove_from_client})"
+            )
+        body: dict = {"ids": list(queue_ids),
+                      "blacklist": bool(blacklist),
+                      "removeFromClient": bool(remove_from_client)}
+        return CLIENT.request("DELETE", "/api/v3/queue/bulk", body=body)
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_provider_action(provider_type: str, id: int, action_name: str,
+                            confirm: bool = False, **extra: Any) -> Any:
+    """Invoke a provider-specific action. WRITE: confirm-gated."""
+    try:
+        pt = (provider_type or "").lower().strip()
+        if pt not in ("notification", "downloadclient", "indexer",
+                      "importlist", "metadata"):
+            raise SonarrError(f"provider_type must be notification/downloadclient/"
+                              f"indexer/importlist/metadata")
+        if not action_name:
+            raise SonarrError("action_name is required")
+        if not confirm:
+            return _need_confirm(f"action '{action_name}' on {pt}/{id}")
+        body = {"name": action_name, **extra}
+        return CLIENT.request("POST", f"/api/v3/{pt}/action/{int(id)}", body=body)
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_season_pass(series_ids: list, monitored: bool,
+                        confirm: bool = False) -> Any:
+    """Update the season-pass monitoring map — bulk-toggle season monitoring
+    across multiple series at once. WRITES: confirm-gated.
+
+    Args:
+        series_ids: List of series ids to update.
+        monitored: True to monitor, False to unmonitor.
+        confirm: Must be true.
+    """
+    try:
+        if not series_ids:
+            raise SonarrError("series_ids must be non-empty")
+        if not confirm:
+            return _need_confirm(
+                f"season-pass: set monitored={monitored} for series {series_ids}"
+            )
+        body = {
+            "seriesIds": list(series_ids),
+            "monitored": bool(monitored),
+            "seasons": [],  # empty = apply to all seasons of each series
+        }
+        return CLIENT.request("POST", "/api/v3/seasonPass", body=body)
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_calendar_ics(start: str = "", end: str = "", tags: str = "",
+                         unmonitored: bool = False) -> Any:
+    """Fetch the iCalendar feed of upcoming episode airings (the .ics payload)."""
+    import datetime as dt
+    try:
+        today = dt.date.today()
+        params = {
+            "start": start or (today - dt.timedelta(days=7)).isoformat(),
+            "end": end or (today + dt.timedelta(days=90)).isoformat(),
+        }
+        if tags: params["tags"] = tags
+        if unmonitored: params["unmonitored"] = "true"
+        return CLIENT.request("GET", "/feed/v3/calendar/sonarr.ics", params=params, raw=True)
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
 # --------------------------------------------------------------------------- #
 # Curated-tool registry — drives the `curated: True/False` annotation in      #
 # sonarr_list_endpoints so the user sees at-a-glance what's ergonomic vs       #
@@ -1628,6 +1835,83 @@ CURATED_TOOLS: dict[tuple[str, str], str] = {
     ("POST", "/api/v3/indexer/test"):                 "sonarr_provider_test",
     ("POST", "/api/v3/importlist/test"):              "sonarr_provider_test",
     ("POST", "/api/v3/metadata/test"):                "sonarr_provider_test",
+    # CRUD-wrapped resources (sonarr_crud + bulk tools)
+    ("GET", "/api/v3/notification/{id}"):             "sonarr_crud",
+    ("POST", "/api/v3/notification"):                 "sonarr_crud",
+    ("PUT", "/api/v3/notification/{id}"):             "sonarr_crud",
+    ("DELETE", "/api/v3/notification/{id}"):          "sonarr_crud",
+    ("POST", "/api/v3/notification/testall"):         "sonarr_crud",
+    ("POST", "/api/v3/notification/action/{id}"):     "sonarr_provider_action",
+    ("GET", "/api/v3/downloadclient/{id}"):           "sonarr_crud",
+    ("POST", "/api/v3/downloadclient"):               "sonarr_crud",
+    ("PUT", "/api/v3/downloadclient/{id}"):           "sonarr_crud",
+    ("DELETE", "/api/v3/downloadclient/{id}"):        "sonarr_crud",
+    ("POST", "/api/v3/downloadclient/testall"):       "sonarr_crud",
+    ("GET", "/api/v3/indexer/{id}"):                  "sonarr_crud",
+    ("POST", "/api/v3/indexer"):                      "sonarr_crud",
+    ("PUT", "/api/v3/indexer/{id}"):                  "sonarr_crud",
+    ("DELETE", "/api/v3/indexer/{id}"):               "sonarr_crud",
+    ("POST", "/api/v3/indexer/testall"):              "sonarr_crud",
+    ("GET", "/api/v3/importlist/{id}"):               "sonarr_crud",
+    ("POST", "/api/v3/importlist"):                   "sonarr_crud",
+    ("PUT", "/api/v3/importlist/{id}"):               "sonarr_crud",
+    ("DELETE", "/api/v3/importlist/{id}"):            "sonarr_crud",
+    ("POST", "/api/v3/importlist/testall"):           "sonarr_crud",
+    ("POST", "/api/v3/importlist/action/{id}"):       "sonarr_provider_action",
+    ("GET", "/api/v3/metadata/{id}"):                 "sonarr_crud",
+    ("POST", "/api/v3/metadata"):                     "sonarr_crud",
+    ("PUT", "/api/v3/metadata/{id}"):                 "sonarr_crud",
+    ("DELETE", "/api/v3/metadata/{id}"):              "sonarr_crud",
+    ("POST", "/api/v3/metadata/testall"):             "sonarr_crud",
+    ("POST", "/api/v3/metadata/action/{id}"):         "sonarr_provider_action",
+    ("GET", "/api/v3/qualityProfile/{id}"):           "sonarr_crud",
+    ("POST", "/api/v3/qualityProfile"):               "sonarr_crud",
+    ("PUT", "/api/v3/qualityProfile/{id}"):           "sonarr_crud",
+    ("DELETE", "/api/v3/qualityProfile/{id}"):        "sonarr_crud",
+    ("GET", "/api/v3/qualityprofile/schema"):         "sonarr_crud",
+    ("GET", "/api/v3/languageProfile/{id}"):          "sonarr_crud",
+    ("POST", "/api/v3/languageProfile"):              "sonarr_crud",
+    ("PUT", "/api/v3/languageProfile/{id}"):          "sonarr_crud",
+    ("DELETE", "/api/v3/languageProfile/{id}"):       "sonarr_crud",
+    ("GET", "/api/v3/customFormat/{id}"):             "sonarr_crud",
+    ("POST", "/api/v3/customFormat"):                 "sonarr_crud",
+    ("PUT", "/api/v3/customFormat/{id}"):             "sonarr_crud",
+    ("DELETE", "/api/v3/customFormat/{id}"):          "sonarr_crud",
+    ("GET", "/api/v3/customformat/schema"):           "sonarr_crud",
+    ("GET", "/api/v3/delayProfile/{id}"):             "sonarr_crud",
+    ("POST", "/api/v3/delayProfile"):                 "sonarr_crud",
+    ("PUT", "/api/v3/delayProfile/{id}"):             "sonarr_crud",
+    ("DELETE", "/api/v3/delayProfile/{id}"):          "sonarr_crud",
+    ("GET", "/api/v3/releaseProfile/{id}"):           "sonarr_crud",
+    ("POST", "/api/v3/releaseProfile"):               "sonarr_crud",
+    ("PUT", "/api/v3/releaseProfile/{id}"):           "sonarr_crud",
+    ("DELETE", "/api/v3/releaseProfile/{id}"):        "sonarr_crud",
+    ("GET", "/api/v3/rootFolder/{id}"):               "sonarr_crud",
+    ("POST", "/api/v3/rootFolder"):                   "sonarr_crud",
+    ("DELETE", "/api/v3/rootFolder/{id}"):            "sonarr_crud",
+    ("GET", "/api/v3/remotePathMapping/{id}"):        "sonarr_crud",
+    ("POST", "/api/v3/remotePathMapping"):            "sonarr_crud",
+    ("PUT", "/api/v3/remotePathMapping/{id}"):        "sonarr_crud",
+    ("DELETE", "/api/v3/remotePathMapping/{id}"):     "sonarr_crud",
+    ("GET", "/api/v3/autoTagging/{id}"):              "sonarr_crud",
+    ("POST", "/api/v3/autoTagging"):                  "sonarr_crud",
+    ("PUT", "/api/v3/autoTagging/{id}"):              "sonarr_crud",
+    ("DELETE", "/api/v3/autoTagging/{id}"):           "sonarr_crud",
+    ("GET", "/api/v3/autotagging/schema"):            "sonarr_crud",
+    ("GET", "/api/v3/customFilter/{id}"):             "sonarr_crud",
+    ("POST", "/api/v3/customFilter"):                 "sonarr_crud",
+    ("PUT", "/api/v3/customFilter/{id}"):             "sonarr_crud",
+    ("DELETE", "/api/v3/customFilter/{id}"):          "sonarr_crud",
+    ("GET", "/api/v3/importlistexclusion/{id}"):      "sonarr_crud",
+    ("POST", "/api/v3/importlistexclusion"):          "sonarr_crud",
+    ("PUT", "/api/v3/importlistexclusion/{id}"):      "sonarr_crud",
+    ("DELETE", "/api/v3/importlistexclusion/{id}"):   "sonarr_crud",
+    # Bulk operations
+    ("DELETE", "/api/v3/blocklist/bulk"):             "sonarr_blocklist_bulk_delete",
+    ("DELETE", "/api/v3/series/editor"):              "sonarr_series_bulk_delete",
+    ("DELETE", "/api/v3/queue/bulk"):                 "sonarr_queue_bulk_delete",
+    ("POST", "/api/v3/seasonPass"):                   "sonarr_season_pass",
+    ("GET", "/feed/v3/calendar/sonarr.ics"):          "sonarr_calendar_ics",
 }
 
 
