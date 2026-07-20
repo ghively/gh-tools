@@ -1,0 +1,11 @@
+{
+  "name": "tdarr-control",
+  "description": "Control of a Tdarr distributed transcoding server (v2 API). Generic passthrough over all 67 documented /api/v2 endpoints plus ~30 curated tools for status, library (search-db, scan, delete, filescanner control), plugins (search/read/install/create/edit/delete/sync), nodes (list/restart/disconnect/logs/worker-limits), backups, the powerful /cruddb (8 collections, full CRUD), codec-exclude and plugin-include management, transcode-user-verdict, and flow templates. Every curated tool marked DOC-VERIFIED — built from the official tdarr.readme.io/reference API docs (v2.25.01+). NOT YET LIVE-VERIFIED: Tdarr is not deployed on this homelab; run the smoke test + reversible write proofs after first deployment to close the gap. All writes confirm-gated; /cruddb writes and node lifecycle ops (kill-worker, disconnect-node) doubly-gated.",
+  "version": "0.1.0-docverified",
+  "author": {
+    "name": "ghively"
+  },
+  "keywords": ["tdarr", "transcoding", "ffmpeg", "handbrake", "media", "mcp", "homelab"],
+  "skills": "./skills/",
+  "commands": "./commands/"
+}

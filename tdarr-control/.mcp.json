@@ -1,0 +1,9 @@
+{
+  "tdarr": {
+    "command": "uv",
+    "args": ["run", "--script", "${CLAUDE_PLUGIN_ROOT}/mcp/server.py"],
+    "env": {
+      "TDARR_CONFIG": "${CLAUDE_PLUGIN_ROOT}/config.local.json"
+    }
+  }
+}
