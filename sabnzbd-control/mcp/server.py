@@ -254,6 +254,8 @@ MODE_CATALOG: list[dict] = [
     {"mode": "server_stats",  "rw": "R", "summary": "Per-server byte totals (total/month/week/day)"},
     {"mode": "warnings",      "rw": "R", "summary": "Recent warnings"},
     {"mode": "get_config",    "rw": "R", "summary": "Full config dict (servers, categories, misc, etc.)"},
+    {"mode": "get_cats",      "rw": "R", "summary": "List configured categories (simpler than get_config section=categories)"},
+    {"mode": "get_scripts",   "rw": "R", "summary": "List available post-processing scripts"},
     # Queue control (WRITE)
     {"mode": "pause",         "rw": "W", "summary": "Pause queue (optional minutes=N for timed)"},
     {"mode": "resume",        "rw": "W", "summary": "Resume queue"},
@@ -270,6 +272,7 @@ MODE_CATALOG: list[dict] = [
     # Config (WRITE)
     {"mode": "set_config",    "rw": "W", "summary": "Update config: section, keyword, value"},
     {"mode": "set_apikey",    "rw": "W", "summary": "Generate a new API key (DANGEROUS)"},
+    {"mode": "test_email",    "rw": "W", "summary": "Send a test email (email_to=<addr>) — verifies notification config"},
     # Lifecycle (DANGEROUS)
     {"mode": "restart",       "rw": "W", "summary": "Restart SABnzbd — HEAVILY confirm-gated in tools"},
     {"mode": "shutdown",      "rw": "W", "summary": "Shut down SABnzbd — HEAVILY confirm-gated in tools"},
@@ -715,6 +718,157 @@ def sabnzbd_shutdown(confirm: bool = False, acknowledge: str = "") -> Any:
         data = CLIENT.call("shutdown")
         return {"shutdown_initiated": True, "raw": data,
                 "warning": "Server is going offline; manual restart required."}
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+# --------------------------------------------------------------------------- #
+# Round 2: high-value gaps from the audit                                      #
+# --------------------------------------------------------------------------- #
+@mcp.tool()
+def sabnzbd_categories() -> Any:
+    """List configured categories (Default, Movies, TV, etc.) — useful when
+    adding NZBs or changing a job's category. READ-ONLY."""
+    try:
+        data = CLIENT.call("get_config", {"section": "categories"}) or {}
+        cats = (data.get("config", {}) or {}).get("categories", [])
+        # Each category is a list of [name, pp, script, dir] tuples in SABnzbd 4/5
+        return [{"name": c[0] if isinstance(c, list) else c.get("name"),
+                 "pp": c[1] if isinstance(c, list) and len(c) > 1 else c.get("pp"),
+                 "script": c[2] if isinstance(c, list) and len(c) > 2 else c.get("script"),
+                 "dir": c[3] if isinstance(c, list) and len(c) > 3 else c.get("dir")}
+                for c in cats]
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sabnzbd_scripts() -> Any:
+    """List available post-processing scripts. READ-ONLY."""
+    try:
+        data = CLIENT.call("get_scripts") or {}
+        # Returns {"scripts": [list of relative paths]}
+        return data.get("scripts", data)
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sabnzbd_test_email(email_address: str, confirm: bool = False) -> Any:
+    """Send a test email from SABnzbd to verify the email-notification config.
+    WRITE (sends email) but no SABnzbd state change. confirm-gated.
+
+    Args:
+        email_address: Recipient for the test email.
+        confirm: Must be true — actually sends an email.
+    """
+    try:
+        if not email_address or "@" not in email_address:
+            raise SabnzbdError("email_address is required and must contain @")
+        if not confirm:
+            return _need_confirm(f"send a test SABnzbd email to {email_address}")
+        return CLIENT.call("test_email", {"email_to": email_address})
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sabnzbd_add_local_file(path: str, pp: str = "", category: str = "",
+                           priority: str = "", confirm: bool = False) -> Any:
+    """Add an NZB file from a path ON THE SABnzBD SERVER (not your client).
+    Useful when NZBs are downloaded to the server by another tool. WRITES:
+    confirm-gated.
+
+    Args:
+        path: Server-side absolute path to the .nzb file.
+        pp: Post-processing options ("", "1", "2", or "3").
+        category: Target category name.
+        priority: Priority (-100..2; 2 = force).
+        confirm: Must be true.
+    """
+    try:
+        if not path:
+            raise SabnzbdError("path is required")
+        if not confirm:
+            extras = []
+            if pp: extras.append(f"pp={pp}")
+            if category: extras.append(f"cat={category}")
+            if priority: extras.append(f"priority={priority}")
+            tail = (" with " + ", ".join(extras)) if extras else ""
+            return _need_confirm(f"add local NZB {path}{tail}")
+        params = {"name": path}
+        if pp: params["pp"] = pp
+        if category: params["cat"] = category
+        if priority: params["priority"] = str(priority)
+        data = CLIENT.call("addlocalfile", params)
+        return {"added": True, "raw": data}
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sabnzbd_queue_change_category(nzo_id: str, category: str,
+                                   confirm: bool = False) -> Any:
+    """Change the category of a queued download. WRITES: confirm-gated.
+
+    Args:
+        nzo_id: The job's nzo_id (from sabnzbd_queue).
+        category: Target category name (must exist; see sabnzbd_categories).
+        confirm: Must be true.
+    """
+    try:
+        if not nzo_id or not category:
+            raise SabnzbdError("nzo_id and category are required")
+        if not confirm:
+            return _need_confirm(f"change category of {nzo_id} to '{category}'")
+        # SABnzbd: mode=queue&name=change_cat&value=<nzo_id>&category=<cat>
+        data = CLIENT.call("queue", {
+            "name": "change_cat", "value": nzo_id, "category": category,
+        })
+        return {"changed": True, "nzo_id": nzo_id, "category": category, "raw": data}
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sabnzbd_queue_change_priority(nzo_id: str, priority: int,
+                                   confirm: bool = False) -> Any:
+    """Change the priority of a queued download. WRITES: confirm-gated.
+
+    Args:
+        nzo_id: The job's nzo_id.
+        priority: -100 (very low) .. 2 (force). 0 = normal. -2 = pause.
+        confirm: Must be true.
+    """
+    try:
+        if not nzo_id:
+            raise SabnzbdError("nzo_id is required")
+        if not confirm:
+            return _need_confirm(f"change priority of {nzo_id} to {priority}")
+        data = CLIENT.call("queue", {
+            "name": "priority", "value": nzo_id, "priority": str(priority),
+        })
+        return {"changed": True, "nzo_id": nzo_id, "priority": priority, "raw": data}
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sabnzbd_history_clear(failed_only: bool = False, confirm: bool = False) -> Any:
+    """Clear completed (or failed) jobs from history. WRITES: confirm-gated.
+
+    Args:
+        failed_only: If true, only clear failed jobs. Otherwise clear all history.
+        confirm: Must be true.
+    """
+    try:
+        if not confirm:
+            scope = "failed-only history" if failed_only else "ALL history"
+            return _need_confirm(f"clear {scope}")
+        params = {"name": "history", "value": "failed" if failed_only else "all",
+                  "del_files": "0"}
+        data = CLIENT.call("queue", params)
+        return {"cleared": True, "failed_only": failed_only, "raw": data}
     except Exception as e:  # noqa: BLE001
         return _err(e)
 

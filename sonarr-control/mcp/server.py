@@ -145,6 +145,7 @@ class SonarrClient:
             timeout=cfg["timeout"],
         )
         self._lock = threading.Lock()
+        self._live_routes: Optional[list] = None  # cache of /system/routes entries
 
     def request(self, method: str, path: str, params: Optional[dict] = None,
                 body: Any = None, raw: bool = False) -> Any:
@@ -168,6 +169,41 @@ class SonarrClient:
         if "json" in ctype:
             return resp.json()
         return resp.text
+
+    def live_routes(self) -> list:
+        """Fetch and parse /api/v3/system/routes (Graphviz DOT format) into a
+        clean list of {method, path}. Cached for the process lifetime."""
+        with self._lock:
+            if self._live_routes is not None:
+                return self._live_routes
+        import re
+        try:
+            text = self.request("GET", "/api/v3/system/routes", raw=True)
+            seen = set()
+            routes = []
+            for label in re.findall(r'\[label="([^"]+)"\]', text or ""):
+                m = re.match(r'^(/api/v3\S*)\s+HTTP:\s+([A-Z*]+)\s*$', label)
+                if not m:
+                    continue
+                path = m.group(1).rstrip('/')
+                method = m.group(2)
+                if method == '*':
+                    continue
+                norm = re.sub(r'\{[^}]+\}', '{id}', path).lower()
+                key = (method, norm)
+                if key in seen:
+                    continue
+                seen.add(key)
+                routes.append({"method": method, "path": path})
+            routes.sort(key=lambda r: (r["path"], r["method"]))
+            with self._lock:
+                self._live_routes = routes
+            return routes
+        except Exception as e:  # noqa: BLE001
+            log(f"WARNING: /system/routes unavailable, falling back to static catalog: {e}")
+            with self._lock:
+                self._live_routes = []
+            return []
 
 
 CLIENT = SonarrClient(CONFIG)
@@ -368,22 +404,49 @@ def sonarr_call(method: str, path: str, params: str = "", body: str = "") -> Any
 
 
 @mcp.tool()
-def sonarr_list_endpoints(search: str = "", method: str = "", limit: int = 80) -> Any:
-    """Search the endpoint catalog (hand-enumerated from live probes). The
-    master index for sonarr_call.
+def sonarr_list_endpoints(search: str = "", method: str = "", limit: int = 100,
+                          curated_only: bool = False) -> Any:
+    """Search the FULL endpoint catalog — pulled live from /api/v3/system/routes
+    so it's always accurate for the deployed Sonarr version (~470 operations on
+    4.0). The master index for sonarr_call.
+
+    Each operation is annotated with whether a curated tool wraps it (so you
+    can see at a glance what's ergonomic vs generic-only).
 
     Args:
-        search: Case-insensitive substring matched against path + summary.
+        search: Case-insensitive substring matched against the path.
         method: Filter by HTTP method (GET/POST/PUT/DELETE).
-        limit: Max endpoints to return (default 80).
+        curated_only: If true, only return operations that have a curated tool.
+        limit: Max operations to return (default 100).
     """
-    ops = ENDPOINT_CATALOG
+    import re
+    routes = CLIENT.live_routes() or ENDPOINT_CATALOG
+    curated_keys = set()
+    for (m, p), _tool in CURATED_TOOLS.items():
+        norm = re.sub(r'\{[^}]+\}', '{id}', p).lower()
+        curated_keys.add((m.upper(), norm))
+    annotated = []
+    for r in routes:
+        m = r["method"].upper()
+        p = r["path"]
+        norm = re.sub(r'\{[^}]+\}', '{id}', p).lower()
+        is_curated = (m, norm) in curated_keys
+        annotated.append({"method": m, "path": p, "curated": is_curated})
     if method:
-        ops = [o for o in ops if o["method"].upper() == method.upper()]
+        annotated = [o for o in annotated if o["method"] == method.upper()]
+    if curated_only:
+        annotated = [o for o in annotated if o["curated"]]
     if search:
         s = search.lower()
-        ops = [o for o in ops if s in o["path"].lower() or s in o["summary"].lower()]
-    return _finish({"matched": len(ops), "endpoints": ops[:limit]})
+        annotated = [o for o in annotated if s in o["path"].lower()]
+    n_curated = sum(1 for o in annotated if o["curated"])
+    return _finish({
+        "matched": len(annotated),
+        "matched_curated": n_curated,
+        "matched_generic_only": len(annotated) - n_curated,
+        "total_live_operations": len(routes),
+        "operations": annotated[:limit],
+    })
 
 
 # --------------------------------------------------------------------------- #
@@ -1088,6 +1151,484 @@ def sonarr_import_lists() -> Any:
                 for l in data]
     except Exception as e:  # noqa: BLE001
         return _err(e)
+
+
+# --------------------------------------------------------------------------- #
+# Round 2: high-value gaps from the live-route audit                           #
+# (queue mgmt, parse, log/filesystem, config sections, tag CRUD, blocklist,    #
+#  system restart/shutdown, manual import, more reads)                         #
+# --------------------------------------------------------------------------- #
+@mcp.tool()
+def sonarr_queue_delete(queue_id: int, blacklist: bool = False,
+                        remove_from_client: bool = False,
+                        confirm: bool = False) -> Any:
+    """Remove a single item from the active queue. WRITES: confirm-gated."""
+    try:
+        if not confirm:
+            return _need_confirm(
+                f"delete queue item {queue_id} "
+                f"(blacklist={blacklist}, remove_from_client={remove_from_client})"
+            )
+        params = {}
+        if blacklist: params["blacklist"] = "true"
+        if remove_from_client: params["removeFromClient"] = "true"
+        CLIENT.request("DELETE", f"/api/v3/queue/{queue_id}", params=params or None)
+        return {"deleted": True, "queue_id": queue_id}
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_queue_grab(queue_id: int, confirm: bool = False) -> Any:
+    """Re-grab a release for an aggregated queue item. WRITES: confirm-gated."""
+    try:
+        if not confirm:
+            return _need_confirm(f"re-grab queue item {queue_id}")
+        return CLIENT.request("POST", f"/api/v3/queue/grab/{queue_id}")
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_series_bulk_edit(series_ids: list, monitored: Optional[bool] = None,
+                             quality_profile_id: Optional[int] = None,
+                             language_profile_id: Optional[int] = None,
+                             series_type: Optional[str] = None,
+                             tags: Optional[list] = None,
+                             apply_tags: str = "add",
+                             move_files: bool = False,
+                             confirm: bool = False) -> Any:
+    """Bulk-edit multiple series in one operation. WRITES: confirm-gated.
+
+    Args:
+        series_ids: List of Sonarr series ids.
+        monitored: Set monitored state (None = unchanged).
+        quality_profile_id: Set quality profile (None = unchanged).
+        language_profile_id: Set language profile (None = unchanged).
+        series_type: standard | anime | daily.
+        tags: List of tag ids (with apply_tags).
+        apply_tags: add | remove | replace | sync.
+        move_files: Move files when path changes.
+        confirm: Must be true.
+    """
+    try:
+        if not series_ids:
+            raise SonarrError("series_ids must be non-empty")
+        if not confirm:
+            changes = []
+            if monitored is not None: changes.append(f"monitored={monitored}")
+            if quality_profile_id is not None: changes.append(f"qualityProfileId={quality_profile_id}")
+            if language_profile_id is not None: changes.append(f"languageProfileId={language_profile_id}")
+            return _need_confirm(f"bulk-edit series {series_ids}: {', '.join(changes) or 'no changes'}")
+        body: dict = {"seriesIds": list(series_ids), "moveFiles": bool(move_files)}
+        if monitored is not None: body["monitored"] = bool(monitored)
+        if quality_profile_id is not None: body["qualityProfileId"] = int(quality_profile_id)
+        if language_profile_id is not None: body["languageProfileId"] = int(language_profile_id)
+        if series_type: body["seriesType"] = series_type
+        if tags is not None:
+            body["tags"] = list(tags)
+            body["applyTags"] = apply_tags
+        return CLIENT.request("PUT", "/api/v3/series/editor", body=body)
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_parse(title: str) -> Any:
+    """Parse a release title to see what series + episode + quality Sonarr
+    would match it to. READ-ONLY."""
+    try:
+        return CLIENT.request("GET", "/api/v3/parse", params={"title": title})
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_log_files() -> Any:
+    """List the on-disk log files (and update-log files) with sizes."""
+    try:
+        data = CLIENT.request("GET", "/api/v3/log/file") or []
+        return [{"filename": f.get("name"), "lastWriteTime": f.get("lastWriteTime"),
+                 "path": f.get("path"), "size": f.get("contentsLength")}
+                for f in data]
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_filesystem(path: str = "/", include_files: bool = False) -> Any:
+    """Browse the server's filesystem (used when configuring root folders)."""
+    try:
+        params = {"path": path}
+        if include_files: params["includeFiles"] = "true"
+        data = CLIENT.request("GET", "/api/v3/filesystem", params=params) or {}
+        return {
+            "path": data.get("path"),
+            "parent": data.get("parent"),
+            "directories": [{"name": d.get("name"), "path": d.get("path")}
+                            for d in (data.get("directories") or [])],
+            "files": [{"name": f.get("name"), "path": f.get("path"), "size": f.get("size")}
+                      for f in (data.get("files") or [])],
+        }
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_history_since(since: str, event_type: str = "") -> Any:
+    """History since an ISO timestamp (lighter than paged history)."""
+    try:
+        params = {"since": since}
+        if event_type: params["eventType"] = event_type
+        return _finish(CLIENT.request("GET", "/api/v3/history/since", params=params))
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_rename_preview(series_ids: list) -> Any:
+    """Preview what files WOULD be renamed, without doing it. READ-ONLY.
+
+    Note: Sonarr's /rename endpoint accepts a SINGLE seriesId per request; this
+    tool loops over the supplied ids and returns a merged list.
+    """
+    try:
+        if not series_ids:
+            raise SonarrError("series_ids must be non-empty")
+        out = []
+        for sid in series_ids:
+            res = CLIENT.request("GET", "/api/v3/rename", params={"seriesId": int(sid)}) or []
+            for r in res:
+                r["_seriesId"] = sid
+                out.append(r)
+        return out
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_quality_definitions() -> Any:
+    """Quality definitions (size-by-quality matrix)."""
+    try:
+        return CLIENT.request("GET", "/api/v3/qualityDefinition")
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_delay_profiles() -> Any:
+    """Delay profiles (how long Sonarr waits before grabbing a release)."""
+    try:
+        return CLIENT.request("GET", "/api/v3/delayprofile")
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_remote_path_mappings() -> Any:
+    """Remote path mappings (Docker path translation between download client and Sonarr)."""
+    try:
+        return CLIENT.request("GET", "/api/v3/remotepathmapping")
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_release_profiles() -> Any:
+    """Release profiles (must-contain / must-not-contain rules)."""
+    try:
+        return CLIENT.request("GET", "/api/v3/releaseprofile")
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_import_exclusions() -> Any:
+    """Import exclusions (series that will never be auto-added from import lists)."""
+    try:
+        return CLIENT.request("GET", "/api/v3/importlistexclusion")
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_auto_tagging() -> Any:
+    """Auto-tagging rules."""
+    try:
+        return CLIENT.request("GET", "/api/v3/autoTagging")
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_tag_details() -> Any:
+    """All tags with counts of series / delay profiles / etc. that use each."""
+    try:
+        data = CLIENT.request("GET", "/api/v3/tag/detail") or []
+        return [{"id": t.get("id"), "label": t.get("label"),
+                 "seriesCount": len(t.get("seriesIds") or [])}
+                for t in data]
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_config_section(section: str) -> Any:
+    """Read a specific config section. READ-ONLY.
+
+    Args:
+        section: One of: host, ui, mediamanagement, indexer, downloadclient,
+            metadata, importlist, naming.
+    """
+    try:
+        if not section:
+            raise SonarrError("section is required (host, ui, mediamanagement, indexer, "
+                              "downloadclient, metadata, importlist, naming)")
+        return CLIENT.request("GET", f"/api/v3/config/{section}")
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_update_config_section(section: str, patch: str,
+                                  confirm: bool = False) -> Any:
+    """Update a config section SAFELY: GET-merge-PUT. WRITES: confirm-gated."""
+    try:
+        change = _parse_json_arg("patch", patch)
+        if not isinstance(change, dict) or not change:
+            raise SonarrError("patch must be a non-empty JSON object")
+        if not confirm:
+            current = CLIENT.request("GET", f"/api/v3/config/{section}")
+            return _need_confirm(
+                f"update /config/{section} keys {list(change)} "
+                f"(current values: { {k: current.get(k) for k in change} })"
+            )
+        current = CLIENT.request("GET", f"/api/v3/config/{section}")
+        merged = {**current, **change}
+        return CLIENT.request("PUT", f"/api/v3/config/{section}", body=merged)
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_blocklist_delete(blocklist_id: int, confirm: bool = False) -> Any:
+    """Remove one entry from the blocklist. WRITES: confirm-gated."""
+    try:
+        if not confirm:
+            return _need_confirm(f"delete blocklist entry {blocklist_id}")
+        CLIENT.request("DELETE", f"/api/v3/blocklist/{blocklist_id}")
+        return {"deleted": True, "blocklist_id": blocklist_id}
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_tag_create(label: str, confirm: bool = False) -> Any:
+    """Create a new tag. WRITES: confirm-gated."""
+    try:
+        if not label or not label.strip():
+            raise SonarrError("label is required")
+        if not confirm:
+            return _need_confirm(f"create tag '{label}'")
+        return CLIENT.request("POST", "/api/v3/tag", body={"label": label.strip()})
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_tag_delete(tag_id: int, confirm: bool = False) -> Any:
+    """Delete a tag. WRITES: confirm-gated."""
+    try:
+        if not confirm:
+            return _need_confirm(f"delete tag {tag_id}")
+        CLIENT.request("DELETE", f"/api/v3/tag/{tag_id}")
+        return {"deleted": True, "tag_id": tag_id}
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_manual_import(folder: str, import_mode: str = "move",
+                         confirm: bool = False) -> Any:
+    """Perform a manual import for files in a folder. WRITES: confirm-gated.
+
+    Args:
+        folder: The server-side path to scan.
+        import_mode: 'move' (default) | 'copy'.
+        confirm: Must be true.
+    """
+    try:
+        if not folder:
+            raise SonarrError("folder is required")
+        if not confirm:
+            return _need_confirm(f"manual import {folder} (mode={import_mode})")
+        candidates = CLIENT.request("GET", "/api/v3/manualimport",
+                                    params={"folder": folder, "filterExistingFiles": "true"}) or []
+        if not candidates:
+            return {"imported": 0, "note": f"no candidates found in {folder}"}
+        body = []
+        for c in candidates:
+            c["importMode"] = import_mode
+            body.append(c)
+        result = CLIENT.request("POST", "/api/v3/manualimport", body=body)
+        return {"imported": len(body), "result": result}
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_provider_test(provider_type: str, definition: str) -> Any:
+    """Test a notification / downloadclient / indexer / importlist / metadata
+    configuration WITHOUT saving. WRITE (no save) but no confirm needed."""
+    try:
+        pt = provider_type.lower().strip()
+        if pt not in ("notification", "downloadclient", "indexer",
+                      "importlist", "metadata"):
+            raise SonarrError(f"provider_type must be one of notification, "
+                              f"downloadclient, indexer, importlist, metadata")
+        body = _parse_json_arg("definition", definition)
+        if not isinstance(body, dict):
+            raise SonarrError("definition must be a JSON object")
+        return CLIENT.request("POST", f"/api/v3/{pt}/test", body=body)
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_system_routes() -> Any:
+    """Return the LIVE route table (~470 operations) — Sonarr's own introspection
+    of its full API surface."""
+    try:
+        return _finish(CLIENT.live_routes())
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_system_restart(confirm: bool = False, acknowledge: str = "") -> Any:
+    """Restart the Sonarr service/process. DOUBLY GATED.
+
+    Args:
+        confirm: Must be true.
+        acknowledge: Must be the literal string 'restart'.
+    """
+    try:
+        if not confirm or acknowledge != "restart":
+            return {
+                "confirmation_required": True,
+                "note": ("Restarting Sonarr interrupts active downloads and scans. "
+                         "Re-run with confirm=true AND acknowledge='restart'."),
+            }
+        CLIENT.request("POST", "/api/v3/system/restart")
+        return {"restart_initiated": True}
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_system_shutdown(confirm: bool = False, acknowledge: str = "") -> Any:
+    """Shut down Sonarr. DOUBLY GATED.
+
+    Args:
+        confirm: Must be true.
+        acknowledge: Must be the literal string 'shutdown'.
+    """
+    try:
+        if not confirm or acknowledge != "shutdown":
+            return {
+                "confirmation_required": True,
+                "note": ("Shutting down Sonarr takes the app offline until "
+                         "manually restarted. Re-run with confirm=true AND "
+                         "acknowledge='shutdown'."),
+            }
+        CLIENT.request("POST", "/api/v3/system/shutdown")
+        return {"shutdown_initiated": True}
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+# --------------------------------------------------------------------------- #
+# Curated-tool registry — drives the `curated: True/False` annotation in      #
+# sonarr_list_endpoints so the user sees at-a-glance what's ergonomic vs       #
+# generic-only.                                                                #
+# --------------------------------------------------------------------------- #
+CURATED_TOOLS: dict[tuple[str, str], str] = {
+    # Generic / system
+    ("GET", "/api/v3/system/status"):                 "sonarr_status",
+    ("GET", "/api/v3/system/task"):                   "sonarr_system_tasks",
+    ("GET", "/api/v3/system/backup"):                 "sonarr_system_backups",
+    ("GET", "/api/v3/system/routes"):                 "sonarr_system_routes",
+    ("POST", "/api/v3/system/restart"):               "sonarr_system_restart",
+    ("POST", "/api/v3/system/shutdown"):              "sonarr_system_shutdown",
+    ("GET", "/api/v3/log"):                           "sonarr_logs",
+    ("GET", "/api/v3/log/file"):                      "sonarr_log_files",
+    ("GET", "/api/v3/health"):                        "sonarr_status",
+    ("GET", "/api/v3/queue/status"):                  "sonarr_status",
+    ("GET", "/api/v3/diskspace"):                     "sonarr_status",
+    # Library
+    ("GET", "/api/v3/series"):                        "sonarr_list_series",
+    ("GET", "/api/v3/series/{id}"):                   "sonarr_get_series",
+    ("GET", "/api/v3/series/lookup"):                 "sonarr_lookup_series",
+    ("POST", "/api/v3/series"):                       "sonarr_add_series",
+    ("PUT", "/api/v3/series/{id}"):                   "sonarr_update_series",
+    ("PUT", "/api/v3/series/editor"):                 "sonarr_series_bulk_edit",
+    ("DELETE", "/api/v3/series/{id}"):                "sonarr_delete_series",
+    ("GET", "/api/v3/episode"):                       "sonarr_episodes",
+    ("GET", "/api/v3/episode/{id}"):                  "sonarr_episodes",
+    ("GET", "/api/v3/episodeFile"):                   "sonarr_episode_files",
+    ("GET", "/api/v3/episodeFile/{id}"):              "sonarr_episode_files",
+    ("GET", "/api/v3/rename"):                        "sonarr_rename_preview",
+    # Activity
+    ("GET", "/api/v3/calendar"):                      "sonarr_calendar",
+    ("GET", "/api/v3/queue"):                         "sonarr_queue",
+    ("DELETE", "/api/v3/queue/{id}"):                 "sonarr_queue_delete",
+    ("POST", "/api/v3/queue/grab/{id}"):              "sonarr_queue_grab",
+    ("GET", "/api/v3/history"):                       "sonarr_history",
+    ("GET", "/api/v3/history/since"):                 "sonarr_history_since",
+    ("GET", "/api/v3/wanted/missing"):                "sonarr_wanted_missing",
+    ("GET", "/api/v3/wanted/cutoff"):                 "sonarr_wanted_cutoff",
+    ("GET", "/api/v3/blocklist"):                     "sonarr_blocklist",
+    ("DELETE", "/api/v3/blocklist/{id}"):             "sonarr_blocklist_delete",
+    ("POST", "/api/v3/manualimport"):                 "sonarr_manual_import",
+    ("GET", "/api/v3/manualimport"):                  "sonarr_manual_import",
+    ("GET", "/api/v3/parse"):                         "sonarr_parse",
+    ("GET", "/api/v3/filesystem"):                    "sonarr_filesystem",
+    # Commands
+    ("POST", "/api/v3/command"):                      "sonarr_command",
+    ("GET", "/api/v3/command/{id}"):                  "sonarr_command_status",
+    # Config
+    ("GET", "/api/v3/qualityProfile"):                "sonarr_quality_profiles",
+    ("GET", "/api/v3/qualityDefinition"):             "sonarr_quality_definitions",
+    ("GET", "/api/v3/languageProfile"):               "sonarr_language_profiles",
+    ("GET", "/api/v3/delayprofile"):                  "sonarr_delay_profiles",
+    ("GET", "/api/v3/releaseprofile"):                "sonarr_release_profiles",
+    ("GET", "/api/v3/remotepathmapping"):             "sonarr_remote_path_mappings",
+    ("GET", "/api/v3/autoTagging"):                   "sonarr_auto_tagging",
+    ("GET", "/api/v3/importlistexclusion"):           "sonarr_import_exclusions",
+    ("GET", "/api/v3/config/host"):                   "sonarr_config_section",
+    ("GET", "/api/v3/config/ui"):                     "sonarr_config_section",
+    ("GET", "/api/v3/config/mediamanagement"):        "sonarr_config_section",
+    ("GET", "/api/v3/config/indexer"):                "sonarr_config_section",
+    ("GET", "/api/v3/config/downloadclient"):         "sonarr_config_section",
+    ("GET", "/api/v3/config/metadata"):               "sonarr_config_section",
+    ("GET", "/api/v3/config/importlist"):             "sonarr_config_section",
+    ("GET", "/api/v3/config/naming"):                 "sonarr_config_section",
+    ("GET", "/api/v3/language"):                      "sonarr_languages",
+    ("GET", "/api/v3/rootfolder"):                    "sonarr_root_folders",
+    ("GET", "/api/v3/tag"):                           "sonarr_tags",
+    ("GET", "/api/v3/tag/detail"):                    "sonarr_tag_details",
+    ("POST", "/api/v3/tag"):                          "sonarr_tag_create",
+    ("DELETE", "/api/v3/tag/{id}"):                   "sonarr_tag_delete",
+    ("GET", "/api/v3/notification"):                  "sonarr_notifications",
+    ("GET", "/api/v3/downloadclient"):                "sonarr_download_clients",
+    ("GET", "/api/v3/indexer"):                       "sonarr_indexers",
+    ("GET", "/api/v3/importlist"):                    "sonarr_import_lists",
+    ("POST", "/api/v3/notification/test"):            "sonarr_provider_test",
+    ("POST", "/api/v3/downloadclient/test"):          "sonarr_provider_test",
+    ("POST", "/api/v3/indexer/test"):                 "sonarr_provider_test",
+    ("POST", "/api/v3/importlist/test"):              "sonarr_provider_test",
+    ("POST", "/api/v3/metadata/test"):                "sonarr_provider_test",
+}
 
 
 # --------------------------------------------------------------------------- #
