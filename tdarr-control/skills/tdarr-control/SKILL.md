@@ -86,8 +86,11 @@ wraps your params in `data` automatically.
 | What codec should I use? | `codecs.md` |
 | NVENC vs CPU? FFmpeg command for HEVC/H.264/HDR? | `hardware-acceleration.md` |
 | How do I build a [transcode X] workflow? | `workflows.md` |
-| What does plugin X do? Which should I install? | `plugins.md` |
+| What does classic plugin X do? Which should I install? | `plugins.md` |
 | Classic plugin stacks vs Tdarr 2.x flows? | `flows.md` |
+| **Full flow-node catalog (85+ nodes: audio/video/file/ffmpegCommand/tools/automations)** | **`flow-plugin-catalog.md`** |
+| **Media analysis / damage detection / validation / forensics (health checks, status tables, footprint IDs, stream filters)** | **`media-analysis.md`** |
+| **Audio deep dive (codecs, normalization, downmix, language, Atmos, ffmpeg filters, bitrate reference)** | **`audio-deep-dive.md`** |
 | **Staging/review queue, F2F, hold-after-scan, schedules, notifications, auto-pause, stall detection, auto-updates, plugin pinning, queue ordering, resolution boundaries, Tdarr Pro** | **`advanced-features.md`** |
 | Library + node config deep dive (source options, transcode cache, path translators, worker types, per-hour schedules, GPU select, health-check args) | `library-and-nodes.md` |
 | Health checks (quick vs thorough), statistics, job reports, footprint IDs, troubleshooting | `diagnostics-and-health.md` |
@@ -99,71 +102,96 @@ wraps your params in `data` automatically.
 Before answering a Tdarr question, **skim this list** — many of these solve
 problems users don't realize Tdarr has built in:
 
+**Analysis / damage detection:**
+- **Quick health check** — HandBrake `--scan` (headers-only, CPU, fast).
+- **Thorough health check** — FFmpeg frame-by-frame; configurable via
+  `thoroughHealthCheckCpuExtraArgs` etc. for stricter checking (`-err_detect
+  explode_err`).
+- **8 status tables** — every file's last outcome (transcode success/not-
+  required/error/cancelled, health check success/error/cancelled, staged/held).
+- **Tdarr Score + Health Check Score** — "% library in 'Not Required'" metric.
+- **Footprint IDs** — content-hash that groups every transcode attempt of a
+  source; use `tdarr_list_footprint_reports` for forensic history.
+- **Stream-property filters** — `checkVideoCodec/AudioCodec`, `checkVideoBitrate
+  /AudioBitrate/OverallBitrate`, `checkVideoResolution`, `checkChannelCount`,
+  `check10Bit`, `checkHdr`, `CheckVideoFramerate` — all flow nodes.
+- **Validation after transcode** — `compareFileSizeRatio` (output should be
+  0.3-1.5x source), `compareFileDurationRatio` (should be ~1.0 — catches desync),
+  `compareFileSizeRatioLive` (mid-transcode bail-out).
+- **WorkerVerdictHistoryJSONDB** — per-file decision history (transcode
+  outcomes over time).
+- **Custom validation via runCli** — run any ffprobe/ffmpeg astats/silencedetect
+  in a flow.
+- **Closed-caption scanner** — detect CEA-608/708 in video streams during scan.
+
+**Audio capabilities:**
+- **Audio normalization** — `normalizeAudio` flow node + `ffmpegCommandNormalizeAudio`
+  for 2-pass EBU R128 loudnorm (-16 LUFS streaming / -23 broadcast).
+- **Downmix** — 5.1/7.1 → stereo via `-ac 2` or custom `pan` filter with mix
+  coefficients. Atmos → 7.1 (drops object metadata, keeps channel bed).
+- **Codec conversion** — DTS/TrueHD → EAC3 (THE compatibility transcode),
+  PCM/WAV → FLAC (lossless compression), any → AAC (universal).
+- **Language routing** — keep native + English (`henk_Keep_Native_Lang_Plus_Eng`),
+  set default stream (`c0r1_SetDefaultAudioStream`), reorder by language
+  (`076a_re_order_audio_streams`).
+- **Commentary removal** — strip director's commentary tracks (`sdd3_Remove_
+  Commentary_Tracks`).
+- **Silent/clipping detection** — ffmpeg `volumedetect`, `astats`, `silencedetect`
+  via runCli.
+- **Atmos preservation** — `-c:a copy` keeps Atmos metadata; transcoding
+  loses object audio permanently.
+
+**Workflow + operations:**
 - **Staging / review queue** (`autoAcceptTranscodes=false`, default):
-  transcodes don't replace originals until you accept them. Use when trying
-  a new plugin or worrying about quality.
-- **F2F (file-to-file)**: transcode to a SEPARATE output instead of
-  replacing. Zero risk to source.
+  transcodes don't replace originals until you accept them.
+- **F2F (file-to-file)**: transcode to a SEPARATE output, zero risk to source.
 - **Hold-after-scan**: keep fresh files in "Hold" for N seconds so other
-  tools (Sonarr/Radarr imports) finish first.
-- **Auto-pause on cache full** (`autoPauseIfCacheFull=true`): stops
-  runaway transcodes before they fill the disk.
-- **Worker stall detector** (`workerStallDetector=true`): restart hung
-  ffmpeg/NVENC processes automatically.
+  tools finish first.
+- **Auto-pause on cache full** (`autoPauseIfCacheFull=true`).
+- **Worker stall detector** (`workerStallDetector=true`).
 - **Schedules**: 24-element per-hour worker-limits array on each node.
-  Pattern: GPU workers at night, none during the day.
-- **Closed-caption scanner**: detect CEA-608/708 in video streams during
-  scan; shows in Search tab.
-- **Folder watch (polling vs FS events)**: polling is reliable but I/O-heavy;
-  FS events are lighter but flaky on network shares. Hourly-scan fallback.
-- **File scanner threads**: bump on SSDs for faster scans; keep at 1 on
-  spinning disks.
-- **Path translators**: server `/media` ↔ node `W:/media` mapping for
-  cross-platform fleets. Env-var form must be base64-encoded JSON.
+- **Path translators**: server `/media` ↔ node `W:/media` for cross-platform.
 - **Unmapped nodes (Tdarr Pro)**: offload work to machines where share
-  mapping is impossible; auto download/upload. Free tier caps at 10MB.
-- **Tdarr Pro license** (`tdarrKey`): unlocks unlimited unmapped nodes.
-- **Plugin pinning** (`pluginPinnedSha`): freeze community plugins at a
-  specific commit for production stability.
-- **Custom plugin repo** (`communityPluginRepo`): point at a fork or
-  air-gapped zip mirror.
-- **Notifications** (Discord webhook, per-event toggles): transcode
-  success/error/cancelled, health-check success/error/cancelled, server
-  started, server update ready, file entered review queue.
-- **Tdarr Score + Health Check Score**: % of library in "Not required"
-  status — your "how done am I" metric. Live in StatisticsJSONDB.
-- **Job reports + footprint IDs**: forensic per-transcode logs; footprint ID
-  groups all transcode attempts of the same source for "this file keeps
-  failing" triage.
-- **Quick vs thorough health checks**: quick uses HandBrake `--scan` (headers
-  only, CPU); thorough uses FFmpeg frame-by-frame (CPU or GPU).
-- **Per-node thorough-health-check custom ffmpeg args**:
-  `thoroughHealthCheckCpuExtraArgs` / `...GpuExtraArgs` (output) and
-  `...ExtraInputArgs` (input). Add stricter error detection.
-- **Authentication**: `auth=true` on server, generate API keys via UI or
-  `seededApiKey` env var (must start `tapi_`, ≥14 chars).
-- **Resolution boundaries** (`resBoundaries`): configurable ranges for
-  480p/576p/720p/1080p/1440p/4KUHD/DCI4K/8KUHD; tiered plugins pick up
-  changes automatically.
-- **Flow variable templating**: `{{{args.inputFileObj._id}}}`,
-  `{{{args.userVariables.library.cq}}}` etc. — DRY flows with per-library
-  values.
-- **Flow worker routing**: `Worker Type` flow node routes work to nodes
-  with matching tags. Essential for mixed-node fleets.
-- **tdarr_inform** (Sonarr/Radarr/Whisparr webhook): push "new file"
-  events to Tdarr without polling.
-- **tdarr_autoscan**: alternative scan-trigger integration.
-- **Bumped files**: re-queue files that couldn't get a worker slot instead
-  of marking failed.
+  mapping is impossible.
+- **Plugin SHA pinning** (`pluginPinnedSha`).
+- **Custom plugin repo** (`communityPluginRepo`).
+- **Notifications** — built-in Discord webhook; `apprise` flow node supports
+  100+ services.
+- **Library operations**: Scan Find New / Fresh / Requeue all / Duplicate /
+  Clear / Delete + Reset stats.
+- **Tdarr Pro license** (`tdarrKey`) — unlocks unlimited unmapped nodes.
+- **Bumped files** — re-queue files that couldn't get a worker slot.
 - **Queue ordering** (`queueSortType`, `prioritiseTranscodes/HealthChecks/
   Libraries`, `nodePriority`).
-- **Library operations**: Scan Find New / Scan Fresh / Requeue all /
-  Duplicate / Clear / Delete + Reset stats.
-- **MCP plugin auth support**: `api_key` + configurable `api_key_header`
-  in `config.local.json` for users who enable Tdarr auth.
+- **Resolution boundaries** (`resBoundaries`) — configurable for tiered plugins.
 
-Full details in `advanced-features.md`, `library-and-nodes.md`,
-`diagnostics-and-health.md`, `integrations.md`.
+**Power-user flow nodes (the 85+ node catalog):**
+- `webRequest` — call ANY HTTP endpoint (Emby/Plex/Bazarr/Autobrr/webhooks).
+- `apprise` — single URL → 100+ notification services (Discord/Slack/Telegram/
+  ntfy/email/SMS).
+- `customFunction` — run arbitrary JS in a flow.
+- `runCli` — run any shell command on the node.
+- `runMkvpropedit` — fast metadata edits without re-encoding.
+- `setFlowVariable` / `checkFlowVariable` / `arithmeticFlowVariable` —
+  variables + math.
+- `tagsWorkerType` / `tagsRequeue` — node routing (mapped/unmapped/GPU/CPU).
+- `detectNonTdarrNvenc` — avoid GPU contention (ComfyUI/Ollama + Tdarr).
+- `preventSleepWhileEncoding` — keep machine awake during transcodes.
+- `pauseUnpauseAllNodes` — global pause from a flow.
+- `failFlow` / `onFlowError` / `resetFlowError` — explicit error handling.
+- `goToFlow` / `waitTimeout` — loops, retries, polling.
+- `applyRadarrOrSonarrNamingPolicy` — auto-rename per *arr conventions.
+- `notifyRadarrOrSonarr` — trigger *arr rescan.
+- `unpack` — RAR/ZIP extraction.
+- `checkForHardlinks` — hardlink detection.
+- `calculateFileHash` — content hashing for dedup/change-tracking.
+- `replaceOriginalFile` — the post-transcode replacement step.
+- Variable templating: `{{{args.inputFileObj._id}}}`,
+  `{{{args.userVariables.library.cq}}}`.
+
+Full details in the relevant references — especially
+`flow-plugin-catalog.md`, `media-analysis.md`, `audio-deep-dive.md`,
+`advanced-features.md`.
 
 ## Start here (operational)
 
@@ -268,7 +296,8 @@ User wants...
 │        will claim the job.
 │
 ├── "Which plugin should I install?"
-│   → Use references/plugins.md. Default recommendation for gh-nvidia:
+│   → Use references/plugins.md (classic) or references/flow-plugin-catalog.md
+│     (flows). Default recommendation for gh-nvidia:
 │     MC93_Migz1FFMPEG (NVENC HEVC) + the Migz2-6 cleanup suite.
 │
 ├── "Build me a custom transcode plugin"
@@ -277,7 +306,8 @@ User wants...
 │
 ├── "Configure Tdarr to notify me on Discord"
 │   → Set notificationsDiscordWebhook + per-event toggles in
-│     SettingsGlobalJSONDB. See integrations.md.
+│     SettingsGlobalJSONDB. OR use the `apprise` flow node for 100+ services.
+│     See integrations.md.
 │
 ├── "Let Sonarr tell Tdarr when a new file is added"
 │   → Install tdarr_inform. See integrations.md.
@@ -296,10 +326,69 @@ User wants...
 │     fps at 1080p). Recommend HEVC instead — similar compression, much faster
 │     on this hardware.
 │
-└── "How do I see what Tdarr decided about this file / why is it failing?"
-    → tdarr_list_footprint_reports(footprint_id="<id>") for full history of
-      attempts. Each report has the full plugin decision log + ffmpeg output.
-      See diagnostics-and-health.md.
+├── "How do I see what Tdarr decided about this file / why is it failing?"
+│   → tdarr_list_footprint_reports(footprint_id="<id>") for full history of
+│      attempts. Each report has the full plugin decision log + ffmpeg output.
+│      See diagnostics-and-health.md.
+│
+├── "Find corrupted files in my library"
+│   → Run thorough health checks: Library Options → Requeue all (health check)
+│     with thorough mode enabled. Check table5Count in StatisticsJSONDB for
+│     the corruption count. For stricter checking, set
+│     thoroughHealthCheckCpuExtraArgs='-err_detect explode_err'. See
+│     media-analysis.md.
+│
+├── "Find files below quality threshold (low bitrate)"
+│   → Build a flow: checkVideoBitrate(min=1000000) → requireReview(). See
+│     media-analysis.md.
+│
+├── "Validate that my last transcode run actually worked"
+│   → Flow nodes compareFileSizeRatio(min=0.3, max=1.5) +
+│     compareFileDurationRatio(min=0.99, max=1.01). On failure → requireReview.
+│
+├── "Normalize audio loudness across my library"
+│   → Use normalizeAudio flow node OR ffmpegCommandNormalizeAudio OR
+│     NIfPZuCLU_2_Pass_Loudnorm_Audio_Normalisation plugin. Target -16 LUFS
+│     (streaming) or -23 LUFS (broadcast). See audio-deep-dive.md.
+│
+├── "Downmix 5.1 to stereo / convert DTS to EAC3"
+│   → See audio-deep-dive.md for the ffmpeg commands. Plugin:
+│     MC93_Migz5ConvertAudio (DTS→EAC3) or b39x_the1poet_surround_sound_to_ac3.
+│
+├── "Keep only English + native audio, drop commentary"
+│   → Plugin: henk_Keep_Native_Lang_Plus_Eng + sdd3_Remove_Commentary_Tracks.
+│
+├── "Detect silent audio tracks or clipping"
+│   → Use runCli flow node with `ffmpeg -af volumedetect` (silent) or
+│     `ffmpeg -af astats` (clipping). See audio-deep-dive.md.
+│
+├── "Preserve Dolby Atmos during transcode"
+│   → Use `-c:a copy` (don't transcode Atmos audio). Any audio transcode
+│     loses object metadata permanently. See audio-deep-dive.md.
+│
+├── "Tone-map HDR → SDR properly"
+│   → Use ffmpegCommandHdrToSdr flow node (proper color conversion). NEVER
+│     just strip color flags — that produces washed-out SDR. See
+│     media-analysis.md + workflows.md.
+│
+├── "Detect variable-framerate files (VFR causes sync issues)"
+│   → CheckVideoFramerate flow node, OR runCli with ffprobe comparing
+│     avg_frame_rate vs r_frame_rate.
+│
+├── "Avoid GPU contention between Tdarr and ComfyUI/Ollama"
+│   → Use detectNonTdarrNvenc flow node + waitTimeout loop. See
+│     flow-plugin-catalog.md.
+│
+├── "Send a custom webhook on transcode success"
+│   → webRequest flow node (POST any HTTP) OR apprise flow node (100+
+│     notification services). Templating: {{{args.inputFileObj._id}}}.
+│
+├── "Trigger Emby library rescan after transcode"
+│   → webRequest flow node → POST http://emby:8096/Library/Refresh?api_key=...
+│     with the Emby API key as a library variable. See integrations.md.
+│
+└── "Run arbitrary code / custom logic in a flow"
+    → customFunction flow node (arbitrary JS) OR runCli (any shell command).
 ```
 
 ## gh-nvidia specifics (action items!)
@@ -356,8 +445,11 @@ See `library-and-nodes.md` for the full checklist.
 - `codecs.md` — full codec reference
 - `hardware-acceleration.md` — NVENC + HDR + Docker GPU passthrough
 - `workflows.md` — 6 canonical transcode patterns with real ffmpeg
-- `plugins.md` — 107 community plugins organized by purpose
+- `plugins.md` — 107 classic community plugins organized by purpose
 - `flows.md` — Tdarr 2.x flows with templating
+- **`flow-plugin-catalog.md` — full 85+ flow-node catalog**
+- **`media-analysis.md` — damage detection, validation, forensics**
+- **`audio-deep-dive.md` — comprehensive audio handling**
 - `advanced-features.md` — staging, F2F, schedules, notifications, auto-pause, etc.
 - `library-and-nodes.md` — full library + node config
 - `diagnostics-and-health.md` — health checks, job reports, troubleshooting
