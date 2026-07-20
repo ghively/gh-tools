@@ -2,22 +2,11 @@
 
 Control of a **Tdarr** distributed transcoding server (v2 API) from Claude Code / opencode.
 
-## ⚠️ STATUS: DOC-VERIFIED — NOT YET LIVE-VERIFIED
-
-This plugin was built from the official Tdarr API documentation at
-<https://tdarr.readme.io/reference> (v2.25.01+, frozen 2026-07-19). **Tdarr is
-not deployed on this homelab yet**, so every call shape, parameter name, and
-response structure is taken from the docs and has NOT been exercised against a
-running instance.
-
-When Tdarr is deployed (likely on `gh-nvidia:8265`), run:
-
-```bash
-cd tdarr-control && uv run --script mcp/_smoketest.py
-```
-
-Every passing tool closes one doc-verified → live-verified gap. Write tools
-need a separate reversible proof — see `mcp/_writeproof.py` template (TBD).
+**LIVE-VERIFIED on Tdarr 2.84.01** (2026-07-20). 16/16 smoke tools pass against
+the live server at `gh-nvidia:8265`; reversible backup create→list→delete write
+proof PASSED. The plugin was originally built doc-only and verified live on
+first deployment — the smoke test (`mcp/_smoketest.py`) and write proof
+(`mcp/_writeproof.py`) are how the gap was closed.
 
 ## What this plugin does
 
@@ -81,34 +70,35 @@ override the file.
 
 ## Honest gap taxonomy
 
-- **DOC-VERIFIED (not live-verified):** all 47 tools. Built from the v2.25.01+
-  official API docs.
-- **Likely gap candidates (param shapes that need live confirmation):**
-  - `scan_files(scan_config)` — exact `scanConfig` shape undocumented.
-  - `alter_worker_limit(worker_type)` — `workerType` enum values (likely
-    `cpu`/`gpu`/`transcode`).
+- **LIVE-VERIFIED (reads, against Tdarr 2.84.01):** status, full_status, nodes,
+  db_statuses, performance_stats, res_stats, backup_status, backups, search_db,
+  search_plugins/flow_plugins/flow_templates (with `pluginType`), db getAll on
+  StatisticsJSONDB/NodeJSONDB/SettingsGlobalJSONDB/LibrarySettingsJSONDB/FlowsJSONDB,
+  run_help_command (`mode`+`text`).
+- **LIVE-VERIFIED (writes):** create_backup + delete_backup (reversible write
+  proof PASSED — `Backup-version-*.zip` created, verified, deleted, state restored).
+- **DOC-VERIFIED only** (param shapes not yet exercised live):
+  - `scan_files(scan_config)` — exact `scanConfig` shape.
+  - `alter_worker_limit(worker_type)` — worker_type enum CONFIRMED live
+    (`transcodecpu` / `transcodegpu` / `healthcheckcpu` / `healthcheckgpu`).
   - `toggle_schedule(type)` — exact type values.
   - `transcode_user_verdict(verdict)` — exact verdict strings.
-  - `tdarr_db(obj)` — `obj` shape varies per collection; always `getAll` first.
+  - `tdarr_db(obj)` for write modes (insert/update) — shape varies per
+    collection; always `getAll` first.
 - **Not implemented (out of MVP scope):** WebSocket live updates (the Tdarr web
   UI uses Socket.IO — out of scope for MCP), `download-plugins` binary download,
   `client/{clientType}` (internal node↔server).
 
-## First-deployment checklist
+## What the live verification caught (vs the docs)
 
-When Tdarr is deployed, in order:
+The Tdarr API docs at tdarr.readme.io are slightly stale; live-verification
+caught three param-shape mismatches that were fixed:
 
-1. Run `_smoketest.py` — fix any param-shape mismatches the live API rejects.
-2. Hit `/system-status` style endpoints to verify the response shapes match
-   what the curated tools assume (they're permissive — pass-through — so this
-   should mostly Just Work).
-3. Reversible write proof: `tdarr_create_backup(confirm=True)` →
-   `tdarr_backups()` to verify → `tdarr_delete_backup(file_name, confirm=True)`
-   to clean up.
-4. Plugin install proof: `tdarr_search_plugins(string="Migz")` → pick a
-   community plugin → `tdarr_install_plugin(plugin_id, confirm=True)` → verify
-   via re-search → optionally `tdarr_delete_plugin(...)` to roll back.
-5. Bump `plugin.json` version from `0.1.0-docverified` to `0.2.0` once
-   live-verified.
+- **`search-db`**: docs say `lessThanGB`/`greaterThanGB` are optional — server
+  requires them. Curated tool now always sends sensible defaults.
+- **`search-plugins` / `search-flow-plugins`**: docs omit the required
+  `pluginType` field. Curated tool now sends `"standard"` / `"flow"`.
+- **`delete-backup`**: docs use `fileName` — server wants `name`. Fixed.
+- **`run-help-command`**: docs use `command`/`args` — server wants `mode`/`text`. Fixed.
 
 Built with the **deep-integration-builder** methodology.
