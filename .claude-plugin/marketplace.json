@@ -87,9 +87,9 @@
     {
       "name": "tdarr-control",
       "source": "./tdarr-control",
-      "description": "Control of a Tdarr distributed transcoding server (v2 API). LIVE-VERIFIED on Tdarr 2.84.01 (2026-07-20) — 16/16 smoke tools pass + reversible backup create→list→delete proof. Generic passthrough over all 67 documented /api/v2 endpoints + ~30 curated tools for status, library (search-db, scan, delete, filescanner control), plugins (search/read/install/create/edit/delete/sync — requires pluginType field, discovered live), nodes (list/restart/disconnect/logs/worker-limits; worker types: transcodecpu/transcodegpu/healthcheckcpu/healthcheckgpu), backups, the powerful /cruddb (8 collections, full CRUD — reads not gated, writes confirm-gated), codec-exclude and plugin-include management, transcode-user-verdict, and flow templates. All writes confirm-gated; kill-worker/disconnect-node/kill-file-scanner doubly-gated (typed acknowledge). Bundles ffmpeg 7.1.4-Jellyfin + HandBrake. No auth by default (Tdarr trusts the LAN).",
+      "description": "Control of a Tdarr distributed transcoding server (v2 API) + deep codec/workflow/hardware knowledge base. LIVE-VERIFIED on Tdarr 2.84.01 — 16/16 smoke tools + reversible backup write-proof. Generic passthrough over 67 documented /api/v2 endpoints + ~30 curated tools (status, library, plugins, nodes, backups, /cruddb 8-collection CRUD). Skill ships 6 deep references: codecs encyclopedia (H.264/HEVC/AV1/VP9 + AAC/AC3/EAC3/DTS/TrueHD/FLAC + MKV/MP4 + SRT/ASS/PGS + compatibility matrix), hardware acceleration (NVENC hevc/h264 encoder reference for RTX 3060, HDR preservation, no-AV1-on-Ampere caveat), 6 canonical workflows with real ffmpeg commands (HEVC standardize, MP4 compatibility, audio normalization, remux cleanup, subtitle extraction, 4K HDR preservation), the 107-plugin community catalog (Migz suite, winsome, vdka tiered) organized by purpose, and Tdarr 2.x flows vs plugin stacks. All writes confirm-gated; kill-worker/disconnect-node/kill-file-scanner doubly-gated.",
       "category": "media",
-      "version": "0.2.0"
+      "version": "0.3.0"
     }
   ]
 }
