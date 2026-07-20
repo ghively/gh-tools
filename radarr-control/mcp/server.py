@@ -144,6 +144,7 @@ class RadarrClient:
             timeout=cfg["timeout"],
         )
         self._lock = threading.Lock()
+        self._live_routes: Optional[list] = None  # cache of /system/routes entries
 
     def request(
         self,
@@ -180,6 +181,47 @@ class RadarrClient:
         """POST /command with {"name": name, ...extra}."""
         body = {"name": name, **extra}
         return self.request("POST", "/command", body=body)
+
+    def live_routes(self) -> list:
+        """Fetch and parse /api/v3/system/routes (Graphviz DOT format) into a
+        clean list of {method, path}. Cached for the process lifetime.
+
+        Radarr/Sonarr expose their FULL route table here — using it makes the
+        endpoint catalog authoritative-by-construction (vs. a hand-typed list
+        that drifts). Falls back to the static ENDPOINT_CATALOG on failure.
+        """
+        with self._lock:
+            if self._live_routes is not None:
+                return self._live_routes
+        import re
+        try:
+            text = self.request("GET", "/api/v3/system/routes", raw=True)
+            seen = set()
+            routes = []
+            for label in re.findall(r'\[label="([^"]+)"\]', text or ""):
+                m = re.match(r'^(/api/v3\S*)\s+HTTP:\s+([A-Z*]+)\s*$', label)
+                if not m:
+                    continue
+                path = m.group(1).rstrip('/')
+                method = m.group(2)
+                if method == '*':
+                    continue
+                # Normalize path placeholders to {id}; case-insensitive dedup
+                norm = re.sub(r'\{[^}]+\}', '{id}', path).lower()
+                key = (method, norm)
+                if key in seen:
+                    continue
+                seen.add(key)
+                routes.append({"method": method, "path": path})
+            routes.sort(key=lambda r: (r["path"], r["method"]))
+            with self._lock:
+                self._live_routes = routes
+            return routes
+        except Exception as e:  # noqa: BLE001
+            log(f"WARNING: /system/routes unavailable, falling back to static catalog: {e}")
+            with self._lock:
+                self._live_routes = []
+            return []
 
 
 CLIENT = RadarrClient(CONFIG)
@@ -367,23 +409,53 @@ def radarr_call(method: str, path: str, params: str = "", body: str = "") -> Any
 
 
 @mcp.tool()
-def radarr_list_endpoints(search: str = "", method: str = "", limit: int = 80) -> Any:
-    """Search the endpoint catalog (hand-enumerated from live probes — Radarr
-    does not publish OpenAPI). The master index for radarr_call.
+def radarr_list_endpoints(search: str = "", method: str = "", limit: int = 100,
+                          curated_only: bool = False) -> Any:
+    """Search the FULL endpoint catalog — pulled live from /api/v3/system/routes
+    so it's always accurate for the deployed Radarr version (~470 operations on
+    6.3). The master index for radarr_call.
+
+    Each operation is annotated with whether a curated tool wraps it (so you
+    can see at a glance what's ergonomic vs generic-only). Radarr publishes
+    no OpenAPI document; the live route table is the authoritative source.
 
     Args:
-        search: Case-insensitive substring matched against path + summary,
-            e.g. "movie", "queue", "command".
+        search: Case-insensitive substring matched against the path,
+            e.g. "movie", "queue", "command", "config".
         method: Filter by HTTP method (GET/POST/PUT/DELETE).
-        limit: Max endpoints to return (default 80).
+        curated_only: If true, only return operations that have a curated tool.
+        limit: Max operations to return (default 100).
     """
-    ops = ENDPOINT_CATALOG
+    import re
+    routes = CLIENT.live_routes() or ENDPOINT_CATALOG
+    # Build curated-tool lookup keyed on (METHOD, normalized_lower_path)
+    curated_keys = set()
+    for (m, p), _tool in CURATED_TOOLS.items():
+        norm = re.sub(r'\{[^}]+\}', '{id}', p).lower()
+        curated_keys.add((m.upper(), norm))
+    annotated = []
+    for r in routes:
+        m = r["method"].upper()
+        p = r["path"]
+        norm = re.sub(r'\{[^}]+\}', '{id}', p).lower()
+        is_curated = (m, norm) in curated_keys
+        annotated.append({"method": m, "path": p, "curated": is_curated})
     if method:
-        ops = [o for o in ops if o["method"].upper() == method.upper()]
+        annotated = [o for o in annotated if o["method"] == method.upper()]
+    if curated_only:
+        annotated = [o for o in annotated if o["curated"]]
     if search:
         s = search.lower()
-        ops = [o for o in ops if s in o["path"].lower() or s in o["summary"].lower()]
-    return _finish({"matched": len(ops), "endpoints": ops[:limit]})
+        annotated = [o for o in annotated if s in o["path"].lower()]
+    # Summary
+    n_curated = sum(1 for o in annotated if o["curated"])
+    return _finish({
+        "matched": len(annotated),
+        "matched_curated": n_curated,
+        "matched_generic_only": len(annotated) - n_curated,
+        "total_live_operations": len(routes),
+        "operations": annotated[:limit],
+    })
 
 
 # --------------------------------------------------------------------------- #
@@ -1045,6 +1117,539 @@ def radarr_custom_formats() -> Any:
                 for c in data]
     except Exception as e:  # noqa: BLE001
         return _err(e)
+
+
+# --------------------------------------------------------------------------- #
+# Round 2: high-value gaps from the live-route audit                           #
+# (queue mgmt, parse, log/filesystem, config sections, tag CRUD, blocklist,    #
+#  system restart/shutdown, manual import, more reads)                         #
+# --------------------------------------------------------------------------- #
+@mcp.tool()
+def radarr_queue_delete(queue_id: int, blacklist: bool = False,
+                        remove_from_client: bool = False,
+                        confirm: bool = False) -> Any:
+    """Remove a single item from the active queue. WRITES: confirm-gated.
+
+    Args:
+        queue_id: The queue record id (from radarr_queue).
+        blacklist: Add the release to the blocklist so it won't be re-grabbed.
+        remove_from_client: Also delete the download from the download client
+            (SABnzbd/qBittorrent/etc.). Irreversible — use with care.
+        confirm: Must be true.
+    """
+    try:
+        if not confirm:
+            return _need_confirm(
+                f"delete queue item {queue_id} "
+                f"(blacklist={blacklist}, remove_from_client={remove_from_client})"
+            )
+        params = {}
+        if blacklist: params["blacklist"] = "true"
+        if remove_from_client: params["removeFromClient"] = "true"
+        CLIENT.request("DELETE", f"/api/v3/queue/{queue_id}", params=params or None)
+        return {"deleted": True, "queue_id": queue_id}
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_queue_grab(queue_id: int, confirm: bool = False) -> Any:
+    """Re-grab a release for an aggregated queue item (search indexers for a
+    new copy). WRITES: confirm-gated.
+
+    Args:
+        queue_id: The queue record id.
+        confirm: Must be true — triggers a download.
+    """
+    try:
+        if not confirm:
+            return _need_confirm(f"re-grab queue item {queue_id}")
+        return CLIENT.request("POST", f"/api/v3/queue/grab/{queue_id}")
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_movies_bulk_edit(movie_ids: list, monitored: Optional[bool] = None,
+                             quality_profile_id: Optional[int] = None,
+                             minimum_availability: Optional[str] = None,
+                             tags: Optional[list] = None,
+                             apply_tags: str = "add",
+                             move_files: bool = False,
+                             confirm: bool = False) -> Any:
+    """Bulk-edit multiple movies in one operation. WRITES: confirm-gated.
+    Only the supplied fields are changed.
+
+    Args:
+        movie_ids: List of Radarr movie ids.
+        monitored: Set monitored state (None = leave unchanged).
+        quality_profile_id: Set quality profile (None = unchanged).
+        minimum_availability: announced|inCinemas|released.
+        tags: List of tag ids (with apply_tags).
+        apply_tags: add | remove | replace | sync (default add).
+        move_files: Move files when path/quality changes.
+        confirm: Must be true.
+    """
+    try:
+        if not movie_ids:
+            raise RadarrError("movie_ids must be non-empty")
+        if not confirm:
+            changes = []
+            if monitored is not None: changes.append(f"monitored={monitored}")
+            if quality_profile_id is not None: changes.append(f"qualityProfileId={quality_profile_id}")
+            if minimum_availability: changes.append(f"minimumAvailability={minimum_availability}")
+            return _need_confirm(f"bulk-edit movies {movie_ids}: {', '.join(changes) or 'no changes'}")
+        body: dict = {"movieIds": list(movie_ids), "moveFiles": bool(move_files)}
+        if monitored is not None: body["monitored"] = bool(monitored)
+        if quality_profile_id is not None: body["qualityProfileId"] = int(quality_profile_id)
+        if minimum_availability: body["minimumAvailability"] = minimum_availability
+        if tags is not None:
+            body["tags"] = list(tags)
+            body["applyTags"] = apply_tags
+        return CLIENT.request("PUT", "/api/v3/movie/editor", body=body)
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_parse(title: str) -> Any:
+    """Parse a release title to see what movie + quality Radarr would match it
+    to. READ-ONLY — the cheapest way to answer "would this release work?"
+
+    Args:
+        title: A release string like "Dune.2021.2160p.UHD.BluRay.x265-GROUP".
+    """
+    try:
+        return CLIENT.request("GET", "/api/v3/parse", params={"title": title})
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_log_files() -> Any:
+    """List the on-disk log files (and update-log files) with sizes."""
+    try:
+        data = CLIENT.request("GET", "/api/v3/log/file") or []
+        return [{"filename": f.get("name"), "lastWriteTime": f.get("lastWriteTime"),
+                 "path": f.get("path"), "size": f.get("contentsLength")}
+                for f in data]
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_filesystem(path: str = "/", include_files: bool = False,
+                      allow_folders_without_trailing_slash: bool = False) -> Any:
+    """Browse the server's filesystem (used when configuring root folders)."""
+    try:
+        params = {"path": path}
+        if include_files: params["includeFiles"] = "true"
+        if allow_folders_without_trailing_slash: params["allowFoldersWithoutTrailingSlashes"] = "true"
+        data = CLIENT.request("GET", "/api/v3/filesystem", params=params) or {}
+        return {
+            "path": data.get("path"),
+            "parent": data.get("parent"),
+            "directories": [{"name": d.get("name"), "path": d.get("path")}
+                            for d in (data.get("directories") or [])],
+            "files": [{"name": f.get("name"), "path": f.get("path"), "size": f.get("size")}
+                      for f in (data.get("files") or [])],
+        }
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_history_since(since: str, event_type: str = "") -> Any:
+    """History since an ISO timestamp (lighter than paged history).
+
+    Args:
+        since: ISO 8601 timestamp, e.g. "2026-07-19T00:00:00Z".
+        event_type: Optional filter (grabbed|downloadFolderImported|...).
+    """
+    try:
+        params = {"since": since}
+        if event_type: params["eventType"] = event_type
+        return _finish(CLIENT.request("GET", "/api/v3/history/since", params=params))
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_rename_preview(movie_ids: list) -> Any:
+    """Preview what files WOULD be renamed, without doing it. READ-ONLY.
+
+    Note: Radarr's /rename endpoint accepts a SINGLE movieId per request; this
+    tool loops over the supplied ids and returns a merged list.
+    """
+    try:
+        if not movie_ids:
+            raise RadarrError("movie_ids must be non-empty")
+        out = []
+        for mid in movie_ids:
+            res = CLIENT.request("GET", "/api/v3/rename", params={"movieId": int(mid)}) or []
+            for r in res:
+                r["_movieId"] = mid
+                out.append(r)
+        return out
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_quality_definitions() -> Any:
+    """Quality definitions (size-by-quality matrix Radarr uses for indexer searches)."""
+    try:
+        return CLIENT.request("GET", "/api/v3/qualityDefinition")
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_delay_profiles() -> Any:
+    """Delay profiles (how long Radarr waits before grabbing a release)."""
+    try:
+        return CLIENT.request("GET", "/api/v3/delayprofile")
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_remote_path_mappings() -> Any:
+    """Remote path mappings (Docker path translation between download client and Radarr)."""
+    try:
+        return CLIENT.request("GET", "/api/v3/remotepathmapping")
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_release_profiles() -> Any:
+    """Release profiles (must-contain / must-not-contain rules for release selection)."""
+    try:
+        return CLIENT.request("GET", "/api/v3/releaseprofile")
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_import_exclusions() -> Any:
+    """Import exclusions (movies that will never be auto-added from import lists)."""
+    try:
+        return CLIENT.request("GET", "/api/v3/exclusions")
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_auto_tagging() -> Any:
+    """Auto-tagging rules (tags auto-applied when a movie matches a rule)."""
+    try:
+        return CLIENT.request("GET", "/api/v3/autoTagging")
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_tag_details() -> Any:
+    """All tags with the counts of movies / delay profiles / etc. that use each."""
+    try:
+        data = CLIENT.request("GET", "/api/v3/tag/detail") or []
+        return [{"id": t.get("id"), "label": t.get("label"),
+                 "movieCount": len(t.get("movieIds") or [])}
+                for t in data]
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_config_section(section: str) -> Any:
+    """Read a specific config section. READ-ONLY.
+
+    Args:
+        section: One of: host, ui, mediamanagement, indexer, downloadclient,
+            metadata, importlist, naming.
+    """
+    try:
+        if not section:
+            raise RadarrError("section is required (host, ui, mediamanagement, indexer, "
+                              "downloadclient, metadata, importlist, naming)")
+        return CLIENT.request("GET", f"/api/v3/config/{section}")
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_update_config_section(section: str, patch: str,
+                                  confirm: bool = False) -> Any:
+    """Update a config section SAFELY: GET current, merge patch, PUT full.
+    WRITES: confirm-gated.
+
+    Args:
+        section: host, ui, mediamanagement, indexer, downloadclient, metadata,
+            importlist, naming.
+        patch: JSON object string with keys to change.
+        confirm: Must be true — affects live server behavior.
+    """
+    try:
+        change = _parse_json_arg("patch", patch)
+        if not isinstance(change, dict) or not change:
+            raise RadarrError("patch must be a non-empty JSON object")
+        if not confirm:
+            current = CLIENT.request("GET", f"/api/v3/config/{section}")
+            return _need_confirm(
+                f"update /config/{section} keys {list(change)} "
+                f"(current values: { {k: current.get(k) for k in change} })"
+            )
+        current = CLIENT.request("GET", f"/api/v3/config/{section}")
+        merged = {**current, **change}
+        return CLIENT.request("PUT", f"/api/v3/config/{section}", body=merged)
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_blocklist_delete(blocklist_id: int, confirm: bool = False) -> Any:
+    """Remove one entry from the blocklist. WRITES: confirm-gated."""
+    try:
+        if not confirm:
+            return _need_confirm(f"delete blocklist entry {blocklist_id}")
+        CLIENT.request("DELETE", f"/api/v3/blocklist/{blocklist_id}")
+        return {"deleted": True, "blocklist_id": blocklist_id}
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_tag_create(label: str, confirm: bool = False) -> Any:
+    """Create a new tag. WRITES: confirm-gated."""
+    try:
+        if not label or not label.strip():
+            raise RadarrError("label is required")
+        if not confirm:
+            return _need_confirm(f"create tag '{label}'")
+        return CLIENT.request("POST", "/api/v3/tag", body={"label": label.strip()})
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_tag_delete(tag_id: int, confirm: bool = False) -> Any:
+    """Delete a tag. WRITES: confirm-gated. Tags in use will be unassigned."""
+    try:
+        if not confirm:
+            return _need_confirm(f"delete tag {tag_id}")
+        CLIENT.request("DELETE", f"/api/v3/tag/{tag_id}")
+        return {"deleted": True, "tag_id": tag_id}
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_manual_import(folder: str, import_mode: str = "move",
+                         confirm: bool = False) -> Any:
+    """Perform a manual import for files in a folder. WRITES: confirm-gated.
+
+    Args:
+        folder: The server-side path to scan (e.g. /volume2/Downloads/Movies).
+        import_mode: 'move' (default) | 'copy'.
+        confirm: Must be true — moves/copy files into the library.
+    """
+    try:
+        if not folder:
+            raise RadarrError("folder is required")
+        if not confirm:
+            return _need_confirm(f"manual import {folder} (mode={import_mode})")
+        # Two-step: list candidates (GET manualimport), then POST them
+        candidates = CLIENT.request("GET", "/api/v3/manualimport",
+                                    params={"folder": folder, "filterExistingFiles": "true"}) or []
+        if not candidates:
+            return {"imported": 0, "note": f"no candidates found in {folder}"}
+        body = []
+        for c in candidates:
+            c["importMode"] = import_mode
+            body.append(c)
+        result = CLIENT.request("POST", "/api/v3/manualimport", body=body)
+        return {"imported": len(body), "result": result}
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_provider_test(provider_type: str, definition: str) -> Any:
+    """Test a notification / downloadclient / indexer / importlist / metadata
+    configuration WITHOUT saving. Useful when setting up a new provider.
+    WRITE (no save) but no confirm needed — it just makes a live test call.
+
+    Args:
+        provider_type: One of notification, downloadclient, indexer,
+            importlist, metadata.
+        definition: Full provider definition object as JSON string.
+    """
+    try:
+        pt = provider_type.lower().strip()
+        if pt not in ("notification", "downloadclient", "indexer",
+                      "importlist", "metadata"):
+            raise RadarrError(f"provider_type must be one of notification, "
+                              f"downloadclient, indexer, importlist, metadata")
+        body = _parse_json_arg("definition", definition)
+        if not isinstance(body, dict):
+            raise RadarrError("definition must be a JSON object")
+        return CLIENT.request("POST", f"/api/v3/{pt}/test", body=body)
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_system_routes() -> Any:
+    """Return the LIVE route table (~470 operations) — Radarr's own introspection
+    of its full API surface. Useful for finding endpoints not yet in curated tools.
+    """
+    try:
+        return _finish(CLIENT.live_routes())
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_system_restart(confirm: bool = False, acknowledge: str = "") -> Any:
+    """Restart the Radarr service/process.
+
+    DOUBLY GATED — requires confirm=true AND acknowledge='restart' (typed).
+    Interrupts active downloads/scans. Only invoke after explicit owner
+    approval.
+
+    Args:
+        confirm: Must be true.
+        acknowledge: Must be the literal string 'restart'.
+    """
+    try:
+        if not confirm or acknowledge != "restart":
+            return {
+                "confirmation_required": True,
+                "note": ("Restarting Radarr interrupts active downloads and scans. "
+                         "Re-run with confirm=true AND acknowledge='restart'."),
+            }
+        CLIENT.request("POST", "/api/v3/system/restart")
+        return {"restart_initiated": True}
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def radarr_system_shutdown(confirm: bool = False, acknowledge: str = "") -> Any:
+    """Shut down Radarr. The service/container must be restarted externally.
+
+    DOUBLY GATED — requires confirm=true AND acknowledge='shutdown' (typed).
+    Same hardening as SABnzbd shutdown — Radarr honors this literally and
+    won't auto-restart depending on DSM.
+
+    Args:
+        confirm: Must be true.
+        acknowledge: Must be the literal string 'shutdown'.
+    """
+    try:
+        if not confirm or acknowledge != "shutdown":
+            return {
+                "confirmation_required": True,
+                "note": ("Shutting down Radarr takes the app offline until "
+                         "manually restarted. Re-run with confirm=true AND "
+                         "acknowledge='shutdown'."),
+            }
+        CLIENT.request("POST", "/api/v3/system/shutdown")
+        return {"shutdown_initiated": True}
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+# --------------------------------------------------------------------------- #
+# Curated-tool registry — drives the `curated: True/False` annotation in      #
+# radarr_list_endpoints so the user sees at-a-glance what's ergonomic vs       #
+# generic-only. Keys are (METHOD, path-pattern); paths use {id} for any path   #
+# parameter.                                                                   #
+# --------------------------------------------------------------------------- #
+CURATED_TOOLS: dict[tuple[str, str], str] = {
+    # Generic
+    ("GET", "/api/v3/system/status"):                 "radarr_status",
+    ("GET", "/api/v3/system/task"):                   "radarr_system_tasks",
+    ("GET", "/api/v3/system/backup"):                 "radarr_system_backups",
+    ("GET", "/api/v3/system/routes"):                 "radarr_system_routes",
+    ("POST", "/api/v3/system/restart"):               "radarr_system_restart",
+    ("POST", "/api/v3/system/shutdown"):              "radarr_system_shutdown",
+    ("GET", "/api/v3/log"):                           "radarr_logs",
+    ("GET", "/api/v3/log/file"):                      "radarr_log_files",
+    ("GET", "/api/v3/health"):                        "radarr_status",
+    ("GET", "/api/v3/queue/status"):                  "radarr_status",
+    ("GET", "/api/v3/diskspace"):                     "radarr_status",
+    # Library
+    ("GET", "/api/v3/movie"):                         "radarr_list_movies",
+    ("GET", "/api/v3/movie/{id}"):                    "radarr_get_movie",
+    ("GET", "/api/v3/movie/lookup"):                  "radarr_lookup_movies",
+    ("GET", "/api/v3/movie/lookup/tmdb"):             "radarr_lookup_movies",
+    ("POST", "/api/v3/movie"):                        "radarr_add_movie",
+    ("PUT", "/api/v3/movie/{id}"):                    "radarr_update_movie",
+    ("PUT", "/api/v3/movie/editor"):                  "radarr_movies_bulk_edit",
+    ("DELETE", "/api/v3/movie/{id}"):                 "radarr_delete_movie",
+    ("GET", "/api/v3/moviefile"):                     "radarr_movie_files",
+    ("GET", "/api/v3/moviefile/{id}"):                "radarr_movie_files",
+    ("GET", "/api/v3/rename"):                        "radarr_rename_preview",
+    ("GET", "/api/v3/collection"):                    "radarr_collections",
+    ("GET", "/api/v3/credit"):                        "radarr_lookup_movies",  # not curated but reachable
+    # Activity
+    ("GET", "/api/v3/calendar"):                      "radarr_calendar",
+    ("GET", "/api/v3/queue"):                         "radarr_queue",
+    ("GET", "/api/v3/queue/{id}"):                    "radarr_queue",
+    ("DELETE", "/api/v3/queue/{id}"):                 "radarr_queue_delete",
+    ("POST", "/api/v3/queue/grab/{id}"):              "radarr_queue_grab",
+    ("GET", "/api/v3/history"):                       "radarr_history",
+    ("GET", "/api/v3/history/since"):                 "radarr_history_since",
+    ("GET", "/api/v3/wanted/missing"):                "radarr_wanted_missing",
+    ("GET", "/api/v3/wanted/cutoff"):                 "radarr_wanted_cutoff",
+    ("GET", "/api/v3/blocklist"):                     "radarr_blocklist",
+    ("GET", "/api/v3/blocklist/movie"):               "radarr_blocklist",
+    ("DELETE", "/api/v3/blocklist/{id}"):             "radarr_blocklist_delete",
+    ("POST", "/api/v3/manualimport"):                 "radarr_manual_import",
+    ("GET", "/api/v3/manualimport"):                  "radarr_manual_import",
+    ("GET", "/api/v3/parse"):                         "radarr_parse",
+    ("GET", "/api/v3/filesystem"):                    "radarr_filesystem",
+    # Commands
+    ("POST", "/api/v3/command"):                      "radarr_command",
+    ("GET", "/api/v3/command/{id}"):                  "radarr_command_status",
+    # Config
+    ("GET", "/api/v3/qualityProfile"):                "radarr_quality_profiles",
+    ("GET", "/api/v3/qualityDefinition"):             "radarr_quality_definitions",
+    ("GET", "/api/v3/delayprofile"):                  "radarr_delay_profiles",
+    ("GET", "/api/v3/releaseprofile"):                "radarr_release_profiles",
+    ("GET", "/api/v3/remotepathmapping"):             "radarr_remote_path_mappings",
+    ("GET", "/api/v3/autoTagging"):                   "radarr_auto_tagging",
+    ("GET", "/api/v3/config/{id}"):                   "radarr_config_section",
+    ("PUT", "/api/v3/config/{id}"):                   "radarr_update_config_section",
+    ("GET", "/api/v3/config/host"):                   "radarr_config_section",
+    ("GET", "/api/v3/config/ui"):                     "radarr_config_section",
+    ("GET", "/api/v3/config/mediamanagement"):        "radarr_config_section",
+    ("GET", "/api/v3/config/indexer"):                "radarr_config_section",
+    ("GET", "/api/v3/config/downloadclient"):         "radarr_config_section",
+    ("GET", "/api/v3/config/metadata"):               "radarr_config_section",
+    ("GET", "/api/v3/config/importlist"):             "radarr_config_section",
+    ("GET", "/api/v3/config/naming"):                 "radarr_config_section",
+    ("GET", "/api/v3/language"):                      "radarr_languages",
+    ("GET", "/api/v3/rootfolder"):                    "radarr_root_folders",
+    ("GET", "/api/v3/tag"):                           "radarr_tags",
+    ("GET", "/api/v3/tag/detail"):                    "radarr_tag_details",
+    ("POST", "/api/v3/tag"):                          "radarr_tag_create",
+    ("DELETE", "/api/v3/tag/{id}"):                   "radarr_tag_delete",
+    ("GET", "/api/v3/customFormat"):                  "radarr_custom_formats",
+    ("GET", "/api/v3/customFilter"):                  "radarr_list_endpoints",  # reachable, not curated
+    ("GET", "/api/v3/notification"):                  "radarr_notifications",
+    ("GET", "/api/v3/downloadclient"):                "radarr_download_clients",
+    ("GET", "/api/v3/indexer"):                       "radarr_indexers",
+    ("GET", "/api/v3/importlist"):                    "radarr_import_lists",
+    ("GET", "/api/v3/exclusions"):                    "radarr_import_exclusions",
+    ("POST", "/api/v3/notification/test"):            "radarr_provider_test",
+    ("POST", "/api/v3/downloadclient/test"):          "radarr_provider_test",
+    ("POST", "/api/v3/indexer/test"):                 "radarr_provider_test",
+    ("POST", "/api/v3/importlist/test"):              "radarr_provider_test",
+    ("POST", "/api/v3/metadata/test"):                "radarr_provider_test",
+}
 
 
 # --------------------------------------------------------------------------- #
