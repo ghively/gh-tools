@@ -87,9 +87,9 @@
     {
       "name": "tdarr-control",
       "source": "./tdarr-control",
-      "description": "Control of a Tdarr distributed transcoding server (v2 API). DOC-VERIFIED — built from official tdarr.readme.io/reference API docs (v2.25.01+, frozen 2026-07-19) — NOT YET LIVE-VERIFIED (Tdarr is not deployed on this homelab; run mcp/_smoketest.py + reversible write proofs after first deployment to close the gap). Generic passthrough over all 67 documented /api/v2 endpoints + ~30 curated tools for status, library (search-db, scan, delete, filescanner control), plugins (search/read/install/create/edit/delete/sync), nodes (list/restart/disconnect/logs/worker-limits), backups, the powerful /cruddb (8 collections, full CRUD — reads not gated, writes confirm-gated), codec-exclude and plugin-include management, transcode-user-verdict, and flow templates. All writes confirm-gated; kill-worker/disconnect-node/kill-file-scanner doubly-gated (typed acknowledge). No auth by default (Tdarr trusts the LAN); optional api_key supports auth-proxy fronting.",
+      "description": "Control of a Tdarr distributed transcoding server (v2 API). LIVE-VERIFIED on Tdarr 2.84.01 (2026-07-20) — 16/16 smoke tools pass + reversible backup create→list→delete proof. Generic passthrough over all 67 documented /api/v2 endpoints + ~30 curated tools for status, library (search-db, scan, delete, filescanner control), plugins (search/read/install/create/edit/delete/sync — requires pluginType field, discovered live), nodes (list/restart/disconnect/logs/worker-limits; worker types: transcodecpu/transcodegpu/healthcheckcpu/healthcheckgpu), backups, the powerful /cruddb (8 collections, full CRUD — reads not gated, writes confirm-gated), codec-exclude and plugin-include management, transcode-user-verdict, and flow templates. All writes confirm-gated; kill-worker/disconnect-node/kill-file-scanner doubly-gated (typed acknowledge). Bundles ffmpeg 7.1.4-Jellyfin + HandBrake. No auth by default (Tdarr trusts the LAN).",
       "category": "media",
-      "version": "0.1.0-docverified"
+      "version": "0.2.0"
     }
   ]
 }
