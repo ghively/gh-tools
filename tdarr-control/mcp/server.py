@@ -487,22 +487,25 @@ def tdarr_node_log(node_id: str) -> Any:
 # Library / files                                                             #
 # --------------------------------------------------------------------------- #
 @mcp.tool()
-def tdarr_search_db(string: str = "", less_than_gb: Optional[int] = None,
-                     greater_than_gb: Optional[int] = None, limit: int = 100) -> Any:
+def tdarr_search_db(string: str = "", less_than_gb: int = 100000,
+                     greater_than_gb: int = 0, limit: int = 100) -> Any:
     """Search files in the library DB. READ-ONLY.
-    **DOC-VERIFIED** — POST /api/v2/search-db.
+    **LIVE-VERIFIED** — POST /api/v2/search-db (Tdarr 2.84.01).
 
     Args:
-        string: Substring to match against file paths.
-        less_than_gb: Only files smaller than N GB.
-        greater_than_gb: Only files larger than N GB.
+        string: Substring to match against file paths (pass "" for all).
+        less_than_gb: Only files smaller than N GB. Tdarr requires this field —
+            default 100000 effectively means "no upper limit".
+        greater_than_gb: Only files larger than N GB. Tdarr requires this field —
+            default 0 means "no lower limit".
         limit: Cap results returned (client-side).
     """
     try:
-        body: dict = {}
-        if string: body["string"] = string
-        if less_than_gb is not None: body["lessThanGB"] = int(less_than_gb)
-        if greater_than_gb is not None: body["greaterThanGB"] = int(greater_than_gb)
+        body = {
+            "string": string,
+            "lessThanGB": int(less_than_gb),
+            "greaterThanGB": int(greater_than_gb),
+        }
         data = CLIENT.request("POST", "/api/v2/search-db", data=body)
         if isinstance(data, list):
             return _finish(data[:limit])
@@ -636,23 +639,33 @@ def tdarr_kill_file_scanner(db_name: str, confirm: bool = False,
 # Plugins                                                                     #
 # --------------------------------------------------------------------------- #
 @mcp.tool()
-def tdarr_search_plugins(string: str = "") -> Any:
+def tdarr_search_plugins(string: str = "", plugin_type: str = "standard") -> Any:
     """Search installed + community plugins. READ-ONLY.
-    **DOC-VERIFIED** — POST /api/v2/search-plugins."""
+    **LIVE-VERIFIED** — POST /api/v2/search-plugins (Tdarr 2.84.01).
+
+    Args:
+        string: Substring to match (pass "" for all). Tdarr requires this field.
+        plugin_type: 'standard' (default) or 'flow'. Tdarr requires this field.
+    """
     try:
-        body = {"string": string} if string else {}
-        return _finish(CLIENT.request("POST", "/api/v2/search-plugins", data=body))
+        return _finish(CLIENT.request("POST", "/api/v2/search-plugins",
+                                       data={"string": string, "pluginType": plugin_type}))
     except Exception as e:  # noqa: BLE001
         return _err(e)
 
 
 @mcp.tool()
-def tdarr_search_flow_plugins(string: str = "") -> Any:
+def tdarr_search_flow_plugins(string: str = "", plugin_type: str = "flow") -> Any:
     """Search flow plugins (Tdarr 2.x flow system). READ-ONLY.
-    **DOC-VERIFIED** — POST /api/v2/search-flow-plugins."""
+    **LIVE-VERIFIED** — POST /api/v2/search-flow-plugins (Tdarr 2.84.01).
+
+    Args:
+        string: Substring to match (pass "" for all). Tdarr requires this field.
+        plugin_type: 'flow' (default) or 'standard'.
+    """
     try:
-        body = {"string": string} if string else {}
-        return _finish(CLIENT.request("POST", "/api/v2/search-flow-plugins", data=body))
+        return _finish(CLIENT.request("POST", "/api/v2/search-flow-plugins",
+                                       data={"string": string, "pluginType": plugin_type}))
     except Exception as e:  # noqa: BLE001
         return _err(e)
 
@@ -660,10 +673,14 @@ def tdarr_search_flow_plugins(string: str = "") -> Any:
 @mcp.tool()
 def tdarr_search_flow_templates(string: str = "") -> Any:
     """Search flow templates. READ-ONLY.
-    **DOC-VERIFIED** — POST /api/v2/search-flow-templates."""
+    **LIVE-VERIFIED** — POST /api/v2/search-flow-templates (Tdarr 2.84.01).
+
+    Args:
+        string: Substring to match (pass "" for all). Tdarr requires this field.
+    """
     try:
-        body = {"string": string} if string else {}
-        return _finish(CLIENT.request("POST", "/api/v2/search-flow-templates", data=body))
+        return _finish(CLIENT.request("POST", "/api/v2/search-flow-templates",
+                                       data={"string": string}))
     except Exception as e:  # noqa: BLE001
         return _err(e)
 
@@ -784,8 +801,9 @@ def tdarr_alter_worker_limit(node_id: str, worker_type: str, limit: int,
 
     Args:
         node_id: Node id.
-        worker_type: Worker type (typically 'cpu', 'gpu', or 'transcode').
-            Exact values TBD on first live use.
+        worker_type: One of the 4 worker types (live-confirmed from
+            NodeJSONDB.workerLimits on Tdarr 2.84.01):
+            'transcodecpu', 'transcodegpu', 'healthcheckcpu', 'healthcheckgpu'.
         limit: New limit (integer).
         confirm: Must be true.
     """
@@ -883,15 +901,15 @@ def tdarr_create_backup(confirm: bool = False) -> Any:
 
 
 @mcp.tool()
-def tdarr_delete_backup(file_name: str, confirm: bool = False) -> Any:
+def tdarr_delete_backup(name: str, confirm: bool = False) -> Any:
     """Delete a backup file. WRITES: confirm-gated.
-    **DOC-VERIFIED** — POST /api/v2/delete-backup."""
+    **LIVE-VERIFIED** — POST /api/v2/delete-backup with {"name": <file>} (Tdarr 2.84.01)."""
     try:
-        if not file_name:
-            raise TdarrError("file_name is required")
+        if not name:
+            raise TdarrError("name is required (the backup file name from tdarr_backups)")
         if not confirm:
-            return _need_confirm(f"delete backup {file_name}")
-        return CLIENT.request("POST", "/api/v2/delete-backup", data={"fileName": file_name})
+            return _need_confirm(f"delete backup {name}")
+        return CLIENT.request("POST", "/api/v2/delete-backup", data={"name": name})
     except Exception as e:  # noqa: BLE001
         return _err(e)
 
@@ -1040,21 +1058,21 @@ def tdarr_add_audio_codec_exclude(library_id: str, codec: str,
 
 
 @mcp.tool()
-def tdarr_run_help_command(command: str, args: str = "") -> Any:
-    """Run an FFmpeg or HandBrake help command (returns the CLI help text).
+def tdarr_run_help_command(mode: str, text: str = "") -> Any:
+    """Run an FFmpeg or HandBrake help command (returns the CLI output).
     READ-ONLY. Useful for "what codecs does this build support?"
-    **DOC-VERIFIED** — POST /api/v2/run-help-command.
+    **LIVE-VERIFIED** — POST /api/v2/run-help-command with {"mode": ..., "text": ...}
+    (Tdarr 2.84.01). Tdarr 2.84 ships ffmpeg 7.1.4-Jellyfin + HandBrake.
 
     Args:
-        command: 'ffmpeg' or 'handbrake'.
-        args: Optional args to pass (e.g. '-decoders').
+        mode: 'ffmpeg' or 'handbrake'.
+        text: The CLI args/help string to pass, e.g. '-version' or '-decoders'.
     """
     try:
-        if not command:
-            raise TdarrError("command is required ('ffmpeg' or 'handbrake')")
-        body: dict = {"command": command}
-        if args: body["args"] = args
-        return CLIENT.request("POST", "/api/v2/run-help-command", data=body)
+        if not mode:
+            raise TdarrError("mode is required ('ffmpeg' or 'handbrake')")
+        return CLIENT.request("POST", "/api/v2/run-help-command",
+                              data={"mode": mode, "text": text})
     except Exception as e:  # noqa: BLE001
         return _err(e)
 
