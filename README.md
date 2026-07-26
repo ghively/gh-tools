@@ -71,3 +71,60 @@ DiskStation over the DSM Web API. Built and tested against **gh-storage**, a
   (and a Pro license for full API control) before calls succeed.
 
 See `skills/synology-control/references/` for the full API map and details.
+
+---
+
+# Using this repo with Hermes Agent
+
+Everything above is the Claude Code side (`.claude-plugin/`, `.mcp.json`,
+`commands/`) and is untouched by the rest of this section — Hermes Agent
+(Nous Research's self-improving CLI agent) reads a different layout, so this
+repo carries a second, parallel set of files for it.
+
+## Installing the skills
+
+Hermes discovers skills from a GitHub repo one level under a single
+`skills/` path (`hermes skills tap add owner/repo`, default path `skills/`).
+That default is already claimed here by the `synology-nas` Claude plugin
+(repo-root `skills/synology-control/`), so all 13 skills are mirrored — flat,
+one directory per skill — into **`hermes-skills/`** instead
+(`scripts/sync_hermes_skills.py` generates it; the per-plugin `skills/`
+directories remain the source of truth for Claude Code).
+
+- **Whole catalog at once:** run `hermes skills tap add ghively/gh-tools`,
+  then edit `~/.hermes/taps.json` and change that entry's `"path"` from
+  `"skills/"` to `"hermes-skills/"` (the plain CLI only offers the default
+  path; the custom path is honored once it's in the file — this is the same
+  field Hermes' own `skills tap` snapshot/restore uses). After that,
+  `hermes skills browse` / `search` / `install <name>` see every skill here.
+- **One skill without tapping:** `hermes skills install
+  ghively/gh-tools/hermes-skills/<skill-name>` (e.g. `.../hermes-skills/sonarr-control`)
+  works immediately — `hermes skills install` accepts any `owner/repo/path`
+  identifier, tapped or not.
+
+Each `SKILL.md` carries a `metadata.hermes` block (`tags`, `category`,
+`requires_tools` so the skill only surfaces once its MCP server is actually
+configured) plus `required_environment_variables` for whichever secret that
+plugin needs — Hermes prompts for and persists those the first time the
+skill loads.
+
+## Wiring up the MCP servers
+
+Hermes doesn't read `.mcp.json` — it has its own `mcp_servers:` block in
+`~/.hermes/config.yaml`. **`hermes.mcp.example.yaml`** (repo root) has a
+ready-to-merge entry for every plugin, pointing at the exact same
+`mcp/*.py` script and `config.local.json` each Claude Code plugin already
+uses (the servers are plain stdio MCP processes — they don't care which
+client launched them). Copy the servers you want into your own
+`config.yaml`, swap `<GH_TOOLS_REPO>` for where you cloned this repo, and
+make sure each plugin's `config.local.json` is filled in as usual.
+
+## Keeping it in sync
+
+If you edit a plugin's `SKILL.md` (or add/remove a plugin), re-run:
+
+```bash
+python3 scripts/sync_hermes_skills.py       # regenerate hermes-skills/
+python3 scripts/sync_hermes_skills.py --check   # CI: fails if it's stale
+```
+

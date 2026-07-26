@@ -1,6 +1,15 @@
 ---
 name: searxng-control
 description: Control, configure, tune, and diagnose a self-hosted SearXNG metasearch instance via the searxng MCP server. Use whenever the user wants to search through SearXNG, inspect or change its configuration (engines, limiter, outgoing/timeouts, UI, formats), add custom search engines, or troubleshoot it — especially "why are my SearXNG results empty", "tune SearXNG", "enable/disable an engine", "add a search engine", "SearXNG on gh-arm". Drive the live server through the tools; do not answer from memory.
+metadata:
+  hermes:
+    tags: [searxng, search, metasearch, self-hosted, privacy, mcp, homelab, web-search]
+    category: infrastructure
+    requires_tools: [searx_status]
+    config:
+      - {key: searxng.base_url, prompt: SearXNG base URL, default: "http://gh-arm:8888"}
+version: 0.2.0
+author: ghively
 ---
 
 # SearXNG control

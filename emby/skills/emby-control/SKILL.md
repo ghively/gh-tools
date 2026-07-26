@@ -15,6 +15,19 @@ description: >-
   "gh-media", "check Emby", "what's playing", "add this to a collection", or
   "why is playback buffering" — do not answer from memory; drive the live
   server through the tools.
+metadata:
+  hermes:
+    tags: [emby, media-server, movies, tv, streaming, transcoding, mcp, homelab]
+    category: media
+    requires_tools: [emby_status]
+    config:
+      - {key: emby.host, prompt: Emby server host/IP}
+required_environment_variables:
+  - name: EMBY_API_KEY
+    prompt: Emby API key (Dashboard > Advanced > API Keys)
+    required_for: authenticating emby_* calls (server-admin access)
+version: 0.1.0
+author: ghively
 ---
 
 # Emby server control

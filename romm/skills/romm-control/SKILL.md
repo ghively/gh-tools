@@ -16,6 +16,23 @@ description: >-
   ROMs", "gh-nvidia roms", "check RomM", "scan my library", "add this to a
   collection", or "why isn't this game matched" — do not answer from memory;
   drive the live server through the tools.
+metadata:
+  hermes:
+    tags: [romm, roms, retro-gaming, emulation, game-library, mcp, homelab]
+    category: media
+    requires_tools: [romm_status]
+    config:
+      - {key: romm.host, prompt: RomM server host/IP}
+required_environment_variables:
+  - name: ROMM_API_KEY
+    prompt: RomM API key (Settings > API Keys)
+    required_for: authenticating romm_* calls
+  - name: ROMM_PASSWORD
+    prompt: RomM account password (only needed for romm_scan)
+    required_for: the Socket.IO session cookie romm_scan uses to trigger library scans
+    optional: true
+version: 0.2.0
+author: ghively
 ---
 
 # RomM server control

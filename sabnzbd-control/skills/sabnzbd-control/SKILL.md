@@ -13,6 +13,20 @@ description: >-
   queue", "resume downloads", "add this NZB", or "why did this download
   fail" — do not answer from memory; drive the live SABnzbd server through
   the tools.
+metadata:
+  hermes:
+    tags: [sabnzbd, usenet, nzb, downloader, mcp, homelab, media]
+    category: media
+    requires_tools: [sabnzbd_status]
+    config:
+      - {key: sabnzbd.host, prompt: SABnzbd host/IP, default: 192.168.50.133}
+      - {key: sabnzbd.port, prompt: SABnzbd port, default: 8080}
+required_environment_variables:
+  - name: SABNZBD_API_KEY
+    prompt: SABnzbd API key (Config > General > API Key)
+    required_for: authenticating sabnzbd_* mode-based API calls
+version: 0.2.0
+author: ghively
 ---
 
 # SABnzbd control

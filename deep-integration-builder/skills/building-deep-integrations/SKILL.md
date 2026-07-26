@@ -11,6 +11,12 @@ description: >-
   me a plugin to manage X" or "make an MCP for Y": this sets the approach BEFORE any
   code, so invoke it first, then carry out its phases. It also applies when expanding
   an existing integration to close coverage gaps.
+metadata:
+  hermes:
+    tags: [mcp, plugin, integration, api, methodology, coverage, reverse-engineering]
+    category: development
+version: 1.1.0
+author: ghively
 ---
 
 # Building deep integrations

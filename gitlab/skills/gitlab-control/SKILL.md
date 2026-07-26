@@ -6,6 +6,19 @@ description: >
   users/admin, groups, search, releases, webhooks, packages, and the full REST +
   GraphQL surface via generic passthrough. Use whenever the user asks to inspect or
   manage anything on their GitLab server (git.example.com).
+metadata:
+  hermes:
+    tags: [gitlab, ci-cd, devops, git, mcp, self-hosted]
+    category: development
+    requires_tools: [gitlab_status]
+    config:
+      - {key: gitlab.base_url, prompt: GitLab instance base URL, default: "https://gitlab.example.com"}
+required_environment_variables:
+  - name: GITLAB_TOKEN
+    prompt: GitLab Personal Access Token (api scope; admin recommended for full instance control)
+    required_for: authenticating gitlab_* REST + GraphQL calls
+version: 0.5.0
+author: ghively
 ---
 
 # Controlling GitLab CE

@@ -14,6 +14,20 @@ description: >-
   whenever the user says "Radarr", "check my movies", "what's missing",
   "search for X", "add the movie Y", or "why isn't Z downloading" — do not
   answer from memory; drive the live Radarr server through the tools.
+metadata:
+  hermes:
+    tags: [radarr, movies, media, servarr, mcp, homelab, usenet, torrent]
+    category: media
+    requires_tools: [radarr_status]
+    config:
+      - {key: radarr.host, prompt: Radarr host/IP, default: 192.168.50.133}
+      - {key: radarr.port, prompt: Radarr port, default: 7878}
+required_environment_variables:
+  - name: RADARR_API_KEY
+    prompt: Radarr API key (Settings > General > Security > API Key)
+    required_for: authenticating radarr_* calls to the /api/v3 REST surface
+version: 0.3.0
+author: ghively
 ---
 
 # Radarr control

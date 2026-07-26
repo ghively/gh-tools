@@ -1,6 +1,27 @@
 ---
 name: opencode-control
-description: Control and configure the OpenCode AI coding agent (sst/anomalyco opencode) end-to-end via the opencode MCP server. Use whenever the user wants to drive, inspect, configure, optimize, or extend their opencode install — including ANY of: check server/health/status, run a prompt or coding task through opencode, list/create/manage sessions, design or author agents & subagents, write custom slash-commands, create skills, tune opencode.json (models, providers, MCP servers, permissions, formatters, LSP, instructions), manage the model/provider catalog, drive a running TUI, search the project, or call opencode over ACP (Agent Client Protocol) as an agent from anywhere. Trigger even when the user just says "my opencode", "run this in opencode", "make an opencode agent", "optimize my opencode config", "call opencode", or "set up opencode" — drive the live system through the tools, don't answer from memory.
+description: >-
+  Control and configure the OpenCode AI coding agent (sst/anomalyco opencode)
+  end-to-end via the opencode MCP server. Use whenever the user wants to drive,
+  inspect, configure, optimize, or extend their opencode install — including ANY
+  of: check server/health/status, run a prompt or coding task through opencode,
+  list/create/manage sessions, design or author agents & subagents, write custom
+  slash-commands, create skills, tune opencode.json (models, providers, MCP
+  servers, permissions, formatters, LSP, instructions), manage the
+  model/provider catalog, drive a running TUI, search the project, or call
+  opencode over ACP (Agent Client Protocol) as an agent from anywhere. Trigger
+  even when the user just says "my opencode", "run this in opencode", "make an
+  opencode agent", "optimize my opencode config", "call opencode", or "set up
+  opencode" — drive the live system through the tools, don't answer from memory.
+metadata:
+  hermes:
+    tags: [opencode, coding-agent, acp, mcp, agent-orchestration]
+    category: development
+    requires_tools: [oc_status]
+    config:
+      - {key: opencode.base_url, prompt: opencode serve base URL, default: "http://127.0.0.1:4096"}
+version: 0.4.1
+author: Gene Hively
 ---
 
 # Controlling opencode

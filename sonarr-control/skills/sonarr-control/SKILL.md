@@ -17,6 +17,20 @@ description: >-
   shows", "what aired today", "what's missing", "search for show X", "add
   show Y", or "monitor season N of Z" — do not answer from memory; drive
   the live Sonarr server through the tools.
+metadata:
+  hermes:
+    tags: [sonarr, tv, series, media, servarr, mcp, homelab, usenet, torrent]
+    category: media
+    requires_tools: [sonarr_status]
+    config:
+      - {key: sonarr.host, prompt: Sonarr host/IP, default: 192.168.50.133}
+      - {key: sonarr.port, prompt: Sonarr port, default: 8989}
+required_environment_variables:
+  - name: SONARR_API_KEY
+    prompt: Sonarr API key (Settings > General > Security > API Key)
+    required_for: authenticating sonarr_* calls to the /api/v3 REST surface
+version: 0.3.0
+author: ghively
 ---
 
 # Sonarr control

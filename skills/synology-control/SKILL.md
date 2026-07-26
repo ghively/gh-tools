@@ -13,6 +13,24 @@ description: >-
   just names their NAS or asks to "check the NAS", "restart a package", "see what's
   downloading", "free up space", or "is the array healthy" — do not answer from
   memory; drive the live box through the tools.
+metadata:
+  hermes:
+    tags: [synology, dsm, nas, diskstation, storage, mcp, homelab]
+    category: infrastructure
+    requires_tools: [synology_status]
+    config:
+      - {key: synology.host, prompt: Synology DSM host/IP, default: 192.168.50.133}
+      - {key: synology.username, prompt: Synology DSM admin username}
+required_environment_variables:
+  - name: SYNOLOGY_PASSWORD
+    prompt: Synology DSM admin password
+    required_for: authenticating synology_* calls (session id + CSRF token)
+  - name: SYNOLOGY_OTP_CODE
+    prompt: DSM 2-step verification OTP code (only if 2FA is enabled)
+    required_for: completing 2FA login
+    optional: true
+version: 0.1.0
+author: ghively
 ---
 
 # Synology DSM control
