@@ -1,11 +1,23 @@
-# gh-tools — a Claude Code plugin marketplace for deep infrastructure control
+# gh-tools — deep infrastructure control for Claude Code and Hermes Agent
 
 One methodology, 13 plugins: enumerate the system's full API surface, build a
 generic passthrough + curated tools, live-verify everything, and report honestly
-(works / fixable / hard limit). Install: `/plugin marketplace add <this repo>` →
-`/plugin install <name>@gh-tools` → `/reload-plugins`. Each plugin lives in its
-own directory (see its `README.md`) with an identical shape: `.claude-plugin/`,
-`.mcp.json`, `mcp/`, `skills/`, `commands/`, `config.example.json`.
+(works / fixable / hard limit). Each plugin lives in its own directory (see its
+`README.md`) with an identical shape: `.claude-plugin/`, `.mcp.json`, `mcp/`,
+`skills/`, `commands/`, `config.example.json`.
+
+This repo works as-is with two agent runtimes:
+
+- **Claude Code** — a native plugin marketplace. Install:
+  `/plugin marketplace add <this repo>` → `/plugin install <name>@gh-tools` →
+  `/reload-plugins`.
+- **Hermes Agent** — the repo-root `skills/` directory and `hermes.mcp.example.yaml`
+  make every skill and MCP server installable via `hermes skills tap` /
+  `hermes skills install`; see [Using this repo with Hermes Agent](#using-this-repo-with-hermes-agent)
+  below.
+
+Both sides read from the same per-plugin source (`mcp/*.py`, `config.local.json`)
+and neither one's files are touched by the other's tooling.
 
 | Plugin | Controls | Highlights |
 |---|---|---|
