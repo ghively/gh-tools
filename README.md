@@ -1,76 +1,30 @@
 # gh-tools — a Claude Code plugin marketplace for deep infrastructure control
 
-Four plugins, one methodology: enumerate the system's full API surface, build a
+One methodology, 13 plugins: enumerate the system's full API surface, build a
 generic passthrough + curated tools, live-verify everything, and report honestly
 (works / fixable / hard limit). Install: `/plugin marketplace add <this repo>` →
-`/plugin install <name>@gh-tools` → `/reload-plugins`.
+`/plugin install <name>@gh-tools` → `/reload-plugins`. Each plugin lives in its
+own directory (see its `README.md`) with an identical shape: `.claude-plugin/`,
+`.mcp.json`, `mcp/`, `skills/`, `commands/`, `config.example.json`.
 
 | Plugin | Controls | Highlights |
 |---|---|---|
-| `synology-nas` (repo root) | Synology DS1817+ (DSM 7.3) | all ~870 SYNO.* APIs + 67 curated tools |
-| `gitlab` | Self-hosted GitLab CE 19.0 | ~170 REST domains + GraphQL, ~35 curated tools, admin ops |
-| `unifi-network` | Ubiquiti UniFi console (UDR7) | v1/v2/UniFi-OS APIs, ~30 curated tools |
+| `synology-nas` | Synology DS1817+ (DSM 7.3) | all ~870 SYNO.* APIs + 27 curated tools |
+| `gitlab` | Self-hosted GitLab CE 19.0 | REST+GraphQL over 177 resource groups, 79 curated tools |
+| `unifi-network` (`unifi/`) | Ubiquiti UniFi console (UDR7) | v1/v2/UniFi-OS APIs, ~30 curated tools |
+| `emby` | Emby media server | ~484-op REST passthrough, ~30 curated tools |
+| `romm` | RomM ROM-library server | ~189-op REST passthrough, ~70 curated tools |
+| `comfyui-control` | ComfyUI generation server | full API passthrough + image/video generation suite |
+| `opencode-control` | OpenCode coding agent | 188-op passthrough + 49 curated tools, HTTP + ACP |
+| `searxng-control` | Self-hosted SearXNG | search + 249-engine inventory + settings.yml tuning over SSH |
+| `radarr-control` | Radarr movie manager | 467-op passthrough, 64 curated tools |
+| `sonarr-control` | Sonarr TV manager | 463-op passthrough, 66 curated tools |
+| `sabnzbd-control` | SABnzbd usenet downloader | 21 curated tools, double-gated lifecycle control |
+| `tdarr-control` | Tdarr transcoding server | 67-endpoint passthrough + ~30 curated tools + 3,700+ line knowledge base |
 | `deep-integration-builder` | — (methodology) | the skill + command used to build the others |
 
 Each plugin reads its credentials from a git-ignored `config.local.json`
 (`config.example.json` shows the shape). No secrets live in this repo.
-
----
-
-# synology-nas — full Synology DSM control for Claude Code
-
-A Claude Code plugin that gives Claude complete, authenticated control of a Synology
-DiskStation over the DSM Web API. Built and tested against **gh-storage**, a
-**DS1817+** running **DSM 7.3.1**.
-
-## What's inside
-
-- **MCP server** (`mcp/synology_server.py`) — authenticates to DSM (session id +
-  CSRF token, auto re-login) and exposes:
-  - **Generic passthrough** (`synology_call`, `synology_batch`, `synology_list_apis`,
-    `synology_describe_api`) reaching **all ~870 SYNO.\* APIs** on the box.
-  - **27 curated tools** for system health, storage, File Station, Download Station,
-    packages, services, users, groups, shares, and power.
-- **Skill** (`skills/synology-control/`) — teaches Claude how to drive the server,
-  with a full categorized **API map** of this NAS, verified **task recipes**, and the
-  **auth/conventions** reference.
-- **Commands** (`commands/`) — `/syno-health`, `/syno-storage`, `/syno-downloads`,
-  `/syno-find-large`.
-
-## Setup
-
-1. **Credentials.** Copy `config.example.json` → `config.local.json` and fill in your
-   NAS host, port, username, and password. `config.local.json` is git-ignored so your
-   password is never committed. Any field can instead be set via environment variables
-   (`SYNOLOGY_HOST`, `SYNOLOGY_PORT`, `SYNOLOGY_HTTPS`, `SYNOLOGY_USERNAME`,
-   `SYNOLOGY_PASSWORD`, `SYNOLOGY_OTP_CODE`, `SYNOLOGY_VERIFY_SSL`), which override the
-   file.
-2. **Runtime.** The MCP server launches via [`uv`](https://docs.astral.sh/uv/)
-   (`uv run --script`), which auto-provisions its dependencies (`mcp`, `httpx`) in a
-   cached environment — no manual `pip install` needed. `uv` must be on PATH.
-3. **Load the plugin** in Claude Code (install from this directory / your marketplace),
-   then run `/reload-plugins` or restart. Ask Claude to "check the NAS" or run
-   `/syno-health`.
-
-## Security notes
-
-- The password lives only in `config.local.json` (git-ignored) or your environment.
-- HTTPS to a LAN NAS uses a self-signed cert, so certificate verification is off by
-  default (`verify_ssl: false`). Set it true if you've installed a trusted cert.
-- Destructive tools (`synology_reboot`, `synology_shutdown`, `synology_fs_delete`)
-  require `confirm=True`. The skill instructs Claude to confirm any write/disruptive
-  action with you first.
-
-## Coverage notes (this DSM)
-
-- **Container Manager** `SYNO.Docker.*` is available only while the ContainerManager
-  package is running (its APIs register only then). Curated container/image/Compose
-  tools are included; if they return 102, start the package with
-  `synology_package_control(package_id="ContainerManager", action="start")`.
-- **Virtual Machine Manager** APIs are present but require per-user VMM privileges
-  (and a Pro license for full API control) before calls succeed.
-
-See `skills/synology-control/references/` for the full API map and details.
 
 ---
 
@@ -85,20 +39,19 @@ repo carries a second, parallel set of files for it.
 
 Hermes discovers skills from a GitHub repo one level under a single
 `skills/` path (`hermes skills tap add owner/repo`, default path `skills/`).
-That default is already claimed here by the `synology-nas` Claude plugin
-(repo-root `skills/synology-control/`), so all 13 skills are mirrored — flat,
-one directory per skill — into **`hermes-skills/`** instead
-(`scripts/sync_hermes_skills.py` generates it; the per-plugin `skills/`
-directories remain the source of truth for Claude Code).
+Every plugin here keeps its actual skill under `<plugin>/skills/<name>/`
+(each plugin's own `.claude-plugin/plugin.json` requires that), so the
+repo-root **`skills/`** directory is a generated flat mirror — one directory
+per skill, 13 total — built by `scripts/sync_hermes_skills.py`. It doesn't
+collide with anything Claude Code reads: no plugin's `plugin.json` points at
+the repo-root `skills/` path (each plugin is in its own subdirectory, `synology-nas`
+included), so this directory exists purely for Hermes.
 
-- **Whole catalog at once:** run `hermes skills tap add ghively/gh-tools`,
-  then edit `~/.hermes/taps.json` and change that entry's `"path"` from
-  `"skills/"` to `"hermes-skills/"` (the plain CLI only offers the default
-  path; the custom path is honored once it's in the file — this is the same
-  field Hermes' own `skills tap` snapshot/restore uses). After that,
-  `hermes skills browse` / `search` / `install <name>` see every skill here.
+- **Whole catalog at once:** `hermes skills tap add ghively/gh-tools` — the
+  default path is exactly right, no extra config needed. Then `hermes skills
+  browse` / `search` / `install <name>` see every skill here.
 - **One skill without tapping:** `hermes skills install
-  ghively/gh-tools/hermes-skills/<skill-name>` (e.g. `.../hermes-skills/sonarr-control`)
+  ghively/gh-tools/skills/<skill-name>` (e.g. `.../skills/sonarr-control`)
   works immediately — `hermes skills install` accepts any `owner/repo/path`
   identifier, tapped or not.
 
@@ -124,7 +77,7 @@ make sure each plugin's `config.local.json` is filled in as usual.
 If you edit a plugin's `SKILL.md` (or add/remove a plugin), re-run:
 
 ```bash
-python3 scripts/sync_hermes_skills.py       # regenerate hermes-skills/
+python3 scripts/sync_hermes_skills.py       # regenerate the repo-root skills/ mirror
 python3 scripts/sync_hermes_skills.py --check   # CI: fails if it's stale
 ```
 
