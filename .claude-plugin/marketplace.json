@@ -7,7 +7,7 @@
   "plugins": [
     {
       "name": "synology-nas",
-      "source": "./",
+      "source": "./synology-nas",
       "description": "Full control of a Synology DiskStation (DSM 7.x) \u2014 MCP server reaching all ~870 DSM Web APIs plus curated tools, a control skill, and workflow commands.",
       "category": "infrastructure"
     },
