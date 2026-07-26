@@ -1,26 +1,23 @@
 #!/usr/bin/env python3
-"""Regenerate the root-level /hermes-skills/ aggregator for Hermes Agent.
+"""Regenerate the root-level /skills/ aggregator for Hermes Agent.
 
 Hermes' `hermes skills tap add <owner>/<repo>` (and `hermes skills
 browse`/`search`) only looks one directory level below a single `skills/`
 path in the repo by default — see `_list_skills_in_repo` /
 `GitHubSource.DEFAULT_TAPS` in hermes-agent's `tools/skills_hub.py`. This repo
-is ALSO a Claude Code plugin marketplace, and the repo-root `skills/`
-directory is already claimed by the `synology-nas` plugin's own
-`.claude-plugin/plugin.json` (`"skills": "./skills/"`) — Claude Code walks
-every subdirectory under a plugin's configured skills path as one of *that
-plugin's* skills, so dropping the other plugins' skills in there too would
-make Claude falsely advertise them all as part of synology-nas. Hence a
-separate `hermes-skills/` directory instead of reusing `skills/`.
+is ALSO a Claude Code plugin marketplace, but every plugin (including
+`synology-nas`) lives in its own subdirectory with its own `skills/<name>/`
+required by its `.claude-plugin/plugin.json` — no plugin's manifest points at
+the repo-root `skills/` path, so this directory is safe for Hermes to own
+outright with zero risk of Claude Code misattributing a skill to the wrong
+plugin.
 
 This script mirrors every plugin's skill directory (source of truth stays
 under `<plugin>/skills/<name>/`, required by that plugin's own
-`.claude-plugin/plugin.json`) into a flat top-level `hermes-skills/<name>/`.
-Point a Hermes tap at this path (see README's Hermes Agent section — the tap
-CLI only offers the `skills/` default, so add/edit the entry in
-`~/.hermes/taps.json` with `"path": "hermes-skills/"`) to get the whole
-catalog in one shot; re-run this script after editing any plugin's SKILL.md
-(or its references/scripts) to refresh the copies.
+`.claude-plugin/plugin.json`) into a flat top-level `skills/<name>/`, which
+is exactly Hermes' default tap path — `hermes skills tap add <owner>/<repo>`
+needs no further config. Re-run this script after editing any plugin's
+SKILL.md (or its references/scripts) to refresh the copies.
 
 Usage: python3 scripts/sync_hermes_skills.py [--check]
   --check   exit 1 if the aggregator is stale instead of rewriting it (CI use)
@@ -30,12 +27,12 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-AGGREGATE_DIR = ROOT / "hermes-skills"
+AGGREGATE_DIR = ROOT / "skills"
 MARKER = ".synced-from"
 
-# (plugin skill dir relative to ROOT) -> synced under hermes-skills/<same dir name>/
+# (plugin skill dir relative to ROOT) -> synced under skills/<same dir name>/
 SOURCES = [
-    "skills/synology-control",
+    "synology-nas/skills/synology-control",
     "sonarr-control/skills/sonarr-control",
     "radarr-control/skills/radarr-control",
     "sabnzbd-control/skills/sabnzbd-control",
