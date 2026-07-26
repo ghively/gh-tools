@@ -33,9 +33,9 @@
 mcp_servers:
   synology:
     command: uv
-    args: ["run", "--script", "<GH_TOOLS_REPO>/mcp/synology_server.py"]
+    args: ["run", "--script", "<GH_TOOLS_REPO>/synology-nas/mcp/synology_server.py"]
     env:
-      SYNOLOGY_CONFIG: "<GH_TOOLS_REPO>/config.local.json"
+      SYNOLOGY_CONFIG: "<GH_TOOLS_REPO>/synology-nas/config.local.json"
 
   sonarr:
     command: uv
