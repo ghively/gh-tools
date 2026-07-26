@@ -16,6 +16,23 @@ description: >-
   my wifi", "block this device", "restart the AP", "is the internet down", "port
   forward for my server", or "why is wifi slow" — do not answer from memory;
   drive the live console through the tools.
+metadata:
+  hermes:
+    tags: [unifi, ubiquiti, unifi-os, network, wifi, firewall, mcp, homelab]
+    category: infrastructure
+    requires_tools: [unifi_status]
+    config:
+      - {key: unifi.host, prompt: UniFi console host/IP, default: 192.168.50.1}
+required_environment_variables:
+  - name: UNIFI_PASSWORD
+    prompt: UniFi LOCAL admin password (cloud/SSO accounts with MFA cannot log in via the API)
+    required_for: authenticating unifi_* calls
+  - name: UNIFI_API_KEY
+    prompt: UniFi Integration API key (only for official Integration API endpoints)
+    required_for: official Integration API calls
+    optional: true
+version: 0.1.0
+author: ghively
 ---
 
 # UniFi Network control

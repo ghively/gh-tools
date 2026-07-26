@@ -35,6 +35,21 @@ description: >-
   statistics", or "why did this transcode fail" — do not answer from memory
   for facts; drive the live Tdarr server through the tools AND consult the
   deep references for codec/workflow/feature knowledge.
+metadata:
+  hermes:
+    tags: [tdarr, transcoding, ffmpeg, handbrake, media, mcp, homelab]
+    category: media
+    requires_tools: [tdarr_status]
+    config:
+      - {key: tdarr.host, prompt: Tdarr host/IP, default: gh-nvidia}
+      - {key: tdarr.port, prompt: Tdarr port, default: 8265}
+required_environment_variables:
+  - name: TDARR_API_KEY
+    prompt: Auth-proxy token (only if Tdarr sits behind nginx-basic-auth/Authentik)
+    required_for: tdarr_* calls when Tdarr is fronted by an auth proxy
+    optional: true
+version: 0.5.0
+author: ghively
 ---
 
 # Tdarr control

@@ -1,0 +1,107 @@
+# Hermes Agent MCP server config for gh-tools
+#
+# Hermes does NOT read Claude Code's `.mcp.json` files — it has its own
+# `mcp_servers:` block in `~/.hermes/config.yaml` (see
+# https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp). Every
+# server below is the exact same script each Claude Code plugin in this repo
+# already ships (`command`/`args` copied straight from that plugin's
+# `.mcp.json`) — the Python MCP servers are plain stdio processes and don't
+# care which client (Claude Code or Hermes) launches them. Nothing in
+# `.mcp.json`, `.claude-plugin/plugin.json`, or `marketplace.json` needs to
+# change; this file is purely additive.
+#
+# Setup:
+#   1. Merge the servers you want into the `mcp_servers:` key of your own
+#      `~/.hermes/config.yaml` (don't just paste this whole file over it —
+#      keep your existing `model:`, `agent:`, etc. blocks).
+#   2. Replace every `<GH_TOOLS_REPO>` below with the absolute path where you
+#      cloned this repo (e.g. /home/you/gh-tools).
+#   3. Each plugin still reads `<plugin>/config.local.json` (git-ignored) —
+#      the same file Claude Code uses. Set it up per that plugin's README if
+#      you haven't already. No secrets need to be duplicated into
+#      `~/.hermes/.env`; the *_CONFIG env var below just points at that file.
+#   4. `uv` must be on PATH (same requirement as the Claude Code plugins).
+#
+# Prefer per-plugin env vars over a config.local.json file? Every server also
+# reads individual overrides (e.g. SONARR_HOST / SONARR_API_KEY) — see the
+# `_comment` field in that plugin's config.example.json for the exact names —
+# so you can drop the `*_CONFIG` line and list those instead, sourced from
+# `~/.hermes/.env` (that's what each skill's `required_environment_variables`
+# frontmatter declares, so `hermes skills install`/`skill_view` can prompt for
+# and persist them for you).
+
+mcp_servers:
+  synology:
+    command: uv
+    args: ["run", "--script", "<GH_TOOLS_REPO>/synology-nas/mcp/synology_server.py"]
+    env:
+      SYNOLOGY_CONFIG: "<GH_TOOLS_REPO>/synology-nas/config.local.json"
+
+  sonarr:
+    command: uv
+    args: ["run", "--script", "<GH_TOOLS_REPO>/sonarr-control/mcp/server.py"]
+    env:
+      SONARR_CONFIG: "<GH_TOOLS_REPO>/sonarr-control/config.local.json"
+
+  radarr:
+    command: uv
+    args: ["run", "--script", "<GH_TOOLS_REPO>/radarr-control/mcp/server.py"]
+    env:
+      RADARR_CONFIG: "<GH_TOOLS_REPO>/radarr-control/config.local.json"
+
+  sabnzbd:
+    command: uv
+    args: ["run", "--script", "<GH_TOOLS_REPO>/sabnzbd-control/mcp/server.py"]
+    env:
+      SABNZBD_CONFIG: "<GH_TOOLS_REPO>/sabnzbd-control/config.local.json"
+
+  tdarr:
+    command: uv
+    args: ["run", "--script", "<GH_TOOLS_REPO>/tdarr-control/mcp/server.py"]
+    env:
+      TDARR_CONFIG: "<GH_TOOLS_REPO>/tdarr-control/config.local.json"
+
+  gitlab:
+    command: uv
+    args: ["run", "--script", "<GH_TOOLS_REPO>/gitlab/mcp/gitlab_server.py"]
+    env:
+      GITLAB_CONFIG: "<GH_TOOLS_REPO>/gitlab/config.local.json"
+
+  emby:
+    command: uv
+    args: ["run", "--script", "<GH_TOOLS_REPO>/emby/mcp/emby_server.py"]
+    env:
+      EMBY_CONFIG: "<GH_TOOLS_REPO>/emby/config.local.json"
+
+  romm:
+    command: uv
+    args: ["run", "--script", "<GH_TOOLS_REPO>/romm/mcp/romm_server.py"]
+    env:
+      ROMM_CONFIG: "<GH_TOOLS_REPO>/romm/config.local.json"
+
+  unifi:
+    command: uv
+    args: ["run", "--script", "<GH_TOOLS_REPO>/unifi/mcp/unifi_server.py"]
+    env:
+      UNIFI_CONFIG: "<GH_TOOLS_REPO>/unifi/config.local.json"
+
+  comfyui:
+    command: uv
+    args: ["run", "--script", "<GH_TOOLS_REPO>/comfyui-control/mcp/server.py"]
+    env:
+      COMFYUI_CONFIG: "<GH_TOOLS_REPO>/comfyui-control/config.local.json"
+
+  opencode:
+    command: uv
+    args: ["run", "--script", "<GH_TOOLS_REPO>/opencode-control/mcp/server.py"]
+    env:
+      OPENCODE_CONFIG: "<GH_TOOLS_REPO>/opencode-control/config.local.json"
+
+  searxng:
+    command: uv
+    args: ["run", "--script", "<GH_TOOLS_REPO>/searxng-control/mcp/searxng_server.py"]
+    env:
+      SEARXNG_CONFIG: "<GH_TOOLS_REPO>/searxng-control/config.local.json"
+
+  # deep-integration-builder ships a skill + commands only (no MCP server) —
+  # nothing to add here for it.
