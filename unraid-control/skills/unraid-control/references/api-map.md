@@ -59,6 +59,19 @@ offline SDL, generic `unraid_graphql` passthrough, generic
 - `vars.sysCacheSlots` NaN crash (no cache pool) → dropped from the query.
 - `parityHistory` errors instead of empty list when never run → caught and
   normalized to `[]`.
+- **No GraphQL mutation exists to edit a container's environment
+  variables at all** — confirmed against the schema (`DockerMutations` only
+  has `start`/`stop`/`pause`/`unpause`/`removeContainer`/`updateContainer`/
+  `updateContainers`/`updateAllContainers`/`updateAutostartConfiguration`;
+  editing env vars is template-file territory,
+  `/boot/config/plugins/dockerMan/templates-user/*.xml`, entirely outside
+  the API). Closed with a separate, narrowly-scoped SSH layer
+  (`unraid_ssh_test`, `unraid_docker_env_get`, `unraid_docker_env_set`) that
+  does `docker inspect` → `stop`+`rm`+`run` with the same config plus the
+  requested env changes, and best-effort syncs the matching XML template so
+  the Unraid UI's Edit screen stays accurate. Requires separate SSH
+  credentials in config (`ssh_host`/`ssh_user` + `ssh_password` or
+  `ssh_key_path`) — unset by default, so this layer is opt-in.
 
 ### Hard limits — named plainly, not worked around
 - **Unraid Connect / cloud features are entirely unavailable**: `connect`,
