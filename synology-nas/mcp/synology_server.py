@@ -1,8 +1,8 @@
-#!/usr/bin/env -S uv run --script
+﻿#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
-#   "mcp>=1.4.0",
+#   "mcp>=1.4.0,<2.0.0",
 #   "httpx>=0.27",
 # ]
 # ///
@@ -383,7 +383,7 @@ class DSMClient:
             raise FileNotFoundError(local_path)
         headers = {"X-SYNO-TOKEN": self.synotoken} if self.synotoken else {}
         # The upload CGI ignores identity fields placed inside the multipart body,
-        # and format=sid logins set no cookie — api/version/method/_sid must ride
+        # and format=sid logins set no cookie â€” api/version/method/_sid must ride
         # the query string or DSM answers 119 (verified on DSM 7.3.1-86003).
         query = {
             "api": "SYNO.FileStation.Upload",
@@ -504,7 +504,7 @@ def synology_describe_api(names: str) -> dict:
 @mcp.tool()
 def synology_call(api: str, method: str, version: Optional[int] = None, params: Optional[dict] = None,
                   http_method: str = "POST", elevate: bool = False) -> dict:
-    """THE universal tool — call any SYNO.* Web API method on the NAS. This reaches
+    """THE universal tool â€” call any SYNO.* Web API method on the NAS. This reaches
     every controllable feature, including ones without a curated wrapper.
 
     - api: e.g. "SYNO.Core.System", "SYNO.Core.Security.Firewall.Rules"
@@ -516,10 +516,10 @@ def synology_call(api: str, method: str, version: Optional[int] = None, params: 
     On error the DSM code is mapped to a message (e.g. 105 = no permission,
     103 = no such method, 102 = api not registered). If unsure of the api name,
     use synology_list_apis first. Destructive methods (delete/format/reboot) act
-    immediately — confirm intent with the user before calling them.
+    immediately â€” confirm intent with the user before calling them.
 
     Set elevate=True for sensitive settings that return error 403 (creating/deleting/
-    modifying shared folders, share permissions, network config) — this attaches a
+    modifying shared folders, share permissions, network config) â€” this attaches a
     password-confirmation token automatically."""
     try:
         c = client()
@@ -954,7 +954,7 @@ def synology_container_create(name: str, image: str, settings: Optional[dict] = 
     create request for advanced options (ports, volumes, env, network, restart
     policy). For anything non-trivial, prefer a Compose project
     (synology_project_create) or copy a profile from synology_container_inspect.
-    The image must already be present — pull it first with synology_image_pull."""
+    The image must already be present â€” pull it first with synology_image_pull."""
     try:
         params = {"name": name, "image": image}
         params.update(settings or {})
@@ -1099,7 +1099,7 @@ def synology_package_uninstall(package_id: str, confirm: bool = False) -> dict:
 @mcp.tool()
 def synology_package_available() -> dict:
     """List packages available to install from Synology's package server (the online
-    Package Center catalog) — names, versions, and descriptions."""
+    Package Center catalog) â€” names, versions, and descriptions."""
     try:
         return ok(client().call("SYNO.Core.Package.Server", "list", 2,
                                 {"blforcereload": False, "blloadothers": True}))
@@ -1306,7 +1306,7 @@ def synology_group_add_members(group: str, users: list[str], confirm: bool = Fal
 def synology_scheduler_list() -> dict:
     """List scheduled tasks (Control Panel > Task Scheduler): scripts, scheduled
     backups, etc., with their trigger and enabled state. Note: use version 3 of the
-    API — the max version does not support list."""
+    API â€” the max version does not support list."""
     try:
         data = client().call("SYNO.Core.TaskScheduler", "list", 3, {"offset": 0, "limit": 200})
         return ok(data)
@@ -1331,7 +1331,7 @@ def synology_firewall_status() -> dict:
 @mcp.tool()
 def synology_firewall_set_enabled(enable: bool, confirm: bool = False) -> dict:
     """Enable or disable the firewall (keeps the current active profile). Can lock
-    you out of the NAS if the active profile blocks your access — requires
+    you out of the NAS if the active profile blocks your access â€” requires
     confirm=True and uses password-confirm elevation. Check synology_firewall_status
     first."""
     if not confirm:

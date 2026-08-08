@@ -1,8 +1,8 @@
-#!/usr/bin/env -S uv run --script
+﻿#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
-#   "mcp>=1.4.0",
+#   "mcp>=1.4.0,<2.0.0",
 #   "httpx>=0.27",
 #   "python-socketio[client]>=5.11",
 # ]
@@ -30,7 +30,7 @@ Auth model (proven live against 5.0.0):
   scan_library` returns 400 "cannot be run" by design. The web UI fires
   scans over Socket.IO (event "scan" on path /ws/socket.io), and the
   socket resolves identity from the `romm_session` COOKIE minted by
-  `POST /api/login` (HTTP Basic) — an API key cannot mint that session.
+  `POST /api/login` (HTTP Basic) â€” an API key cannot mint that session.
   So `romm_scan` needs the optional `username`/`password` config fields;
   without them every REST feature still works, only scan triggering is
   unavailable.
@@ -46,7 +46,7 @@ RomM conventions this file encodes (verified live):
 
 Destructive/disruptive writes are confirm-gated in code (`confirm=True`
 required). `romm_rom_delete(delete_from_fs=...)` and platform deletion
-remove data permanently — treat with care.
+remove data permanently â€” treat with care.
 
 All logging goes to stderr; stdout is reserved for the MCP protocol.
 """
@@ -135,7 +135,7 @@ TIMEOUT = float(CFG.get("timeout", 60))
 VERIFY_SSL = _truthy(CFG.get("verify_ssl"), True)
 
 if not API_KEY:
-    log("WARNING: no api_key configured — every call will fail with 403")
+    log("WARNING: no api_key configured â€” every call will fail with 403")
 
 _client_lock = threading.Lock()
 _client: Optional[httpx.Client] = None
@@ -210,7 +210,7 @@ def _req(
 def _dump(data: Any, limit: int = 60000) -> str:
     out = json.dumps(data, indent=1, ensure_ascii=False, default=str)
     if len(out) > limit:
-        out = out[:limit] + f"\n... [truncated at {limit} chars — narrow the query or use limit/offset]"
+        out = out[:limit] + f"\n... [truncated at {limit} chars â€” narrow the query or use limit/offset]"
     return out
 
 
@@ -251,7 +251,7 @@ def _as_multipart(form: dict) -> dict:
 
 
 def _upload_file_with_header(path: str, file_path: str) -> Any:
-    """POST a local file's raw bytes with the x-upload-filename header — the
+    """POST a local file's raw bytes with the x-upload-filename header â€” the
     convention RomM's manual/soundtrack/rom-screenshot attach endpoints use,
     distinct from the chunked ROM upload and the multipart firmware upload.
     """
@@ -336,7 +336,7 @@ def romm_call(
 ) -> str:
     """Generic passthrough: call ANY RomM REST endpoint.
 
-    This reaches all ~189 operations of the connected server — use
+    This reaches all ~189 operations of the connected server â€” use
     romm_endpoints to find one and romm_schema for its exact parameters.
 
     Args:
@@ -396,7 +396,7 @@ def romm_call(
     if any(t in ctype for t in ("text/", "xml", "json")):
         body = r.text
         return body[:60000] + ("\n...[truncated]" if len(body) > 60000 else "")
-    return f"[binary response: {ctype}, {len(r.content)} bytes — use romm_download_rom or romm_call with a download-capable path]"
+    return f"[binary response: {ctype}, {len(r.content)} bytes â€” use romm_download_rom or romm_call with a download-capable path]"
 
 
 @mcp.tool()
@@ -441,7 +441,7 @@ def romm_schema(path: str, method: str = "get") -> str:
     spec = _openapi()
     node = spec.get("paths", {}).get(path)
     if not node:
-        return f"path {path} not in spec — check romm_endpoints for the exact form"
+        return f"path {path} not in spec â€” check romm_endpoints for the exact form"
     op = node.get(method.lower())
     if not op:
         return f"{method} not defined for {path}; available: {list(node.keys())}"
@@ -534,12 +534,12 @@ def romm_task_run(task_name: str, kwargs_json: str = "", confirm: bool = False) 
     """Run a manual task. Available (5.0.0): cleanup_orphaned_resources,
     cleanup_missing_roms, sync_folder_scan, recompute_save_content_hashes,
     update_launchbox_metadata, update_switch_titledb, convert_images_to_webp.
-    NOTE: scan_library is NOT runnable here — use romm_scan (Socket.IO).
+    NOTE: scan_library is NOT runnable here â€” use romm_scan (Socket.IO).
 
     Args:
         task_name: task identifier from romm_tasks.
         kwargs_json: optional JSON object of task kwargs.
-        confirm: must be True — tasks mutate the library/database.
+        confirm: must be True â€” tasks mutate the library/database.
     """
     _require_confirm(confirm, f"run task '{task_name}'")
     body = json.loads(kwargs_json) if kwargs_json else {}
@@ -570,7 +570,7 @@ def romm_config_exclude(
             EXCLUDED_SINGLE_FILES, EXCLUDED_MULTI_FILES, EXCLUDED_MULTI_PARTS_EXT,
             EXCLUDED_MULTI_PARTS_FILES.
         exclusion_value: the folder/extension/filename value.
-        confirm: must be True — edits the server's config.yml.
+        confirm: must be True â€” edits the server's config.yml.
     """
     _require_confirm(confirm, f"{action} scan exclusion {exclusion_type}={exclusion_value}")
     if action == "add":
@@ -598,7 +598,7 @@ def romm_config_platform_binding(
         fs_slug: the folder name in the library (e.g. "roms/gc").
         slug: the canonical platform slug to bind it to (required for add).
         kind: "platforms" (PLATFORMS_BINDING) or "versions" (PLATFORMS_VERSIONS).
-        confirm: must be True — edits the server's config.yml.
+        confirm: must be True â€” edits the server's config.yml.
     """
     _require_confirm(confirm, f"{action} {kind} binding {fs_slug} -> {slug}")
     if kind not in ("platforms", "versions"):
@@ -646,9 +646,9 @@ def romm_platform_create(fs_slug: str, confirm: bool = False) -> str:
     """Create a platform entry from a filesystem slug (folder name).
 
     Args:
-        fs_slug: folder name, e.g. "snes", "gba", "ps2" — see
+        fs_slug: folder name, e.g. "snes", "gba", "ps2" â€” see
             romm_supported_platforms for canonical slugs.
-        confirm: must be True — creates a library entity.
+        confirm: must be True â€” creates a library entity.
     """
     _require_confirm(confirm, f"create platform '{fs_slug}'")
     return _dump(_req("POST", "/api/platforms", json_body={"fs_slug": fs_slug}))
@@ -664,7 +664,7 @@ def romm_platform_update(platform_id: int, fields_json: str, confirm: bool = Fal
         fields_json: JSON object of fields to set, e.g.
             '{"custom_name": "Super Nintendo"}'. See romm_schema
             ("/api/platforms/{id}", "put") for accepted fields.
-        confirm: must be True — modifies the platform.
+        confirm: must be True â€” modifies the platform.
     """
     _require_confirm(confirm, f"update platform {platform_id}")
     return _dump(_req("PUT", f"/api/platforms/{platform_id}",
@@ -678,7 +678,7 @@ def romm_platform_delete(platform_id: int, confirm: bool = False) -> str:
 
     Args:
         platform_id: RomM platform id.
-        confirm: must be True — destructive.
+        confirm: must be True â€” destructive.
     """
     _require_confirm(confirm, f"DELETE platform {platform_id} and all its ROM DB entries")
     return _dump(_req("DELETE", f"/api/platforms/{platform_id}"))
@@ -690,7 +690,7 @@ def romm_supported_platforms(search: str = "") -> str:
     """List the ~459 platforms RomM can identify (canonical slugs + provider ids).
 
     Args:
-        search: case-insensitive filter on name/slug (recommended — full list is big).
+        search: case-insensitive filter on name/slug (recommended â€” full list is big).
     """
     plats = _req("GET", "/api/platforms/supported")
     s = search.lower()
@@ -703,7 +703,7 @@ def romm_supported_platforms(search: str = "") -> str:
         return "no matches"
     body = "\n".join(rows[:200])
     if len(rows) > 200:
-        body += f"\n... {len(rows) - 200} more — narrow the search"
+        body += f"\n... {len(rows) - 200} more â€” narrow the search"
     return f"{len(rows)} matches:\n{body}"
 
 
@@ -752,9 +752,9 @@ def romm_roms(
         genres/franchises/companies/regions/languages/statuses/tags:
             comma-separated value filters.
         order_by: fs_size_bytes | created_at | first_release_date | name ...
-            — default created_at. WARNING (verified live on 5.0.0):
+            â€” default created_at. WARNING (verified live on 5.0.0):
             order_by="name" with no platform_id returns an EMPTY result
-            (total:0) — a server-side bug in the global name-sort query.
+            (total:0) â€” a server-side bug in the global name-sort query.
             It works fine once platform_id is set, or with any other
             order_by. If you need name order across the whole library,
             sort the returned rows client-side instead.
@@ -808,7 +808,7 @@ def romm_rom(rom_id: int, verbose: bool = False) -> str:
 def romm_rom_files(rom_id: int) -> str:
     """List all files of a ROM (multi-file/folder ROMs, hashes, sizes).
 
-    Note: NOT /api/roms/{id}/files — that endpoint takes a *file* id (and
+    Note: NOT /api/roms/{id}/files â€” that endpoint takes a *file* id (and
     500s on 5.0.0); the reliable file list is embedded in the ROM detail.
 
     Args:
@@ -856,12 +856,12 @@ def romm_rom_update(
         summary: new description text.
         url_cover: URL of new cover art to fetch.
         url_manual: URL of a game manual to fetch.
-        fs_name: RENAMES the file on disk — use with care.
+        fs_name: RENAMES the file on disk â€” use with care.
         provider_ids_json: JSON of provider ids to (re)match, e.g.
-            '{"igdb_id": 1074}' — triggers a metadata refresh from that source.
+            '{"igdb_id": 1074}' â€” triggers a metadata refresh from that source.
         unmatch_metadata: strip all matched metadata from this ROM.
         remove_cover: remove current cover art.
-        confirm: must be True — modifies the ROM (fs_name renames on disk).
+        confirm: must be True â€” modifies the ROM (fs_name renames on disk).
     """
     _require_confirm(confirm, f"update ROM {rom_id}"
                      + (" INCLUDING RENAMING ITS FILE ON DISK" if fs_name else ""))
@@ -887,7 +887,7 @@ def romm_rom_delete(rom_ids: list[int], delete_from_fs: bool = False, confirm: b
     Args:
         rom_ids: list of RomM rom ids.
         delete_from_fs: ALSO permanently delete the underlying files.
-        confirm: must be True — destructive (irreversible with delete_from_fs).
+        confirm: must be True â€” destructive (irreversible with delete_from_fs).
     """
     _require_confirm(
         confirm,
@@ -960,7 +960,7 @@ def romm_rom_notes(
     """
     if action == "list":
         # GET /api/roms/{id}/notes 500s on 5.0.0; the ROM detail reliably
-        # embeds the same data as all_user_notes — fall back to it.
+        # embeds the same data as all_user_notes â€” fall back to it.
         try:
             return _dump(_req("GET", f"/api/roms/{rom_id}/notes"))
         except RommError:
@@ -997,7 +997,7 @@ def romm_rom_manuals(
     file_id: Optional[int] = None,
     confirm: bool = False,
 ) -> str:
-    """Manage a ROM's manual PDF(s). There's no separate list endpoint —
+    """Manage a ROM's manual PDF(s). There's no separate list endpoint â€”
     see what's attached via romm_rom(rom_id, verbose=True).
 
     Args:
@@ -1042,7 +1042,7 @@ def romm_rom_soundtracks(
     file_id: Optional[int] = None,
     confirm: bool = False,
 ) -> str:
-    """Manage a ROM's bundled soundtrack files — distinct from the
+    """Manage a ROM's bundled soundtrack files â€” distinct from the
     library-wide romm_music browser, which covers standalone music albums.
 
     Args:
@@ -1082,12 +1082,12 @@ def romm_rom_patch(
     Args:
         rom_id: RomM rom id (the base game file's ROM id).
         patch_file_id: id of a patch file already in the library (RomFile)
-            to apply — use this OR patch_file_path, not both.
+            to apply â€” use this OR patch_file_path, not both.
         patch_file_path: local patch file to upload and apply without
             storing it in the library.
         output_file_name: custom name for the patched output (default:
             derived from the ROM + patch names).
-        confirm: must be True — writes a new file into the library.
+        confirm: must be True â€” writes a new file into the library.
     """
     if not patch_file_id and not patch_file_path:
         raise RommError("patch_file_id or patch_file_path required")
@@ -1111,13 +1111,13 @@ def romm_rom_patch(
 @mcp.tool()
 @_tool_error
 def romm_rom_convert_to_folder(rom_id: int, confirm: bool = False) -> str:
-    """Convert a single-file ROM into RomM's multi-file folder structure —
+    """Convert a single-file ROM into RomM's multi-file folder structure â€”
     needed before attaching extra files (patches, DLC) to a ROM that was
     scanned as a single file.
 
     Args:
         rom_id: RomM rom id.
-        confirm: must be True — restructures files on disk.
+        confirm: must be True â€” restructures files on disk.
     """
     _require_confirm(confirm, f"convert ROM {rom_id} to folder structure")
     return _dump(_req("POST", f"/api/roms/{rom_id}/convert-to-folder"))
@@ -1130,7 +1130,7 @@ def romm_match_search(rom_id: int, search_term: str = "", search_by: str = "name
     Apply a match afterwards with romm_rom_update(provider_ids_json=...).
 
     Note: 500s with "No metadata providers enabled" when only hash-based
-    sources (Hasheous/LibretroDB) are configured — text search needs
+    sources (Hasheous/LibretroDB) are configured â€” text search needs
     IGDB/ScreenScraper/MobyGames credentials on the server.
 
     Args:
@@ -1180,7 +1180,7 @@ def romm_upload_rom(platform_id: int, file_path: str, confirm: bool = False) -> 
     Args:
         platform_id: destination platform id (romm_platforms).
         file_path: local path of the ROM file.
-        confirm: must be True — writes a file into the library.
+        confirm: must be True â€” writes a file into the library.
     """
     _require_confirm(confirm, f"upload {file_path} into platform {platform_id}")
     p = Path(file_path)
@@ -1223,7 +1223,7 @@ def romm_export(fmt: str, platform_ids: list[int], local_export: bool = False,
     """Export library metadata as gamelist.xml (EmulationStation) or Pegasus.
 
     IMPORTANT (verified live on 5.0.0): this ALWAYS writes the export files
-    into the platform directories on the server's disk — nothing is
+    into the platform directories on the server's disk â€” nothing is
     returned for download. `local_export` only controls whether the XML
     references local file paths (True) or RomM URLs (False).
 
@@ -1231,7 +1231,7 @@ def romm_export(fmt: str, platform_ids: list[int], local_export: bool = False,
         fmt: "gamelist-xml" or "pegasus".
         platform_ids: platforms to export.
         local_export: reference local paths instead of URLs in the output.
-        confirm: must be True — writes files into the server's ROM folders.
+        confirm: must be True â€” writes files into the server's ROM folders.
     """
     if fmt not in ("gamelist-xml", "pegasus"):
         raise RommError("fmt must be gamelist-xml or pegasus")
@@ -1258,7 +1258,7 @@ def romm_collections(kind: str = "all", virtual_type: str = "franchise") -> str:
     Args:
         kind: manual | smart | virtual | all.
         virtual_type: franchise | genre | company | mode | developer |
-            publisher — virtual collections are auto-generated and always
+            publisher â€” virtual collections are auto-generated and always
             need this to pick which grouping to list (only used when
             kind is virtual or all).
     """
@@ -1333,10 +1333,10 @@ def romm_collection_update(
         name / description: new values (empty = leave unchanged).
         is_public: change visibility.
         remove_cover: strip the cover image.
-        confirm: must be True — modifies the collection.
+        confirm: must be True â€” modifies the collection.
     """
     _require_confirm(confirm, f"update collection {collection_id}")
-    # PUT requires rom_ids (full membership, as a JSON array string) —
+    # PUT requires rom_ids (full membership, as a JSON array string) â€”
     # omitting it 422s, so round-trip the current membership.
     current = _req("GET", f"/api/collections/{collection_id}")
     form = {"rom_ids": json.dumps(current.get("rom_ids", []))}
@@ -1358,7 +1358,7 @@ def romm_collection_delete(collection_id: int, kind: str = "manual", confirm: bo
     Args:
         collection_id: collection id.
         kind: manual | smart.
-        confirm: must be True — destructive.
+        confirm: must be True â€” destructive.
     """
     _require_confirm(confirm, f"delete {kind} collection {collection_id}")
     path = {"manual": f"/api/collections/{collection_id}",
@@ -1426,10 +1426,10 @@ def romm_smart_collection_update(
         collection_id: smart collection id.
         name / description: new values (empty = leave unchanged).
         filter_criteria_json: new rule as a JSON string, same shape as
-            romm_smart_collection_create — verify it first by running the
+            romm_smart_collection_create â€” verify it first by running the
             same filters through romm_roms and checking the match count.
         is_public: change visibility.
-        confirm: must be True — modifies the collection.
+        confirm: must be True â€” modifies the collection.
     """
     _require_confirm(confirm, f"update smart collection {collection_id}")
     form: dict[str, str] = {}
@@ -1483,14 +1483,14 @@ def romm_user_create(username: str, email: str, password: str, role: str = "user
         username: login name.
         email: email address.
         password: initial password.
-        role: "user" or "admin" — RomM 5.x has ONLY these two (the old
+        role: "user" or "admin" â€” RomM 5.x has ONLY these two (the old
             viewer/editor split moved into permission groups; the server
             silently ignores unknown roles). Fine-grained access =
             permission groups via romm_permissions.
-        confirm: must be True — creates an account.
+        confirm: must be True â€” creates an account.
     """
     if role not in ("user", "admin"):
-        raise RommError("role must be 'user' or 'admin' on RomM 5.x — "
+        raise RommError("role must be 'user' or 'admin' on RomM 5.x â€” "
                         "use permission groups for finer access control")
     _require_confirm(confirm, f"create user '{username}' with role {role}")
     return _dump(_req("POST", "/api/users",
@@ -1507,12 +1507,12 @@ def romm_user_update(user_id: int, fields_json: str, confirm: bool = False) -> s
         user_id: user id.
         fields_json: JSON of fields, e.g. '{"role": "admin", "enabled": true}'.
             Valid roles on 5.x: "user" | "admin" only (invalid values are
-            SILENTLY ignored by the server — verified live).
-        confirm: must be True — modifies an account.
+            SILENTLY ignored by the server â€” verified live).
+        confirm: must be True â€” modifies an account.
     """
     fields = json.loads(fields_json)
     if "role" in fields and fields["role"] not in ("user", "admin"):
-        raise RommError("role must be 'user' or 'admin' on RomM 5.x — the "
+        raise RommError("role must be 'user' or 'admin' on RomM 5.x â€” the "
                         "server silently ignores anything else")
     _require_confirm(confirm, f"update user {user_id}")
     return _dump(_req("PUT", f"/api/users/{user_id}", form=fields))
@@ -1525,7 +1525,7 @@ def romm_user_delete(user_id: int, confirm: bool = False) -> str:
 
     Args:
         user_id: user id.
-        confirm: must be True — destructive.
+        confirm: must be True â€” destructive.
     """
     _require_confirm(confirm, f"DELETE user {user_id}")
     return _dump(_req("DELETE", f"/api/users/{user_id}"))
@@ -1540,7 +1540,7 @@ def romm_user_invite(role: str = "user", expiration: Optional[int] = None,
     Args:
         role: "user" or "admin" (RomM 5.x role vocabulary).
         expiration: link lifetime in minutes (server default if omitted).
-        confirm: must be True — mints a usable registration credential.
+        confirm: must be True â€” mints a usable registration credential.
     """
     if role not in ("user", "admin"):
         raise RommError("role must be 'user' or 'admin' on RomM 5.x")
@@ -1585,7 +1585,7 @@ def romm_permission_group(
     confirm: bool = False,
 ) -> str:
     """Create/update/delete a permission group (the fine-grained access
-    tiers beyond the coarse user/admin role — see romm_permissions
+    tiers beyond the coarse user/admin role â€” see romm_permissions
     (scope="groups") to list existing ones, scope="catalog" for the grant
     vocabulary).
 
@@ -1652,7 +1652,7 @@ def romm_user_permissions_update(
         overrides_json: JSON array of override objects (grant a specific
             entity beyond the group default), e.g.
             '[{"action": "rom.delete", "scope": {"kind": "all"}}]'.
-        confirm: must be True — changes what this user can do.
+        confirm: must be True â€” changes what this user can do.
     """
     _require_confirm(confirm, f"update permissions for user {user_id}")
     body: dict[str, Any] = {"set_group": set_group}
@@ -1674,7 +1674,7 @@ def romm_permission_hidden(
     confirm: bool = False,
 ) -> str:
     """Hide a specific entity (platform, ROM, collection...) from a user or
-    group — the mechanism behind "kid-safe" library views.
+    group â€” the mechanism behind "kid-safe" library views.
 
     Args:
         action: add | remove.
@@ -1683,7 +1683,7 @@ def romm_permission_hidden(
         entity_id: id of the specific entity to hide.
         user_id: hide for this one user (mutually exclusive with group_id).
         group_id: hide for everyone in this permission group.
-        confirm: must be True — changes what someone can see.
+        confirm: must be True â€” changes what someone can see.
     """
     if not user_id and not group_id:
         raise RommError("user_id or group_id required")
@@ -1762,7 +1762,7 @@ def romm_saves_delete(save_ids: list[int], confirm: bool = False) -> str:
 
     Args:
         save_ids: save ids to delete.
-        confirm: must be True — destructive.
+        confirm: must be True â€” destructive.
     """
     _require_confirm(confirm, f"DELETE {len(save_ids)} save file(s)")
     return _dump(_req("POST", "/api/saves/delete", json_body={"saves": save_ids}))
@@ -1788,7 +1788,7 @@ def romm_states_delete(state_ids: list[int], confirm: bool = False) -> str:
 
     Args:
         state_ids: state ids to delete.
-        confirm: must be True — destructive.
+        confirm: must be True â€” destructive.
     """
     _require_confirm(confirm, f"DELETE {len(state_ids)} save state(s)")
     return _dump(_req("POST", "/api/states/delete", json_body={"states": state_ids}))
@@ -1813,7 +1813,7 @@ def romm_firmware_upload(platform_id: int, file_path: str, confirm: bool = False
     Args:
         platform_id: destination platform id.
         file_path: local path of the firmware file.
-        confirm: must be True — writes a file into the library.
+        confirm: must be True â€” writes a file into the library.
     """
     _require_confirm(confirm, f"upload firmware {file_path} to platform {platform_id}")
     p = Path(file_path)
@@ -1834,7 +1834,7 @@ def romm_firmware_delete(firmware_ids: list[int], delete_from_fs: bool = False,
     Args:
         firmware_ids: firmware ids.
         delete_from_fs: also delete the files from the server's disk.
-        confirm: must be True — destructive.
+        confirm: must be True â€” destructive.
     """
     _require_confirm(confirm, f"DELETE {len(firmware_ids)} firmware file(s)"
                      + (" INCLUDING FILES ON DISK" if delete_from_fs else ""))
@@ -1858,10 +1858,10 @@ def romm_screenshot(
     confirm: bool = False,
 ) -> str:
     """Manage standalone screenshots. List them via romm_rom(rom_id,
-    verbose=True) — there's no top-level screenshot-list endpoint.
+    verbose=True) â€” there's no top-level screenshot-list endpoint.
 
     Note: RomM also has a second, header-based attach path at
-    POST /api/roms/{id}/screenshots for the same underlying resource — this
+    POST /api/roms/{id}/screenshots for the same underlying resource â€” this
     tool uses the plain multipart one below since it has a fully-specified
     schema; both are legitimate, so don't be surprised to see the other in
     server docs.
@@ -1933,7 +1933,7 @@ def romm_device_delete(device_id: int, confirm: bool = False) -> str:
 
     Args:
         device_id: device id.
-        confirm: must be True — destructive.
+        confirm: must be True â€” destructive.
     """
     _require_confirm(confirm, f"delete device {device_id}")
     return _dump(_req("DELETE", f"/api/devices/{device_id}"))
@@ -1945,12 +1945,12 @@ def romm_device_update(device_id: str, fields_json: str, confirm: bool = False) 
     """Edit a registered device's name/sync settings.
 
     Args:
-        device_id: device id (string — sync device ids are UUIDs).
+        device_id: device id (string â€” sync device ids are UUIDs).
         fields_json: JSON object of fields to change, e.g.
             '{"name": "Steam Deck"}' or '{"sync_enabled": false}'. Settable:
             name, platform, client, client_version, ip_address, mac_address,
             hostname, sync_enabled, sync_mode, sync_config.
-        confirm: must be True — modifies the device record.
+        confirm: must be True â€” modifies the device record.
     """
     _require_confirm(confirm, f"update device {device_id}")
     body = json.loads(fields_json)
@@ -1973,12 +1973,12 @@ def romm_device_auth(
     """Admin side of the device-pairing flow (emulator front-ends like
     Pegasus/RetroArch requesting API access): check a pending pairing
     request and approve or deny it. The device's own half (init/token) is
-    not exposed here — that's initiated by the pairing device, not an admin.
+    not exposed here â€” that's initiated by the pairing device, not an admin.
 
     Args:
         action: pending (look up a request by user_code) | approve | deny.
         user_code: the short code the pairing device is displaying.
-        approved_scopes: scopes to grant, required for approve — see
+        approved_scopes: scopes to grant, required for approve â€” see
             romm_permissions(scope="catalog") for the vocabulary.
         device_name: optional friendly name to assign, for approve.
         expires_in: optional token lifetime, for approve.
@@ -2159,7 +2159,7 @@ def romm_feeds(feed: str = "", platform_slug: str = "", content_type: str = "") 
 
 
 # --------------------------------------------------------------------------- #
-# Library scan (Socket.IO — the one job REST cannot do)                       #
+# Library scan (Socket.IO â€” the one job REST cannot do)                       #
 # --------------------------------------------------------------------------- #
 # One scan at a time (RomM itself only runs one), tracked here so romm_scan
 # can return quickly and romm_scan_status can keep polling the same session
@@ -2197,10 +2197,10 @@ def romm_scan(
     """Start a library scan (the web UI's Scan button) and return early progress.
 
     Scans run server-side over Socket.IO and can take minutes on a large
-    library, so this only blocks up to `wait_seconds` (default 20s — enough
+    library, so this only blocks up to `wait_seconds` (default 20s â€” enough
     to see the first few platforms/ROMs go by) and then returns even if the
     scan is still running; it keeps running server-side either way. Follow
-    up with repeated `romm_scan_status` calls to keep narrating progress —
+    up with repeated `romm_scan_status` calls to keep narrating progress â€”
     each one reports only what's new since the last poll, so you can report
     stage-by-stage instead of going silent for the whole scan.
 
@@ -2215,19 +2215,19 @@ def romm_scan(
             ["igdb","ss","moby","ra","lb","hasheous","tgdb"].
         wait_seconds: how long to wait here before returning control even if
             the scan hasn't finished (use romm_scan_status to keep polling).
-        confirm: must be True — scans mutate the library database.
+        confirm: must be True â€” scans mutate the library database.
     """
     _require_confirm(confirm, f"run a '{scan_type}' library scan")
     if _scan_state.get("sio") is not None:
         age = time.time() - _scan_state.get("started_at", time.time())
         raise RommError(
-            f"a scan is already in progress (started {age:.0f}s ago) — use "
+            f"a scan is already in progress (started {age:.0f}s ago) â€” use "
             "romm_scan_status to check on it instead of starting another."
         )
     if not (USERNAME and PASSWORD):
         raise RommError(
             "scan needs username+password in config.local.json (or ROMM_USERNAME/"
-            "ROMM_PASSWORD env) — RomM's scan socket authenticates with a session "
+            "ROMM_PASSWORD env) â€” RomM's scan socket authenticates with a session "
             "cookie that an API key cannot create. All other tools work without it."
         )
     valid = {"quick", "complete", "new_platforms", "update", "unmatched", "hashes"}
@@ -2303,7 +2303,7 @@ def romm_scan(
         out["stats"] = result.get("stats")
         _cleanup_scan_state()
     else:
-        out["note"] = ("scan still running — call romm_scan_status(wait_seconds=...) "
+        out["note"] = ("scan still running â€” call romm_scan_status(wait_seconds=...) "
                        "to keep checking in; it continues server-side regardless")
         _scan_state["reported"] = len(events)
     return _dump(out)
@@ -2315,7 +2315,7 @@ def romm_scan_status(wait_seconds: int = 15) -> str:
     """Check on the scan started with romm_scan; reports only new progress.
 
     Waits up to `wait_seconds` for more events or completion, then returns
-    whatever's new since the last call to romm_scan/romm_scan_status — call
+    whatever's new since the last call to romm_scan/romm_scan_status â€” call
     this repeatedly with a short wait to narrate a long scan stage by stage
     instead of blocking once for the whole thing. Cleans up the scan session
     once it finishes, so a `finished: true` reply means it's safe to stop
@@ -2327,7 +2327,7 @@ def romm_scan_status(wait_seconds: int = 15) -> str:
             often or how long you poll).
     """
     if _scan_state.get("sio") is None:
-        raise RommError("no scan is currently running — start one with romm_scan first")
+        raise RommError("no scan is currently running â€” start one with romm_scan first")
 
     done: threading.Event = _scan_state["done"]
     events: list[str] = _scan_state["events"]

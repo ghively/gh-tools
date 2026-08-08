@@ -1,8 +1,8 @@
-#!/usr/bin/env -S uv run --script
+﻿#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
-#   "mcp>=1.4.0",
+#   "mcp>=1.4.0,<2.0.0",
 #   "httpx>=0.27",
 # ]
 # ///
@@ -11,7 +11,7 @@
 Exposes a Tdarr distributed transcoding server (v2 API) to Claude through the
 Model Context Protocol.
 
-**STATUS: DOC-VERIFIED — NOT YET LIVE-VERIFIED.**
+**STATUS: DOC-VERIFIED â€” NOT YET LIVE-VERIFIED.**
 
 This server was built from the official Tdarr API documentation at
 https://tdarr.readme.io/reference (v2.25.01+). Tdarr is not deployed on this
@@ -24,7 +24,7 @@ Two-layer design, mirroring the radarr/sonarr/sabnzbd plugins:
 
 * GENERIC passthrough (`tdarr_call` / `tdarr_list_endpoints`) reaching every
   documented endpoint. The catalog is static (built from the docs) because
-  Tdarr has no /system/routes equivalent — but it is COMPLETE for the v2 API.
+  Tdarr has no /system/routes equivalent â€” but it is COMPLETE for the v2 API.
 * CURATED tools for the common jobs: status, library (search, scan, delete,
   filescanner), plugins (search/read/install/create/edit/delete/sync), nodes
   (list/restart/disconnect/logs/worker-limits), backups, /cruddb (full DB
@@ -32,18 +32,18 @@ Two-layer design, mirroring the radarr/sonarr/sabnzbd plugins:
   transcode-user-verdict, and flow templates.
 
 Auth model (per docs): NONE. Tdarr does not traditionally require an API key
-— the API trusts the LAN, like the *arr stack. The optional `api_key` field
+â€” the API trusts the LAN, like the *arr stack. The optional `api_key` field
 in config supports passing a token via a configurable header for users who
 front Tdarr with an auth proxy (nginx-basic-auth, Authentik, etc.).
 
 Tdarr conventions this file encodes (from the docs):
 * Base path: /api/v2/<endpoint>. Endpoint names are kebab-case (e.g.
   /api/v2/search-db, /api/v2/get-nodes).
-* Almost every endpoint is POST with a JSON body of shape {"data": {...}} —
+* Almost every endpoint is POST with a JSON body of shape {"data": {...}} â€”
   Tdarr wraps every operation's params in a top-level `data` object. The
   client here attaches that wrapper automatically.
 * 4 endpoints are GET: /status, /get-nodes, /download-plugins, /get-server-log.
-* /cruddb is the generic DB CRUD endpoint — mode insert|getById|getAll|update|
+* /cruddb is the generic DB CRUD endpoint â€” mode insert|getById|getAll|update|
   removeOne|removeAll, collection in {FileJSONDB, LibrarySettingsJSONDB,
   StatisticsJSONDB, NodeJSONDB, SettingsGlobalJSONDB, StagedJSONDB,
   F2FOutputJSONDB, FlowsJSONDB}. READS (getById/getAll) are not confirm-gated;
@@ -51,8 +51,8 @@ Tdarr conventions this file encodes (from the docs):
 
 Destructive writes (delete-file, delete-unhealthy-files, remove-library-files,
 set-all-status, kill-worker, kill-file-scanner) are confirm-gated. The most
-consequential — /cruddb writes and node lifecycle ops (kill-worker,
-disconnect-node) — are doubly gated (confirm + typed acknowledge token) like
+consequential â€” /cruddb writes and node lifecycle ops (kill-worker,
+disconnect-node) â€” are doubly gated (confirm + typed acknowledge token) like
 the SABnzbd shutdown pattern.
 
 All logging goes to stderr; stdout is reserved for the MCP protocol.
@@ -174,7 +174,7 @@ class TdarrClient:
             body = {"data": data}
         resp = self._client.request(method.upper(), path, params=params, json=body)
         if resp.status_code == 401:
-            raise TdarrError("401 Unauthorized — if you've fronted Tdarr with an "
+            raise TdarrError("401 Unauthorized â€” if you've fronted Tdarr with an "
                              "auth proxy, set api_key in config.local.json.")
         if resp.status_code >= 400:
             detail = resp.text[:400]
@@ -226,7 +226,7 @@ def _need_acknowledge(what: str, token: str) -> dict:
     return {
         "confirmation_required": True,
         "note": (f"This would {what}. Re-run with confirm=true AND "
-                 f"acknowledge='{token}' (typed) — this operation is "
+                 f"acknowledge='{token}' (typed) â€” this operation is "
                  "disruptive/irreversible."),
     }
 
@@ -295,7 +295,7 @@ ENDPOINT_CATALOG: list[dict] = [
     {"method": "POST", "path": "/api/v2/verify-plugin",             "rw": "R", "summary": "Verify a plugin"},
     {"method": "POST", "path": "/api/v2/copy-community-to-local",   "rw": "W", "summary": "Install a community plugin locally"},
     {"method": "POST", "path": "/api/v2/run-help-command",          "rw": "R", "summary": "Run an FFmpeg/HandBrake help command"},
-    # Library settings (per-library config — codec excludes, plugin includes, etc.)
+    # Library settings (per-library config â€” codec excludes, plugin includes, etc.)
     {"method": "POST", "path": "/api/v2/toggle-folder-watch",       "rw": "W", "summary": "Toggle folder watch"},
     {"method": "POST", "path": "/api/v2/toggle-schedule",           "rw": "W", "summary": "Toggle schedule (file/folder/library)"},
     {"method": "POST", "path": "/api/v2/update-schedule-block",     "rw": "W", "summary": "Update a schedule block"},
@@ -318,7 +318,7 @@ ENDPOINT_CATALOG: list[dict] = [
 
 @mcp.tool()
 def tdarr_call(method: str, path: str, data: str = "") -> Any:
-    """Call ANY Tdarr REST operation — the generic passthrough that reaches
+    """Call ANY Tdarr REST operation â€” the generic passthrough that reaches
     the server's entire documented v2 API (~67 endpoints). Use
     tdarr_list_endpoints to find an endpoint first.
 
@@ -328,7 +328,7 @@ def tdarr_call(method: str, path: str, data: str = "") -> Any:
         path: Endpoint path. Either "/api/v2/search-db" or just "search-db"
             (auto-prefixed with /api/v2).
         data: Optional JSON to send as the request body. Tdarr wraps it in
-            {"data": <your_data>} automatically — pass just the inner object.
+            {"data": <your_data>} automatically â€” pass just the inner object.
 
     Returns the parsed JSON response.
     WRITES: only call POST after the user has approved the action.
@@ -348,7 +348,7 @@ def tdarr_call(method: str, path: str, data: str = "") -> Any:
 @mcp.tool()
 def tdarr_list_endpoints(search: str = "", method: str = "", rw: str = "",
                           limit: int = 100) -> Any:
-    """Search the static endpoint catalog — built from the official Tdarr API
+    """Search the static endpoint catalog â€” built from the official Tdarr API
     docs (tdarr.readme.io/reference, v2.25.01+, frozen 2026-07-19). The master
     index for tdarr_call.
 
@@ -375,7 +375,7 @@ def tdarr_list_endpoints(search: str = "", method: str = "", rw: str = "",
 @mcp.tool()
 def tdarr_status() -> Any:
     """Server liveness check + identity. The cheapest Tdarr call.
-    **DOC-VERIFIED** — GET /api/v2/status."""
+    **DOC-VERIFIED** â€” GET /api/v2/status."""
     try:
         return CLIENT.request("GET", "/api/v2/status")
     except Exception as e:  # noqa: BLE001
@@ -386,7 +386,7 @@ def tdarr_status() -> Any:
 def tdarr_full_status() -> Any:
     """Composite health snapshot: status + nodes + DB statuses + performance
     stats + resource stats. Best "what's going on" overview.
-    **DOC-VERIFIED** — composed from GET /status + /get-nodes + /get-db-statuses
+    **DOC-VERIFIED** â€” composed from GET /status + /get-nodes + /get-db-statuses
     + /performance-stats + /get-res-stats."""
     try:
         status = CLIENT.request("GET", "/api/v2/status")
@@ -414,7 +414,7 @@ def tdarr_full_status() -> Any:
 @mcp.tool()
 def tdarr_nodes() -> Any:
     """List all connected nodes (workers). READ-ONLY.
-    **DOC-VERIFIED** — GET /api/v2/get-nodes."""
+    **DOC-VERIFIED** â€” GET /api/v2/get-nodes."""
     try:
         return CLIENT.request("GET", "/api/v2/get-nodes")
     except Exception as e:  # noqa: BLE001
@@ -424,7 +424,7 @@ def tdarr_nodes() -> Any:
 @mcp.tool()
 def tdarr_db_statuses() -> Any:
     """Status of all databases (libraries). READ-ONLY.
-    **DOC-VERIFIED** — POST /api/v2/get-db-statuses."""
+    **DOC-VERIFIED** â€” POST /api/v2/get-db-statuses."""
     try:
         return CLIENT.request("POST", "/api/v2/get-db-statuses", data={})
     except Exception as e:  # noqa: BLE001
@@ -434,7 +434,7 @@ def tdarr_db_statuses() -> Any:
 @mcp.tool()
 def tdarr_performance_stats() -> Any:
     """Throughput / performance statistics. READ-ONLY.
-    **DOC-VERIFIED** — POST /api/v2/performance-stats."""
+    **DOC-VERIFIED** â€” POST /api/v2/performance-stats."""
     try:
         return CLIENT.request("POST", "/api/v2/performance-stats", data={})
     except Exception as e:  # noqa: BLE001
@@ -444,7 +444,7 @@ def tdarr_performance_stats() -> Any:
 @mcp.tool()
 def tdarr_res_stats() -> Any:
     """Server resource statistics (CPU, memory, etc.). READ-ONLY.
-    **DOC-VERIFIED** — POST /api/v2/get-res-stats."""
+    **DOC-VERIFIED** â€” POST /api/v2/get-res-stats."""
     try:
         return CLIENT.request("POST", "/api/v2/get-res-stats", data={})
     except Exception as e:  # noqa: BLE001
@@ -453,8 +453,8 @@ def tdarr_res_stats() -> Any:
 
 @mcp.tool()
 def tdarr_server_log() -> Any:
-    """Fetch the server log file (raw text). May be large — consider tailing.
-    **DOC-VERIFIED** — GET /api/v2/get-server-log."""
+    """Fetch the server log file (raw text). May be large â€” consider tailing.
+    **DOC-VERIFIED** â€” GET /api/v2/get-server-log."""
     try:
         text = CLIENT.request("GET", "/api/v2/get-server-log", raw=True) or ""
         # Return the tail by default to avoid flooding the model
@@ -469,7 +469,7 @@ def tdarr_server_log() -> Any:
 @mcp.tool()
 def tdarr_node_log(node_id: str) -> Any:
     """Fetch the log file for a given node. READ-ONLY.
-    **DOC-VERIFIED** — POST /api/v2/get-node-log with {"nodeID": "..."}."""
+    **DOC-VERIFIED** â€” POST /api/v2/get-node-log with {"nodeID": "..."}."""
     try:
         if not node_id:
             raise TdarrError("node_id is required")
@@ -490,13 +490,13 @@ def tdarr_node_log(node_id: str) -> Any:
 def tdarr_search_db(string: str = "", less_than_gb: int = 100000,
                      greater_than_gb: int = 0, limit: int = 100) -> Any:
     """Search files in the library DB. READ-ONLY.
-    **LIVE-VERIFIED** — POST /api/v2/search-db (Tdarr 2.84.01).
+    **LIVE-VERIFIED** â€” POST /api/v2/search-db (Tdarr 2.84.01).
 
     Args:
         string: Substring to match against file paths (pass "" for all).
-        less_than_gb: Only files smaller than N GB. Tdarr requires this field —
+        less_than_gb: Only files smaller than N GB. Tdarr requires this field â€”
             default 100000 effectively means "no upper limit".
-        greater_than_gb: Only files larger than N GB. Tdarr requires this field —
+        greater_than_gb: Only files larger than N GB. Tdarr requires this field â€”
             default 0 means "no lower limit".
         limit: Cap results returned (client-side).
     """
@@ -517,10 +517,10 @@ def tdarr_search_db(string: str = "", less_than_gb: int = 100000,
 @mcp.tool()
 def tdarr_scan_files(scan_config: str, confirm: bool = False) -> Any:
     """Trigger a scan. WRITES: confirm-gated. Active work (disk + CPU).
-    **DOC-VERIFIED** — POST /api/v2/scan-files with {"scanConfig": {...}}.
+    **DOC-VERIFIED** â€” POST /api/v2/scan-files with {"scanConfig": {...}}.
 
     Args:
-        scan_config: JSON object string — the scanConfig (library ID, array of
+        scan_config: JSON object string â€” the scanConfig (library ID, array of
             paths, etc.). Exact shape TDB on first live use.
         confirm: Must be true.
     """
@@ -540,7 +540,7 @@ def tdarr_scan_files(scan_config: str, confirm: bool = False) -> Any:
 def tdarr_scan_individual_file(file_path: str, db_id: str = "",
                                 confirm: bool = False) -> Any:
     """Scan one file. WRITES: confirm-gated (active work).
-    **DOC-VERIFIED** — POST /api/v2/scan-individual-file."""
+    **DOC-VERIFIED** â€” POST /api/v2/scan-individual-file."""
     try:
         if not file_path:
             raise TdarrError("file_path is required")
@@ -556,7 +556,7 @@ def tdarr_scan_individual_file(file_path: str, db_id: str = "",
 @mcp.tool()
 def tdarr_filescanner_status(db_name: str) -> Any:
     """File-scanner status for a given database (library). READ-ONLY.
-    **DOC-VERIFIED** — POST /api/v2/get-filescanner-status."""
+    **DOC-VERIFIED** â€” POST /api/v2/get-filescanner-status."""
     try:
         if not db_name:
             raise TdarrError("db_name is required (e.g. 'library_1')")
@@ -568,7 +568,7 @@ def tdarr_filescanner_status(db_name: str) -> Any:
 @mcp.tool()
 def tdarr_verify_folder_exists(folder_path: str) -> Any:
     """Verify whether a folder exists on the server. READ-ONLY.
-    **DOC-VERIFIED** — POST /api/v2/verify-folder-exists."""
+    **DOC-VERIFIED** â€” POST /api/v2/verify-folder-exists."""
     try:
         if not folder_path:
             raise TdarrError("folder_path is required")
@@ -580,7 +580,7 @@ def tdarr_verify_folder_exists(folder_path: str) -> Any:
 @mcp.tool()
 def tdarr_get_subdirectories(folder_path: str) -> Any:
     """List subdirectories of a folder on the server. READ-ONLY.
-    **DOC-VERIFIED** — POST /api/v2/get-subdirectories."""
+    **DOC-VERIFIED** â€” POST /api/v2/get-subdirectories."""
     try:
         if not folder_path:
             raise TdarrError("folder_path is required")
@@ -593,7 +593,7 @@ def tdarr_get_subdirectories(folder_path: str) -> Any:
 def tdarr_delete_file(file_path: str, db_id: str = "",
                        confirm: bool = False) -> Any:
     """Delete a file from disk. WRITES: confirm-gated. IRREVERSIBLE.
-    **DOC-VERIFIED** — POST /api/v2/delete-file."""
+    **DOC-VERIFIED** â€” POST /api/v2/delete-file."""
     try:
         if not file_path:
             raise TdarrError("file_path is required")
@@ -609,7 +609,7 @@ def tdarr_delete_file(file_path: str, db_id: str = "",
 @mcp.tool()
 def tdarr_delete_unhealthy_files(table: str, confirm: bool = False) -> Any:
     """Delete unhealthy files from a table. WRITES: confirm-gated. IRREVERSIBLE.
-    **DOC-VERIFIED** — POST /api/v2/delete-unhealthy-files."""
+    **DOC-VERIFIED** â€” POST /api/v2/delete-unhealthy-files."""
     try:
         if not table:
             raise TdarrError("table is required")
@@ -623,8 +623,8 @@ def tdarr_delete_unhealthy_files(table: str, confirm: bool = False) -> Any:
 @mcp.tool()
 def tdarr_kill_file_scanner(db_name: str, confirm: bool = False,
                              acknowledge: str = "") -> Any:
-    """Kill a running file scanner. DOUBLY GATED — confirm + acknowledge='kill'.
-    **DOC-VERIFIED** — POST /api/v2/kill-file-scanner."""
+    """Kill a running file scanner. DOUBLY GATED â€” confirm + acknowledge='kill'.
+    **DOC-VERIFIED** â€” POST /api/v2/kill-file-scanner."""
     try:
         if not db_name:
             raise TdarrError("db_name is required")
@@ -641,7 +641,7 @@ def tdarr_kill_file_scanner(db_name: str, confirm: bool = False,
 @mcp.tool()
 def tdarr_search_plugins(string: str = "", plugin_type: str = "standard") -> Any:
     """Search installed + community plugins. READ-ONLY.
-    **LIVE-VERIFIED** — POST /api/v2/search-plugins (Tdarr 2.84.01).
+    **LIVE-VERIFIED** â€” POST /api/v2/search-plugins (Tdarr 2.84.01).
 
     Args:
         string: Substring to match (pass "" for all). Tdarr requires this field.
@@ -657,7 +657,7 @@ def tdarr_search_plugins(string: str = "", plugin_type: str = "standard") -> Any
 @mcp.tool()
 def tdarr_search_flow_plugins(string: str = "", plugin_type: str = "flow") -> Any:
     """Search flow plugins (Tdarr 2.x flow system). READ-ONLY.
-    **LIVE-VERIFIED** — POST /api/v2/search-flow-plugins (Tdarr 2.84.01).
+    **LIVE-VERIFIED** â€” POST /api/v2/search-flow-plugins (Tdarr 2.84.01).
 
     Args:
         string: Substring to match (pass "" for all). Tdarr requires this field.
@@ -673,7 +673,7 @@ def tdarr_search_flow_plugins(string: str = "", plugin_type: str = "flow") -> An
 @mcp.tool()
 def tdarr_search_flow_templates(string: str = "") -> Any:
     """Search flow templates. READ-ONLY.
-    **LIVE-VERIFIED** — POST /api/v2/search-flow-templates (Tdarr 2.84.01).
+    **LIVE-VERIFIED** â€” POST /api/v2/search-flow-templates (Tdarr 2.84.01).
 
     Args:
         string: Substring to match (pass "" for all). Tdarr requires this field.
@@ -688,7 +688,7 @@ def tdarr_search_flow_templates(string: str = "") -> Any:
 @mcp.tool()
 def tdarr_read_plugin(plugin_id: str) -> Any:
     """Read a plugin file (metadata + source). READ-ONLY.
-    **DOC-VERIFIED** — POST /api/v2/read-plugin."""
+    **DOC-VERIFIED** â€” POST /api/v2/read-plugin."""
     try:
         if not plugin_id:
             raise TdarrError("plugin_id is required")
@@ -700,7 +700,7 @@ def tdarr_read_plugin(plugin_id: str) -> Any:
 @mcp.tool()
 def tdarr_install_plugin(plugin_id: str, confirm: bool = False) -> Any:
     """Install a community plugin locally. WRITES: confirm-gated.
-    **DOC-VERIFIED** — POST /api/v2/copy-community-to-local."""
+    **DOC-VERIFIED** â€” POST /api/v2/copy-community-to-local."""
     try:
         if not plugin_id:
             raise TdarrError("plugin_id is required")
@@ -714,7 +714,7 @@ def tdarr_install_plugin(plugin_id: str, confirm: bool = False) -> Any:
 @mcp.tool()
 def tdarr_delete_plugin(plugin_id: str, confirm: bool = False) -> Any:
     """Delete an installed plugin. WRITES: confirm-gated.
-    **DOC-VERIFIED** — POST /api/v2/delete-plugin."""
+    **DOC-VERIFIED** â€” POST /api/v2/delete-plugin."""
     try:
         if not plugin_id:
             raise TdarrError("plugin_id is required")
@@ -728,7 +728,7 @@ def tdarr_delete_plugin(plugin_id: str, confirm: bool = False) -> Any:
 @mcp.tool()
 def tdarr_sync_plugins(confirm: bool = False) -> Any:
     """Sync plugins (re-fetch all installed from upstream). WRITES: confirm-gated.
-    **DOC-VERIFIED** — POST /api/v2/sync-plugins."""
+    **DOC-VERIFIED** â€” POST /api/v2/sync-plugins."""
     try:
         if not confirm:
             return _need_confirm("sync all plugins from upstream")
@@ -740,7 +740,7 @@ def tdarr_sync_plugins(confirm: bool = False) -> Any:
 @mcp.tool()
 def tdarr_update_plugins(confirm: bool = False) -> Any:
     """Update all plugins. WRITES: confirm-gated.
-    **DOC-VERIFIED** — POST /api/v2/update-plugins."""
+    **DOC-VERIFIED** â€” POST /api/v2/update-plugins."""
     try:
         if not confirm:
             return _need_confirm("update all plugins")
@@ -752,7 +752,7 @@ def tdarr_update_plugins(confirm: bool = False) -> Any:
 @mcp.tool()
 def tdarr_verify_plugin(plugin_id: str) -> Any:
     """Verify a plugin (lint check). READ-ONLY.
-    **DOC-VERIFIED** — POST /api/v2/verify-plugin."""
+    **DOC-VERIFIED** â€” POST /api/v2/verify-plugin."""
     try:
         if not plugin_id:
             raise TdarrError("plugin_id is required")
@@ -767,7 +767,7 @@ def tdarr_verify_plugin(plugin_id: str) -> Any:
 @mcp.tool()
 def tdarr_restart_node(node_id: str, confirm: bool = False) -> Any:
     """Restart a node. WRITES: confirm-gated. Interrupts active work.
-    **DOC-VERIFIED** — POST /api/v2/restart-node."""
+    **DOC-VERIFIED** â€” POST /api/v2/restart-node."""
     try:
         if not node_id:
             raise TdarrError("node_id is required")
@@ -781,8 +781,8 @@ def tdarr_restart_node(node_id: str, confirm: bool = False) -> Any:
 @mcp.tool()
 def tdarr_disconnect_node(node_id: str, confirm: bool = False,
                            acknowledge: str = "") -> Any:
-    """Force-disconnect a node. DOUBLY GATED — interrupts active work.
-    **DOC-VERIFIED** — POST /api/v2/disconnect-node."""
+    """Force-disconnect a node. DOUBLY GATED â€” interrupts active work.
+    **DOC-VERIFIED** â€” POST /api/v2/disconnect-node."""
     try:
         if not node_id:
             raise TdarrError("node_id is required")
@@ -797,7 +797,7 @@ def tdarr_disconnect_node(node_id: str, confirm: bool = False,
 def tdarr_alter_worker_limit(node_id: str, worker_type: str, limit: int,
                               confirm: bool = False) -> Any:
     """Change a worker type limit on a node. WRITES: confirm-gated.
-    **DOC-VERIFIED** — POST /api/v2/alter-worker-limit.
+    **DOC-VERIFIED** â€” POST /api/v2/alter-worker-limit.
 
     Args:
         node_id: Node id.
@@ -821,7 +821,7 @@ def tdarr_alter_worker_limit(node_id: str, worker_type: str, limit: int,
 @mcp.tool()
 def tdarr_poll_worker_limits(node_id: str) -> Any:
     """Poll worker limits + queue lengths for a node. READ-ONLY.
-    **DOC-VERIFIED** — POST /api/v2/poll-worker-limits."""
+    **DOC-VERIFIED** â€” POST /api/v2/poll-worker-limits."""
     try:
         if not node_id:
             raise TdarrError("node_id is required")
@@ -834,7 +834,7 @@ def tdarr_poll_worker_limits(node_id: str) -> Any:
 def tdarr_cancel_worker_item(node_id: str, worker_type: str,
                               confirm: bool = False) -> Any:
     """Cancel a worker item. WRITES: confirm-gated.
-    **DOC-VERIFIED** — POST /api/v2/cancel-worker-item."""
+    **DOC-VERIFIED** â€” POST /api/v2/cancel-worker-item."""
     try:
         if not node_id or not worker_type:
             raise TdarrError("node_id and worker_type are required")
@@ -849,8 +849,8 @@ def tdarr_cancel_worker_item(node_id: str, worker_type: str,
 @mcp.tool()
 def tdarr_kill_worker(node_id: str, worker_type: str,
                        confirm: bool = False, acknowledge: str = "") -> Any:
-    """Kill a worker. DOUBLY GATED — interrupts active transcode. Confirm + acknowledge='kill'.
-    **DOC-VERIFIED** — POST /api/v2/kill-worker."""
+    """Kill a worker. DOUBLY GATED â€” interrupts active transcode. Confirm + acknowledge='kill'.
+    **DOC-VERIFIED** â€” POST /api/v2/kill-worker."""
     try:
         if not node_id or not worker_type:
             raise TdarrError("node_id and worker_type are required")
@@ -871,7 +871,7 @@ def tdarr_kill_worker(node_id: str, worker_type: str,
 @mcp.tool()
 def tdarr_backup_status() -> Any:
     """Get backup status. READ-ONLY.
-    **DOC-VERIFIED** — POST /api/v2/get-backup-status."""
+    **DOC-VERIFIED** â€” POST /api/v2/get-backup-status."""
     try:
         return CLIENT.request("POST", "/api/v2/get-backup-status", data={})
     except Exception as e:  # noqa: BLE001
@@ -881,7 +881,7 @@ def tdarr_backup_status() -> Any:
 @mcp.tool()
 def tdarr_backups() -> Any:
     """List backups. READ-ONLY.
-    **DOC-VERIFIED** — POST /api/v2/get-backups."""
+    **DOC-VERIFIED** â€” POST /api/v2/get-backups."""
     try:
         return CLIENT.request("POST", "/api/v2/get-backups", data={})
     except Exception as e:  # noqa: BLE001
@@ -891,7 +891,7 @@ def tdarr_backups() -> Any:
 @mcp.tool()
 def tdarr_create_backup(confirm: bool = False) -> Any:
     """Create a backup now. WRITES: confirm-gated.
-    **DOC-VERIFIED** — POST /api/v2/create-backup."""
+    **DOC-VERIFIED** â€” POST /api/v2/create-backup."""
     try:
         if not confirm:
             return _need_confirm("create a Tdarr backup now")
@@ -903,7 +903,7 @@ def tdarr_create_backup(confirm: bool = False) -> Any:
 @mcp.tool()
 def tdarr_delete_backup(name: str, confirm: bool = False) -> Any:
     """Delete a backup file. WRITES: confirm-gated.
-    **LIVE-VERIFIED** — POST /api/v2/delete-backup with {"name": <file>} (Tdarr 2.84.01)."""
+    **LIVE-VERIFIED** â€” POST /api/v2/delete-backup with {"name": <file>} (Tdarr 2.84.01)."""
     try:
         if not name:
             raise TdarrError("name is required (the backup file name from tdarr_backups)")
@@ -915,7 +915,7 @@ def tdarr_delete_backup(name: str, confirm: bool = False) -> Any:
 
 
 # --------------------------------------------------------------------------- #
-# /cruddb — the powerful generic DB endpoint                                   #
+# /cruddb â€” the powerful generic DB endpoint                                   #
 # --------------------------------------------------------------------------- #
 TDARR_COLLECTIONS = {
     "FileJSONDB":              "All scanned files (one row per file)",
@@ -932,11 +932,11 @@ TDARR_COLLECTIONS = {
 @mcp.tool()
 def tdarr_db(mode: str, collection: str, doc_id: str = "",
               obj: str = "", confirm: bool = False) -> Any:
-    """Direct DB CRUD via Tdarr's /cruddb endpoint — access any of the 8
+    """Direct DB CRUD via Tdarr's /cruddb endpoint â€” access any of the 8
     internal collections. READS (getById/getAll) are NOT confirm-gated; every
-    other mode IS. **DOC-VERIFIED** — POST /api/v2/cruddb.
+    other mode IS. **DOC-VERIFIED** â€” POST /api/v2/cruddb.
 
-    This is the escape hatch for everything not covered by a curated tool —
+    This is the escape hatch for everything not covered by a curated tool â€”
     you can read or mutate any internal state. Use with care: a `removeAll`
     on FileJSONDB wipes the file index; `update` with wrong keys can corrupt
     a record. Always getAll first to see the shape.
@@ -946,7 +946,7 @@ def tdarr_db(mode: str, collection: str, doc_id: str = "",
         collection: One of: FileJSONDB, LibrarySettingsJSONDB, StatisticsJSONDB,
             NodeJSONDB, SettingsGlobalJSONDB, StagedJSONDB, F2FOutputJSONDB,
             FlowsJSONDB.
-        doc_id: Required for insert/getById/update/removeOne — the document id
+        doc_id: Required for insert/getById/update/removeOne â€” the document id
             (often the file path for FileJSONDB).
         obj: JSON object string. Required for insert (full doc) and update
             (keys to change).
@@ -985,12 +985,12 @@ def tdarr_collections() -> Any:
 
 
 # --------------------------------------------------------------------------- #
-# Library settings — codec excludes & plugin includes                         #
+# Library settings â€” codec excludes & plugin includes                         #
 # --------------------------------------------------------------------------- #
 @mcp.tool()
 def tdarr_toggle_folder_watch(library_id: str, confirm: bool = False) -> Any:
     """Toggle folder-watch on a library. WRITES: confirm-gated.
-    **DOC-VERIFIED** — POST /api/v2/toggle-folder-watch."""
+    **DOC-VERIFIED** â€” POST /api/v2/toggle-folder-watch."""
     try:
         if not library_id:
             raise TdarrError("library_id is required")
@@ -1006,7 +1006,7 @@ def tdarr_toggle_folder_watch(library_id: str, confirm: bool = False) -> Any:
 def tdarr_toggle_schedule(library_id: str, schedule_type: str = "",
                            confirm: bool = False) -> Any:
     """Toggle a schedule (file/folder/library). WRITES: confirm-gated.
-    **DOC-VERIFIED** — POST /api/v2/toggle-schedule.
+    **DOC-VERIFIED** â€” POST /api/v2/toggle-schedule.
 
     Args:
         library_id: Library id.
@@ -1029,7 +1029,7 @@ def tdarr_toggle_schedule(library_id: str, schedule_type: str = "",
 def tdarr_add_video_codec_exclude(library_id: str, codec: str,
                                    confirm: bool = False) -> Any:
     """Add a video codec exclude for a library. WRITES: confirm-gated.
-    **DOC-VERIFIED** — POST /api/v2/add-video-codec-exclude."""
+    **DOC-VERIFIED** â€” POST /api/v2/add-video-codec-exclude."""
     try:
         if not library_id or not codec:
             raise TdarrError("library_id and codec are required")
@@ -1045,7 +1045,7 @@ def tdarr_add_video_codec_exclude(library_id: str, codec: str,
 def tdarr_add_audio_codec_exclude(library_id: str, codec: str,
                                    confirm: bool = False) -> Any:
     """Add an audio codec exclude for a library. WRITES: confirm-gated.
-    **DOC-VERIFIED** — POST /api/v2/add-audio-codec-exclude."""
+    **DOC-VERIFIED** â€” POST /api/v2/add-audio-codec-exclude."""
     try:
         if not library_id or not codec:
             raise TdarrError("library_id and codec are required")
@@ -1061,7 +1061,7 @@ def tdarr_add_audio_codec_exclude(library_id: str, codec: str,
 def tdarr_run_help_command(mode: str, text: str = "") -> Any:
     """Run an FFmpeg or HandBrake help command (returns the CLI output).
     READ-ONLY. Useful for "what codecs does this build support?"
-    **LIVE-VERIFIED** — POST /api/v2/run-help-command with {"mode": ..., "text": ...}
+    **LIVE-VERIFIED** â€” POST /api/v2/run-help-command with {"mode": ..., "text": ...}
     (Tdarr 2.84.01). Tdarr 2.84 ships ffmpeg 7.1.4-Jellyfin + HandBrake.
 
     Args:
@@ -1083,7 +1083,7 @@ def tdarr_run_help_command(mode: str, text: str = "") -> Any:
 @mcp.tool()
 def tdarr_list_footprint_reports(footprint_id: str) -> Any:
     """List all reports for a given footprint ID. READ-ONLY.
-    **DOC-VERIFIED** — POST /api/v2/list-footprintId-reports."""
+    **DOC-VERIFIED** â€” POST /api/v2/list-footprintId-reports."""
     try:
         if not footprint_id:
             raise TdarrError("footprint_id is required")
@@ -1098,7 +1098,7 @@ def tdarr_transcode_user_verdict(file_path: str, db_id: str = "",
                                   verdict: str = "transcode",
                                   confirm: bool = False) -> Any:
     """Mark a file's user verdict (e.g. 'transcode this now'). WRITES: confirm-gated.
-    **DOC-VERIFIED** — POST /api/v2/transcode-user-verdict.
+    **DOC-VERIFIED** â€” POST /api/v2/transcode-user-verdict.
 
     Args:
         file_path: The file path.
@@ -1124,7 +1124,7 @@ def tdarr_transcode_user_verdict(file_path: str, db_id: str = "",
 # --------------------------------------------------------------------------- #
 def main() -> None:
     if not CONFIG.get("host"):
-        log("WARNING: no host configured — every call will fail. "
+        log("WARNING: no host configured â€” every call will fail. "
             "Fill config.local.json or set TDARR_HOST.")
     mcp.run()
 

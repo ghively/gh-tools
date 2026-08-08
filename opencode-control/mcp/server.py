@@ -1,18 +1,18 @@
-#!/usr/bin/env -S uv run --script
+﻿#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["mcp>=1.4.0", "httpx>=0.27"]
+# dependencies = ["mcp>=1.4.0,<2.0.0", "httpx>=0.27"]
 # ///
 """opencode control MCP server.
 
 Drives the OpenCode AI coding agent (sst/opencode) two ways:
 
-  1. HTTP server  — `opencode serve` exposes ~162 REST operations (a legacy API
+  1. HTTP server  â€” `opencode serve` exposes ~162 REST operations (a legacy API
      and a parallel `/api/*` v2 API). This server talks to it.
        * Generic passthrough (oc_call / oc_discover / oc_schema) reaches EVERY route.
        * Curated tools wrap the common jobs (status, sessions, prompt, agents,
          commands, skills, models, config, mcp, files/find, vcs, tui control).
-  2. ACP  — `opencode acp` speaks the Agent Client Protocol (JSON-RPC 2.0 over
+  2. ACP  â€” `opencode acp` speaks the Agent Client Protocol (JSON-RPC 2.0 over
      stdio). oc_acp_prompt spawns it, runs the initialize handshake, creates a
      session, sends a prompt, and returns the streamed result. This is the
      "call opencode as an agent from anywhere" connector.
@@ -265,7 +265,7 @@ async def oc_call(method: str, path: str, params: Optional[dict] = None,
     '/session' or '/api/session/{id}/prompt'. params=query string, body=JSON body.
     Non-GET calls require confirm=true (they can mutate state)."""
     if method.upper() != "GET" and not confirm:
-        return (f"Refusing {method.upper()} {path} without confirm=true — this can "
+        return (f"Refusing {method.upper()} {path} without confirm=true â€” this can "
                 f"change server state. Re-call with confirm=true once you've reviewed it.")
     try:
         return _dump(await _req(method, path, params=params, body=body), limit=12000)
@@ -368,7 +368,7 @@ async def oc_prompt(text: str, session_id: str = "", agent: str = "", model: str
     If session_id is empty a new session is created first. model='provider/model',
     agent=agent name (e.g. 'build','plan'). files=list of absolute paths to attach.
     Set wait=false to fire-and-forget (returns immediately). This actually runs the
-    model — it costs tokens."""
+    model â€” it costs tokens."""
     try:
         if not session_id:
             cbody: dict[str, Any] = {"title": title or text[:50]}
@@ -668,7 +668,7 @@ async def oc_skill_write(name: str, description: str, body: str, license: str = 
                          project_dir: str = "", confirm: bool = False) -> str:
     """Create/overwrite an opencode skill as <dir>/skills/<name>/SKILL.md. The stable
     opencode SKILL.md spec recognizes only: name, description (required), and optional
-    license, compatibility, metadata (a string->string map) — `allowed-tools`/`model` are
+    license, compatibility, metadata (a string->string map) â€” `allowed-tools`/`model` are
     NOT supported and are ignored. name must be 1-64 chars, lowercase, single hyphens.
     Reference extra files from a sibling references/ dir for progressive disclosure.
     scope global -> <config>/skills; project -> <project_dir>/.opencode/skills. confirm=true."""
@@ -843,7 +843,7 @@ async def oc_auth(action: str = "methods", provider: str = "", key: str = "",
       set      store an API key for `provider` (body {type:'api', key:...}). confirm=true.
       remove   delete stored credentials for `provider`. confirm=true.
     OAuth-based providers (Anthropic/OpenAI console login etc.) need the interactive
-    `opencode auth login` on the host — this tool only does API-key and removal."""
+    `opencode auth login` on the host â€” this tool only does API-key and removal."""
     a = action.lower()
     try:
         if a == "methods":
@@ -1074,14 +1074,14 @@ async def oc_session_diff(session_id: str, message_id: str = "") -> str:
     except Exception as e:  # noqa: BLE001
         return _err(e)
 
-# ================================================================ PTY (terminal sessions — no live I/O)
+# ================================================================ PTY (terminal sessions â€” no live I/O)
 
 @mcp.tool()
 async def oc_pty(action: str = "list", command: str = "", args: Optional[list] = None,
                  cwd: str = "", pty_id: str = "", confirm: bool = False) -> str:
     """Manage opencode PTY (pseudo-terminal) sessions. action = shells | list | create |
     get | remove. NOTE: interactive terminal I/O runs over a ticket-authed WebSocket and
-    is NOT exposed here — this manages PTY lifecycle only (create/list/inspect/remove).
+    is NOT exposed here â€” this manages PTY lifecycle only (create/list/inspect/remove).
     create/remove need confirm=true."""
     a = action.lower()
     try:
@@ -1112,7 +1112,7 @@ async def oc_pty(action: str = "list", command: str = "", args: Optional[list] =
 async def oc_plugin_write(name: str, body: str, scope: str = "global",
                           project_dir: str = "", confirm: bool = False) -> str:
     """Create/overwrite an opencode plugin (JS/TS hooks) at <dir>/plugin/<name>.js.
-    `body` is the full module source (must export a plugin function returning Hooks —
+    `body` is the full module source (must export a plugin function returning Hooks â€”
     e.g. `export const MyPlugin = async ({client,$,directory}) => ({ 'tool.execute.before':
     async (input,output)=>{...} })`). scope global -> <config>/plugin; project ->
     <project_dir>/.opencode/plugin. Requires confirm=true."""
@@ -1205,11 +1205,11 @@ async def oc_server(action: str = "status") -> str:
         return _dump({"base_url": CFG["base_url"], "reachable": reachable,
                       "pidfile": str(_pidfile()),
                       "hint": None if reachable else
-                      "No server reachable — call oc_server(action='start') or run "
+                      "No server reachable â€” call oc_server(action='start') or run "
                       "`opencode serve --port <port>` yourself."})
     if a == "start":
         if reachable:
-            return f"A server is already reachable at {CFG['base_url']} — nothing to do."
+            return f"A server is already reachable at {CFG['base_url']} â€” nothing to do."
         from urllib.parse import urlparse
         u = urlparse(CFG["base_url"])
         port = str(u.port or 4096)
@@ -1234,7 +1234,7 @@ async def oc_server(action: str = "status") -> str:
     if a == "stop":
         pf = _pidfile()
         if not pf.exists():
-            return "No pidfile — this tool didn't start a server. Stop it however you started it."
+            return "No pidfile â€” this tool didn't start a server. Stop it however you started it."
         try:
             pid = int(pf.read_text().strip())
             os.kill(pid, 15)
@@ -1258,13 +1258,13 @@ async def oc_acp_prompt(prompt: str, cwd: str = "", mode: str = "", model: str =
     """Call opencode as an ACP agent (spawns `opencode acp`, JSON-RPC over stdio) and
     run ONE prompt, returning the streamed transcript: reply text, tool calls, plan,
     files written, token usage, and stopReason. This is the "drive opencode from
-    anywhere" connector — independent of any running server.
+    anywhere" connector â€” independent of any running server.
 
       cwd        absolute project dir the agent operates in (defaults to config default_cwd/$HOME)
       mode       optional agent/mode to switch to (e.g. 'plan','build')
       model      optional per-session model override 'provider/model' (best-effort)
       files      absolute paths to attach as resource links
-      permission 'reject' (READ-ONLY: agent can read/plan/answer, all edits+bash rejected — DEFAULT),
+      permission 'reject' (READ-ONLY: agent can read/plan/answer, all edits+bash rejected â€” DEFAULT),
                  'allow' (approve each action once), 'always' (approve+remember).
                  Any non-reject value RUNS real edits/commands, so it needs confirm=true.
       timeout    seconds to wait for the turn to finish.

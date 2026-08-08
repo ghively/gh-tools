@@ -1,8 +1,8 @@
-#!/usr/bin/env -S uv run --script
+﻿#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
-#   "mcp>=1.4.0",
+#   "mcp>=1.4.0,<2.0.0",
 #   "httpx>=0.27",
 # ]
 # ///
@@ -22,7 +22,7 @@ is two-layered:
 
 Safety: every write path is confirm-gated (`confirm=True` required); the tool
 returns an explicit refusal otherwise. EE-only endpoints return plain 404 on
-CE — error messages carry a hint about that so gaps are honestly reported.
+CE â€” error messages carry a hint about that so gaps are honestly reported.
 
 All logging goes to stderr; stdout is reserved for the MCP protocol.
 
@@ -416,7 +416,7 @@ API_CATALOG: dict[str, list[str]] = {
                             "protected_environments", "group hooks", "group wikis", "member_roles",
                             "geo_nodes", "license (instance)", "vulnerabilities", "dependencies",
                             "external_status_checks", "ldap sync", "ssh_certificates",
-                            "ALL Duo/AI (code_suggestions, duo workflows, ai* GraphQL — runtime-rejected on CE)"],
+                            "ALL Duo/AI (code_suggestions, duo workflows, ai* GraphQL â€” runtime-rejected on CE)"],
 }
 
 
@@ -460,7 +460,7 @@ def gitlab_rest(
 ) -> Any:
     """Generic passthrough to ANY GitLab REST endpoint (/api/v4 prefix optional).
 
-    Reaches all ~170 resource domains — use gitlab_api_search or the gitlab-control
+    Reaches all ~170 resource domains â€” use gitlab_api_search or the gitlab-control
     skill's api-map for paths. GET/HEAD run freely; any other method requires
     confirm=true (ask the user first). paginate=true auto-follows pages for GETs.
 
@@ -739,7 +739,7 @@ def list_merge_requests(project: Optional[str] = None, group: Optional[str] = No
                         state: str = "opened", search: Optional[str] = None,
                         target_branch: Optional[str] = None, author: Optional[str] = None,
                         limit: int = 50) -> Any:
-    """List MRs — instance-wide (scope=all) by default, or for one project/group.
+    """List MRs â€” instance-wide (scope=all) by default, or for one project/group.
 
     state: opened|closed|merged|locked|all.
     """
@@ -850,7 +850,7 @@ def list_issues(project: Optional[str] = None, group: Optional[str] = None,
                 state: str = "opened", labels: Optional[str] = None,
                 search: Optional[str] = None, assignee: Optional[str] = None,
                 limit: int = 50) -> Any:
-    """List issues — instance-wide (scope=all) by default, or per project/group.
+    """List issues â€” instance-wide (scope=all) by default, or per project/group.
 
     state: opened|closed|all. labels: comma-separated.
     """
@@ -938,7 +938,7 @@ def labels(scope_type: str, scope_id: str, action: str = "list",
     """Labels for a project or group: list|create|update|delete|promote.
 
     scope_type: project|group. create: name + params={color, description?}.
-    promote (project label → group label) needs confirm. Writes require confirm=true.
+    promote (project label â†’ group label) needs confirm. Writes require confirm=true.
     """
     base = f"/{'projects' if scope_type == 'project' else 'groups'}/{_proj(scope_id)}/labels"
     if action == "list":
@@ -1065,7 +1065,7 @@ def ci_variables(scope_type: str = "project", scope_id: Optional[str] = None,
 
     instance scope needs admin (path /admin/ci/variables) and no scope_id.
     create: key + params={value, protected?, masked?, environment_scope?}.
-    Writes require confirm=true. Values may be secrets — handle with care.
+    Writes require confirm=true. Values may be secrets â€” handle with care.
     """
     if scope_type == "instance":
         base = "/admin/ci/variables"
@@ -1127,7 +1127,7 @@ def runners(action: str = "list", scope: str = "instance", scope_id: Optional[st
     scope: instance (admin: /runners/all) | project | group. create makes a new
     runner via POST /user/runners: params={runner_type: instance_type|group_type|
     project_type, group_id?, project_id?, description?, tag_list?, run_untagged?}
-    → returns the token. Writes require confirm=true.
+    â†’ returns the token. Writes require confirm=true.
     """
     if action == "list":
         if scope == "project":
@@ -1215,7 +1215,7 @@ def user_tokens(action: str = "list", user_id: Optional[int] = None,
     user)|impersonation_list|impersonation_create|impersonation_revoke.
 
     create_pat: user_id + params={name, scopes:[...], expires_at}. rotate returns the NEW
-    token value — show it to the user immediately, it can't be retrieved again.
+    token value â€” show it to the user immediately, it can't be retrieved again.
     Writes require confirm=true.
     """
     if action == "list":
@@ -1306,7 +1306,7 @@ def members(scope_type: str, scope_id: str, action: str = "list",
 def admin_settings(action: str = "get", params: Optional[dict] = None, confirm: bool = False) -> Any:
     """Instance-wide application settings (admin): get|update.
 
-    update: params={setting: value, ...} — e.g. {signup_enabled: false}. Requires
+    update: params={setting: value, ...} â€” e.g. {signup_enabled: false}. Requires
     confirm=true; changes affect the whole instance.
     """
     if action == "get":
@@ -1326,7 +1326,7 @@ def admin_ops(area: str, action: str = "list", item_id: Optional[str] = None,
     namespaces|keys|plan_limits|appearance|features|statistics.
 
     sidekiq: action=queue_metrics|process_metrics|job_stats|compound_metrics.
-    features: instance feature flags — action=list|set|delete (set: item_id=flag name,
+    features: instance feature flags â€” action=list|set|delete (set: item_id=flag name,
     params={value: true|false|percentage}). keys: item_id=key id or params={fingerprint}.
     Writes require confirm=true.
     """
@@ -1421,7 +1421,7 @@ def search_gitlab(term: str, scope: str = "projects", project: Optional[str] = N
     snippet_titles; within a project also: blobs (code!)|commits|wiki_blobs|notes.
 
     Code search (blobs) works per-project on CE without Elasticsearch; global code
-    search needs Elasticsearch (not configured ⇒ 400 error).
+    search needs Elasticsearch (not configured â‡’ 400 error).
     """
     params = {"scope": scope, "search": term, "per_page": min(limit, 100)}
     if project:
@@ -1541,7 +1541,7 @@ def webhooks(scope_type: str = "project", scope_id: Optional[str] = None,
 
     create: params={url, push_events?, merge_requests_events?, issues_events?,
     pipeline_events?, token?, enable_ssl_verification?}. test: params={trigger:
-    "push_events"}. (Group hooks are EE-only — 404 on CE.) Writes require confirm=true.
+    "push_events"}. (Group hooks are EE-only â€” 404 on CE.) Writes require confirm=true.
     """
     if scope_type == "system":
         base = "/hooks"
@@ -1863,7 +1863,7 @@ def access_tokens(scope_type: str = "project", scope_id: Optional[str] = None,
     """Project/Group access tokens (bot service tokens; both Free on CE).
     scope_type: project|group. action = list|get|create|rotate|revoke.
     create params={name, scopes:[...], access_level?, expires_at?}. The create/rotate
-    response holds the ONLY copy of the secret — relay it immediately. Writes need confirm=true."""
+    response holds the ONLY copy of the secret â€” relay it immediately. Writes need confirm=true."""
     base = f"/{'groups' if scope_type == 'group' else 'projects'}/{_proj(scope_id)}/access_tokens"
     if action == "list":
         return rest("GET", base)
@@ -1923,7 +1923,7 @@ def project_import_export(project: Optional[str] = None, action: str = "export_s
     """Project migration. action = export_start|export_status|export_download|import_status|
     remote_import. export_start schedules an export (poll export_status until 'finished', then
     export_download). remote_import params={url, path, namespace?, name?} imports from a remote
-    export tarball URL (JSON; file-upload import is multipart — use the UI or gitlab_rest for that).
+    export tarball URL (JSON; file-upload import is multipart â€” use the UI or gitlab_rest for that).
     Writes need confirm=true."""
     p = _proj(project) if project else None
     if action == "export_status":
@@ -1947,7 +1947,7 @@ def protected(project: str, kind: str = "branches", action: str = "list",
               name: Optional[str] = None, params: Optional[dict] = None,
               confirm: bool = False) -> Any:
     """Protected branches/tags/environments with GRANULAR rules. kind: branches|tags|environments
-    (environments is EE — 404s on CE). action = list|get|create|update|delete.
+    (environments is EE â€” 404s on CE). action = list|get|create|update|delete.
     branches create params={name, allowed_to_push:[{access_level|user_id|group_id}],
     allowed_to_merge:[...], allow_force_push?, code_owner_approval_required?(EE)}.
     tags create params={name, create_access_level|allowed_to_create:[...]}. Writes need confirm=true."""
@@ -2038,12 +2038,12 @@ def model_registry(project: str, action: str = "models", name: Optional[str] = N
     action = models | experiments | packages | mlflow.
       models       registered models for the project (GraphQL: id, name, versionCount).
       experiments  ML experiments (GraphQL: id, name, candidateCount).
-      packages     ml_model packages (REST) — the raw artifacts + versions.
-      mlflow       MLflow-compatible REST passthrough — mlflow_path e.g.
+      packages     ml_model packages (REST) â€” the raw artifacts + versions.
+      mlflow       MLflow-compatible REST passthrough â€” mlflow_path e.g.
                    'registered-models/search', 'model-versions/search', 'runs/search',
                    'experiments/search'; params become query args.
     NOTE: GitLab Duo / AI (code suggestions, Duo chat/workflows) are EE-gated and 404 on
-    this CE instance — this tool covers the ML/model side, which does work on CE."""
+    this CE instance â€” this tool covers the ML/model side, which does work on CE."""
     p = _proj(project)
     if action == "packages":
         return rest("GET", f"/projects/{p}/packages",
@@ -2098,7 +2098,7 @@ def templates(kind: str = "gitlab_ci_ymls", action: str = "list",
     'Python', 'mit'). With project set, uses the project-scoped templates endpoint
     (which also exposes issue/merge_request templates defined in the repo's .gitlab/).
     For this plugin's OWN bulletproof, live-linted templates, see the templates/ dir and
-    references/templates.md — the workflow commands apply them via write_files + ci_lint."""
+    references/templates.md â€” the workflow commands apply them via write_files + ci_lint."""
     if project:
         p = _proj(project)
         if action == "list":
@@ -2114,10 +2114,10 @@ def templates(kind: str = "gitlab_ci_ymls", action: str = "list",
 @mcp.tool()
 def secure_files(project: str, action: str = "list", file_id: Optional[int] = None,
                  confirm: bool = False) -> Any:
-    """CI/CD secure files (full-file credentials: kubeconfig, .npmrc, signing keys, gcloud JSON —
+    """CI/CD secure files (full-file credentials: kubeconfig, .npmrc, signing keys, gcloud JSON â€”
     distinct from CI variables which are short strings). action = list | get | download | delete.
     Adding a file is multipart upload (POST /projects/:id/secure_files with file=@...);
-    use the shell or UI for upload — this tool only lists/reads/deletes.
+    use the shell or UI for upload â€” this tool only lists/reads/deletes.
     download returns the file bytes base64-encoded. Deletes require confirm=true."""
     p = _proj(project)
     if action == "list":
@@ -2143,7 +2143,7 @@ def secure_files(project: str, action: str = "list", file_id: Optional[int] = No
 @mcp.tool()
 def terraform_state(project: str, action: str = "list", name: Optional[str] = None,
                     confirm: bool = False) -> Any:
-    """Terraform state registry (CE): get | delete | lock | unlock. (list is unsupported — see note.)
+    """Terraform state registry (CE): get | delete | lock | unlock. (list is unsupported â€” see note.)
     The terraform CLI creates and reads states via its own backend protocol; this tool does the
     admin actions (delete/lock/unlock) and a single-state read. name is required for all actions
     except list. Writes require confirm=true.
@@ -2151,7 +2151,7 @@ def terraform_state(project: str, action: str = "list", name: Optional[str] = No
     NOTE on `list`: there is no REST endpoint to enumerate a project's terraform states. The
     states are created by `terraform` itself (via the backend protocol at
     /projects/:id/terraform/state/:name with basic auth). To inventory, use the UI
-    (Operate → Terraform) or `terraform state list` against the project's backend.
+    (Operate â†’ Terraform) or `terraform state list` against the project's backend.
     """
     p = _proj(project)
     if action == "list":
@@ -2159,7 +2159,7 @@ def terraform_state(project: str, action: str = "list", name: Optional[str] = No
                 "message": "GitLab has no REST endpoint to list terraform states. They're created "
                            "by the terraform CLI backend protocol at "
                            "/projects/:id/terraform/state/:name. Use the project's "
-                           "Operate → Terraform UI page or `terraform state list` to inventory."}
+                           "Operate â†’ Terraform UI page or `terraform state list` to inventory."}
     if not name:
         return {"error": True, "message": f"action '{action}' needs a state name"}
     base = f"/projects/{p}/terraform/state/{quote(name, safe='')}"
@@ -2180,11 +2180,11 @@ def terraform_state(project: str, action: str = "list", name: Optional[str] = No
 @mcp.tool()
 def bulk_imports(action: str = "list", import_id: Optional[int] = None,
                  params: Optional[dict] = None, confirm: bool = False) -> Any:
-    """Direct-transfer instance-to-instance migration (/bulk_imports — CE, needs
+    """Direct-transfer instance-to-instance migration (/bulk_imports â€” CE, needs
     bulk_import_enabled in admin settings). action = list | get | entities | create.
     create: params = {configuration: {url, access_token}, entities: [{source_type,
     source_full_path, destination_slug, destination_namespace}, ...]}. Requires confirm=true.
-    The source access_token is a secret — handle params with care and don't echo it back.
+    The source access_token is a secret â€” handle params with care and don't echo it back.
     """
     if action == "list":
         return rest("GET", "/bulk_imports", params={"per_page": 50})
@@ -2258,7 +2258,7 @@ def notes(project: str, target_type: str, target_id: int, action: str = "list",
     target_type: "issue" | "merge_request" | "snippet" (auto-pluralized for the URL).
     target_id: the IID. action: list | get | add | update | delete. add/update: body=string.
     Writes require confirm=true. For MR discussion threads (resolve/reply/inline diff comments),
-    use mr_discussions instead — that's the thread-aware surface.
+    use mr_discussions instead â€” that's the thread-aware surface.
     """
     p = _proj(project)
     base = f"/projects/{p}/{target_type}s/{target_id}/notes"
@@ -2281,7 +2281,7 @@ def notes(project: str, target_type: str, target_id: int, action: str = "list",
 @mcp.tool()
 def markdown(text: str, gfm: bool = True, project: Optional[str] = None) -> Any:
     """Render text as GitLab-Flavored Markdown to HTML (POST /markdown). Side-effect-free
-    rendering — no confirm needed. With project set (full path like "group/proj"), renders in
+    rendering â€” no confirm needed. With project set (full path like "group/proj"), renders in
     that project's context so references like !42, #123, $main, and group mentions resolve.
     """
     body: dict = {"text": text, "gfm": gfm}
@@ -2297,7 +2297,7 @@ def remote_mirrors(project: str, action: str = "list", mirror_id: Optional[int] 
     create params: {url, enabled?, only_protected_branches?, keep_divergent_refs?,
     mirror_trigger_url?, mirror_branch_regex?}. sync triggers an immediate push to the remote.
     Writes require confirm=true. The mirror url may embed credentials (https://user:token@host);
-    treat params as a secret — don't echo it back in full.
+    treat params as a secret â€” don't echo it back in full.
     """
     p = _proj(project)
     if action == "list":
@@ -2323,7 +2323,7 @@ def notifications(scope_type: str = "user", scope_id: Optional[str] = None,
                   action: str = "get", params: Optional[dict] = None,
                   confirm: bool = False) -> Any:
     """Notification settings: get | update at user (global), group, or project scope.
-    scope_type: "user" (no scope_id — /notification_settings) | "group" | "project".
+    scope_type: "user" (no scope_id â€” /notification_settings) | "group" | "project".
     update params: {level: "disabled"|"participating"|"watch"|"global"|"mention"|"custom",
     and for custom: notification_email?, new_note?, new_issue?, etc.}.
     Writes require confirm=true.
@@ -2348,7 +2348,7 @@ def notifications(scope_type: str = "user", scope_id: Optional[str] = None,
 def freeze_periods(project: str, action: str = "list", freeze_id: Optional[int] = None,
                    params: Optional[dict] = None, confirm: bool = False) -> Any:
     """Deployment freeze windows (CE): list | get | create | update | delete.
-    During a freeze, deploy jobs are blocked — use for release/launch/holiday blackouts.
+    During a freeze, deploy jobs are blocked â€” use for release/launch/holiday blackouts.
     create params: {freeze_start_name?, freeze_start (ISO 8601), freeze_end (ISO 8601),
     crontz? (defaults to UTC)}. Writes require confirm=true.
     """
@@ -2486,7 +2486,7 @@ def dependency_proxy(group: str, action: str = "settings", confirm: bool = False
     """Group dependency proxy (CE-working): settings | manifests | purge_cache.
     settings: GraphQL read of enabled state + recent manifests (better than REST for this).
     manifests: list cached Docker images proxied through the group registry.
-    purge_cache clears the group's proxy cache (write — requires confirm).
+    purge_cache clears the group's proxy cache (write â€” requires confirm).
     Actual pulls go through /groups/:id/dependency_proxy/containers with registry auth.
     """
     g_path = group  # GraphQL wants the raw full path, not URL-encoded
@@ -2563,7 +2563,7 @@ def resource_events(project: str, target_type: str, target_id: int,
     target_type: "issue" | "merge_request" (auto-pluralized for the URL). target_id: the IID.
     action: label_events | state_events | milestone_events. All read-only.
     Use to reconstruct the lifecycle of an issue/MR (when labels were added/removed, state
-    transitions, milestone assignments) — feeds time-in-state / cycle-time analysis.
+    transitions, milestone assignments) â€” feeds time-in-state / cycle-time analysis.
     """
     p = _proj(project)
     return rest("GET", f"/projects/{p}/{target_type}s/{target_id}/resource_{action}",
@@ -2574,8 +2574,8 @@ def resource_events(project: str, target_type: str, target_id: int,
 def uploads(project: str, action: str = "list", upload_id: Optional[str] = None,
             confirm: bool = False) -> Any:
     """Project uploads (managed attachments returned by Markdown image/file references).
-    action: list | get | delete. Upload itself is multipart — use the shell or the Markdown editor.
-    delete needs upload_id (from list — it's a string id, not int). Writes require confirm=true.
+    action: list | get | delete. Upload itself is multipart â€” use the shell or the Markdown editor.
+    delete needs upload_id (from list â€” it's a string id, not int). Writes require confirm=true.
     Uploaded files serve at /uploads/:id/:filename and are referenced as ![alt](uploads/<id>/<file>).
     """
     p = _proj(project)
@@ -2616,7 +2616,7 @@ def error_tracking(project: str, action: str = "settings",
 
 
 # --------------------------------------------------------------------------- #
-# Selftest — live read-only audit of every domain (no mutations)              #
+# Selftest â€” live read-only audit of every domain (no mutations)              #
 # --------------------------------------------------------------------------- #
 def _selftest() -> int:  # pragma: no cover
     """Read-only sweep across every domain + safe write-endpoint probes.
@@ -2737,7 +2737,7 @@ def _selftest() -> int:  # pragma: no cover
     chk("EE", "group wikis", rest("GET", f"/groups/{_proj(tg)}/wikis"), ok_when=())
     chk("EE", "protected environments", rest("GET", f"/projects/{_proj(tp)}/protected_environments"), ok_when=())
 
-    print("== safe write-endpoint probes (no mutation: invalid params → 400 proves existence) ==", file=sys.stderr)
+    print("== safe write-endpoint probes (no mutation: invalid params â†’ 400 proves existence) ==", file=sys.stderr)
     chk("write-probe", "POST /projects (no body)", rest("POST", "/projects"), ok_when=(400,))
     chk("write-probe", "POST branches (no params)",
         rest("POST", f"/projects/{_proj(tp)}/repository/branches"), ok_when=(400,))

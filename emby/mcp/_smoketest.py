@@ -1,7 +1,7 @@
-#!/usr/bin/env -S uv run --script
+﻿#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["mcp>=1.4.0", "httpx>=0.27"]
+# dependencies = ["mcp>=1.4.0,<2.0.0", "httpx>=0.27"]
 # ///
 """Live smoke test: exercise every read tool for real, and call every write
 tool WITHOUT confirm to prove the confirmation gate blocks it. No mutations.

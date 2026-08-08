@@ -1,8 +1,8 @@
-#!/usr/bin/env -S uv run --script
+﻿#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
-#   "mcp>=1.4.0",
+#   "mcp>=1.4.0,<2.0.0",
 #   "httpx>=0.27",
 # ]
 # ///
@@ -35,7 +35,7 @@ SABnzbd conventions this file encodes (all verified live):
 * Add NZB by URL: `addurl` with `name=<url>` (URL-encoded).
 
 WRITES are confirm-gated in code. SHUTDOWN/RESTART additionally require an
-explicit acknowledgement token — never call these without explicit owner
+explicit acknowledgement token â€” never call these without explicit owner
 approval. (During initial development of this integration, a probe of
 `mode=shutdown` actually shut the server down. We learned.)
 
@@ -158,7 +158,7 @@ class SabnzbdClient:
                 q[k] = v
         resp = self._client.get("/api", params=q)
         if resp.status_code == 401:
-            raise SabnzbdError("401 Unauthorized — the API key was rejected.")
+            raise SabnzbdError("401 Unauthorized â€” the API key was rejected.")
         if resp.status_code >= 400:
             raise SabnzbdError(f"HTTP {resp.status_code} on mode={mode}: {resp.text[:300]}")
         if not resp.content:
@@ -272,10 +272,10 @@ MODE_CATALOG: list[dict] = [
     # Config (WRITE)
     {"mode": "set_config",    "rw": "W", "summary": "Update config: section, keyword, value"},
     {"mode": "set_apikey",    "rw": "W", "summary": "Generate a new API key (DANGEROUS)"},
-    {"mode": "test_email",    "rw": "W", "summary": "Send a test email (email_to=<addr>) — verifies notification config"},
+    {"mode": "test_email",    "rw": "W", "summary": "Send a test email (email_to=<addr>) â€” verifies notification config"},
     # Lifecycle (DANGEROUS)
-    {"mode": "restart",       "rw": "W", "summary": "Restart SABnzbd — HEAVILY confirm-gated in tools"},
-    {"mode": "shutdown",      "rw": "W", "summary": "Shut down SABnzbd — HEAVILY confirm-gated in tools"},
+    {"mode": "restart",       "rw": "W", "summary": "Restart SABnzbd â€” HEAVILY confirm-gated in tools"},
+    {"mode": "shutdown",      "rw": "W", "summary": "Shut down SABnzbd â€” HEAVILY confirm-gated in tools"},
     # Misc
     {"mode": "history",       "rw": "W", "summary": "History also accepts delete/clear via value=..."},
 ]
@@ -283,7 +283,7 @@ MODE_CATALOG: list[dict] = [
 
 @mcp.tool()
 def sabnzbd_call(mode: str, params: str = "") -> Any:
-    """Call ANY SABnzbd /api mode — the generic passthrough. Use
+    """Call ANY SABnzbd /api mode â€” the generic passthrough. Use
     sabnzbd_list_modes to find a mode first.
 
     Args:
@@ -489,7 +489,7 @@ def sabnzbd_get_config(section: str = "", keyword: str = "") -> Any:
 
 
 # --------------------------------------------------------------------------- #
-# Queue control (WRITE — confirm-gated)                                       #
+# Queue control (WRITE â€” confirm-gated)                                       #
 # --------------------------------------------------------------------------- #
 @mcp.tool()
 def sabnzbd_pause(minutes: Optional[int] = None, confirm: bool = False) -> Any:
@@ -550,7 +550,7 @@ def sabnzbd_speed_limit(value: int, confirm: bool = False) -> Any:
 
 
 # --------------------------------------------------------------------------- #
-# Job management (WRITE — confirm-gated)                                      #
+# Job management (WRITE â€” confirm-gated)                                      #
 # --------------------------------------------------------------------------- #
 @mcp.tool()
 def sabnzbd_add_url(url: str, pp: str = "", category: str = "", priority: str = "",
@@ -562,7 +562,7 @@ def sabnzbd_add_url(url: str, pp: str = "", category: str = "", priority: str = 
         pp: Post-processing options (e.g. "3" for repair+unpack+delete).
         category: Category name (must match one configured in SABnzbd).
         priority: Priority (-100 .. 2, where 2 = force).
-        confirm: Must be true — adds a real download.
+        confirm: Must be true â€” adds a real download.
     """
     try:
         if not url or not url.startswith(("http://", "https://")):
@@ -665,13 +665,13 @@ def sabnzbd_set_config(section: str, keyword: str, value: str,
 
 
 # --------------------------------------------------------------------------- #
-# DANGEROUS — double-gated (confirm + acknowledge token)                      #
+# DANGEROUS â€” double-gated (confirm + acknowledge token)                      #
 # --------------------------------------------------------------------------- #
 @mcp.tool()
 def sabnzbd_restart(confirm: bool = False, acknowledge: str = "") -> Any:
     """Restart the SABnzbd service/process.
 
-    DOUBLY GATED — requires confirm=true AND acknowledge='restart' (typed).
+    DOUBLY GATED â€” requires confirm=true AND acknowledge='restart' (typed).
     This is intentional: SABnzbd honors mode=restart, which kills active
     downloads mid-flight. Only invoke after explicit owner approval.
 
@@ -699,7 +699,7 @@ def sabnzbd_shutdown(confirm: bool = False, acknowledge: str = "") -> Any:
     """Shut down SABnzbd. The container/process must be restarted externally
     (DSM, systemd, Docker) to bring it back.
 
-    DOUBLY GATED — requires confirm=true AND acknowledge='shutdown' (typed).
+    DOUBLY GATED â€” requires confirm=true AND acknowledge='shutdown' (typed).
     SABnzbd honors mode=shutdown and will NOT auto-restart. Only invoke after
     explicit owner approval.
 
@@ -727,7 +727,7 @@ def sabnzbd_shutdown(confirm: bool = False, acknowledge: str = "") -> Any:
 # --------------------------------------------------------------------------- #
 @mcp.tool()
 def sabnzbd_categories() -> Any:
-    """List configured categories (Default, Movies, TV, etc.) — useful when
+    """List configured categories (Default, Movies, TV, etc.) â€” useful when
     adding NZBs or changing a job's category. READ-ONLY."""
     try:
         data = CLIENT.call("get_config", {"section": "categories"}) or {}
@@ -760,7 +760,7 @@ def sabnzbd_test_email(email_address: str, confirm: bool = False) -> Any:
 
     Args:
         email_address: Recipient for the test email.
-        confirm: Must be true — actually sends an email.
+        confirm: Must be true â€” actually sends an email.
     """
     try:
         if not email_address or "@" not in email_address:
@@ -878,7 +878,7 @@ def sabnzbd_history_clear(failed_only: bool = False, confirm: bool = False) -> A
 # --------------------------------------------------------------------------- #
 def main() -> None:
     if not CONFIG.get("api_key"):
-        log("WARNING: no api_key configured — every call will error. "
+        log("WARNING: no api_key configured â€” every call will error. "
             "Fill config.local.json or set SABNZBD_API_KEY.")
     mcp.run()
 
