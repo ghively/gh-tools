@@ -1,8 +1,8 @@
-#!/usr/bin/env -S uv run --script
+﻿#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
-#   "mcp>=1.4.0",
+#   "mcp>=1.4.0,<2.0.0",
 #   "httpx>=0.27",
 # ]
 # ///
@@ -155,9 +155,9 @@ class SonarrClient:
             path = "/api/v3" + ("" if path.startswith("/") else "/") + path
         resp = self._client.request(method.upper(), path, params=params, json=body)
         if resp.status_code == 401:
-            raise SonarrError("401 Unauthorized — the API key was rejected.")
+            raise SonarrError("401 Unauthorized â€” the API key was rejected.")
         if resp.status_code == 403:
-            raise SonarrError(f"403 Forbidden on {method} {path} — operation not allowed for this key.")
+            raise SonarrError(f"403 Forbidden on {method} {path} â€” operation not allowed for this key.")
         if resp.status_code >= 400:
             detail = resp.text[:400]
             raise SonarrError(f"HTTP {resp.status_code} on {method} {path}: {detail}")
@@ -325,7 +325,7 @@ ENDPOINT_CATALOG: list[dict] = [
     {"method": "GET",    "path": "/api/v3/series",                   "summary": "All series (filterable)"},
     {"method": "GET",    "path": "/api/v3/series/{id}",              "summary": "Single series by id"},
     {"method": "GET",    "path": "/api/v3/series/lookup",            "summary": "Search TVDB for a series (term=... OR term=tvdb:<id>)"},
-    {"method": "GET",    "path": "/api/v3/series/lookup/tvdb",       "summary": "DEPRECATED — 404s on 4.x; use ?term=tvdb:<id> instead"},
+    {"method": "GET",    "path": "/api/v3/series/lookup/tvdb",       "summary": "DEPRECATED â€” 404s on 4.x; use ?term=tvdb:<id> instead"},
     {"method": "GET",    "path": "/api/v3/series/lookup/imdb",       "summary": "IMDB lookup by imdbId=..."},
     {"method": "PUT",    "path": "/api/v3/series",                   "summary": "Bulk update series (provide full array)"},
     {"method": "POST",   "path": "/api/v3/series",                   "summary": "Add a series (full object required)"},
@@ -379,7 +379,7 @@ ENDPOINT_CATALOG: list[dict] = [
 
 @mcp.tool()
 def sonarr_call(method: str, path: str, params: str = "", body: str = "") -> Any:
-    """Call ANY Sonarr REST operation — the generic passthrough that reaches
+    """Call ANY Sonarr REST operation â€” the generic passthrough that reaches
     the server's entire API surface (~55 endpoints). Use sonarr_list_endpoints
     to find an endpoint first.
 
@@ -406,7 +406,7 @@ def sonarr_call(method: str, path: str, params: str = "", body: str = "") -> Any
 @mcp.tool()
 def sonarr_list_endpoints(search: str = "", method: str = "", limit: int = 100,
                           curated_only: bool = False) -> Any:
-    """Search the FULL endpoint catalog — pulled live from /api/v3/system/routes
+    """Search the FULL endpoint catalog â€” pulled live from /api/v3/system/routes
     so it's always accurate for the deployed Sonarr version (~470 operations on
     4.0). The master index for sonarr_call.
 
@@ -627,7 +627,7 @@ def sonarr_add_series(tvdb_id: int, quality_profile_id: int, root_folder_path: s
         search_for_missing: Trigger an initial search for missing episodes.
         language_profile_id: Language profile id (Sonarr-specific).
         tags: Optional list of tag ids.
-        confirm: Must be true — adds to the live library.
+        confirm: Must be true â€” adds to the live library.
     """
     try:
         if not confirm:
@@ -687,7 +687,7 @@ def sonarr_update_series(series_id: int, patch: str, confirm: bool = False) -> A
         series_id: Sonarr series id.
         patch: JSON object string with just the keys to change,
             e.g. '{"monitored": false}' or '{"seasons": [...modified...]}'
-        confirm: Must be true — mutates the live library.
+        confirm: Must be true â€” mutates the live library.
     """
     try:
         change = _parse_json_arg("patch", patch)
@@ -716,7 +716,7 @@ def sonarr_delete_series(series_id: int, delete_files: bool = False,
         series_id: Sonarr series id.
         delete_files: Also delete episode files from disk (irreversible).
         add_import_exclusion: Add to import exclusion list.
-        confirm: Must be true — irreversible (especially with delete_files).
+        confirm: Must be true â€” irreversible (especially with delete_files).
     """
     try:
         current = CLIENT.request("GET", f"/api/v3/series/{series_id}")
@@ -809,7 +809,7 @@ def sonarr_toggle_season_monitored(series_id: int, season_number: int,
 @mcp.tool()
 def sonarr_calendar(start: str = "", end: str = "", tags: str = "",
                     include_unmonitored: bool = False) -> Any:
-    """Episodes airing in a date range (default: today → +14 days).
+    """Episodes airing in a date range (default: today â†’ +14 days).
 
     Args:
         start: ISO date (YYYY-MM-DD). Defaults to today.
@@ -996,7 +996,7 @@ def sonarr_command(name: str, series_ids: Optional[list] = None,
         series_ids: Optional list of series ids.
         episode_ids: Optional list of episode ids (EpisodeSearch/EpisodesSearch).
         season_number: Required for SeasonSearch (with series_ids).
-        confirm: Must be true — triggers active work.
+        confirm: Must be true â€” triggers active work.
         extra: Pass-through extra params.
     """
     try:
@@ -1070,7 +1070,7 @@ def sonarr_quality_profiles() -> Any:
 
 @mcp.tool()
 def sonarr_language_profiles() -> Any:
-    """Language profiles (Sonarr-specific — for series add)."""
+    """Language profiles (Sonarr-specific â€” for series add)."""
     try:
         data = CLIENT.request("GET", "/api/v3/languageProfile") or []
         return [{"id": p.get("id"), "name": p.get("name"),
@@ -1496,7 +1496,7 @@ def sonarr_provider_test(provider_type: str, definition: str) -> Any:
 
 @mcp.tool()
 def sonarr_system_routes() -> Any:
-    """Return the LIVE route table (~470 operations) — Sonarr's own introspection
+    """Return the LIVE route table (~470 operations) â€” Sonarr's own introspection
     of its full API surface."""
     try:
         return _finish(CLIENT.live_routes())
@@ -1552,7 +1552,7 @@ def sonarr_crud(resource: str, action: str, id: Optional[int] = None,
                 data: str = "", confirm: bool = False) -> Any:
     """Generic CRUD wrapper for Sonarr resources that follow the standard
     list/get/create/update/delete/bulk pattern. Use this for the long tail of
-    config entities — notifications, download clients, indexers, import lists,
+    config entities â€” notifications, download clients, indexers, import lists,
     metadata, quality profiles, language profiles, custom formats, delay/release
     profiles, root folders, remote path mappings, auto-tagging, custom filters,
     importlistexclusions.
@@ -1711,7 +1711,7 @@ def sonarr_provider_action(provider_type: str, id: int, action_name: str,
 @mcp.tool()
 def sonarr_season_pass(series_ids: list, monitored: bool,
                         confirm: bool = False) -> Any:
-    """Update the season-pass monitoring map — bulk-toggle season monitoring
+    """Update the season-pass monitoring map â€” bulk-toggle season monitoring
     across multiple series at once. WRITES: confirm-gated.
 
     Args:
@@ -1755,7 +1755,7 @@ def sonarr_calendar_ics(start: str = "", end: str = "", tags: str = "",
 
 
 # --------------------------------------------------------------------------- #
-# Curated-tool registry — drives the `curated: True/False` annotation in      #
+# Curated-tool registry â€” drives the `curated: True/False` annotation in      #
 # sonarr_list_endpoints so the user sees at-a-glance what's ergonomic vs       #
 # generic-only.                                                                #
 # --------------------------------------------------------------------------- #
@@ -1920,7 +1920,7 @@ CURATED_TOOLS: dict[tuple[str, str], str] = {
 # --------------------------------------------------------------------------- #
 def main() -> None:
     if not CONFIG.get("api_key"):
-        log("WARNING: no api_key configured — every call will 401. "
+        log("WARNING: no api_key configured â€” every call will 401. "
             "Fill config.local.json or set SONARR_API_KEY.")
     mcp.run()
 

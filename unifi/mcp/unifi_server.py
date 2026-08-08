@@ -1,8 +1,8 @@
-#!/usr/bin/env -S uv run --script
+﻿#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
-#   "mcp>=1.4.0",
+#   "mcp>=1.4.0,<2.0.0",
 #   "httpx>=0.27",
 # ]
 # ///
@@ -14,7 +14,7 @@ Network application 10.4.x. The design is two-layered, mirroring the Synology
 plugin in this repo:
 
 * A GENERIC passthrough (`unifi_call` / `unifi_list_endpoints`) that can reach
-  *any* Network endpoint across all three API surfaces UniFi OS exposes — the
+  *any* Network endpoint across all three API surfaces UniFi OS exposes â€” the
   classic v1 API (`/proxy/network/api/s/{site}/...`), the newer v2 API
   (`/proxy/network/v2/api/site/{site}/...`), and the UniFi OS host API
   (`/api/...`). This is what makes "control everything" true rather than
@@ -114,7 +114,7 @@ def load_config() -> dict:
 API_ERR_HELP = {
     "api.err.Invalid": "Invalid parameters for this method.",
     "api.err.InvalidObject": "The request body/params were rejected (wrong shape).",
-    "api.err.LoginRequired": "Not authenticated — session expired or missing.",
+    "api.err.LoginRequired": "Not authenticated â€” session expired or missing.",
     "api.err.NoSiteContext": "The site does not exist or is not in context.",
     "api.err.ApGroupMissing": "This WLAN write needs an ap_group_ids array.",
     "api.err.NoPermission": "The logged-in account lacks permission for this.",
@@ -128,7 +128,7 @@ class UniFiError(RuntimeError):
         self.http_status = http_status
         help_txt = API_ERR_HELP.get(msg, "")
         ctx = f" [{path}]" if path else ""
-        detail = f" — {help_txt}" if help_txt else ""
+        detail = f" â€” {help_txt}" if help_txt else ""
         http = f" (HTTP {http_status})" if http_status else ""
         super().__init__(f"UniFi error: {msg}{http}{detail}{ctx}")
 
@@ -295,7 +295,7 @@ class UniFiClient:
             )
             # A rotated/expired session shows up as 401; re-auth once.
             if r.status_code == 401 and not _retried:
-                log("401 — re-authenticating and retrying once")
+                log("401 â€” re-authenticating and retrying once")
                 self.logged_in = False
                 self.csrf = None
                 self.login()
@@ -387,7 +387,7 @@ ENDPOINT_CATALOG = [
     ("sites/overview", "v2", "GET", "Overview across all sites"),
     ("port-forwarding", "v2", "GET/POST/PUT/DELETE", "Port forwards (v2 shape)"),
     ("ping/{mac}, ping-start/{mac}, ping-stop/{mac}", "v2", "GET/POST",
-     "Live per-client path ping — WEBSOCKET-DRIVEN; REST returns nulls, results stream over wss. Not curated."),
+     "Live per-client path ping â€” WEBSOCKET-DRIVEN; REST returns nulls, results stream over wss. Not curated."),
     # ---- UniFi OS host API (not site-scoped) ---- #
     ("/api/system", "host", "GET", "Console hardware/firmware/apps/storage/WAN state"),
     ("/api/users/self", "host", "GET", "The logged-in admin account"),
@@ -493,7 +493,7 @@ def unifi_list_endpoints(filter: str = "") -> dict:
 @mcp.tool()
 def unifi_call(path: str, method: str = "GET", surface: str = "auto",
                params: Optional[dict] = None, json: Optional[dict] = None) -> dict:
-    """THE universal tool — call any UniFi Network / UniFi OS endpoint. This reaches
+    """THE universal tool â€” call any UniFi Network / UniFi OS endpoint. This reaches
     every controllable feature, including ones without a curated wrapper.
 
     `surface` controls how `path` is resolved:
@@ -511,7 +511,7 @@ def unifi_call(path: str, method: str = "GET", surface: str = "auto",
       unifi_call("/api/system", surface="host")
       unifi_call("rest/wlanconf/<id>", method="PUT", json={"enabled": false})
 
-    Reads are safe. Writes (POST/PUT/DELETE) change the live network — confirm with
+    Reads are safe. Writes (POST/PUT/DELETE) change the live network â€” confirm with
     the user first."""
     try:
         c = client()
@@ -701,7 +701,7 @@ def unifi_wlans() -> dict:
 def unifi_firewall_rules() -> dict:
     """List classic firewall rules (rulesets like WAN_IN, LAN_IN): name, action,
     enabled, ruleset, and index. Empty on consoles using only the newer zone-based
-    firewall — see unifi_firewall_policies for those."""
+    firewall â€” see unifi_firewall_policies for those."""
     try:
         data = _aslist(client().v1("rest/firewallrule"))
         return ok({"count": len(data), "rules": data})
@@ -760,7 +760,7 @@ def unifi_routes() -> dict:
 
 @mcp.tool()
 def unifi_traffic_rules() -> dict:
-    """List traffic rules (block/allow traffic by app, domain, IP, or category —
+    """List traffic rules (block/allow traffic by app, domain, IP, or category â€”
     e.g. 'Block YouTube for kids'). This is the v2 API."""
     try:
         data = _aslist(client().v2("trafficrules"))
@@ -837,7 +837,7 @@ def unifi_rogue_aps() -> dict:
 
 @mcp.tool()
 def unifi_wifi_connectivity() -> dict:
-    """Wi-Fi connection-quality diagnostics (v2) — the primary tool for "why won't
+    """Wi-Fi connection-quality diagnostics (v2) â€” the primary tool for "why won't
     clients connect / why is Wi-Fi flaky". Returns the success ratios for each stage
     of association (association / authentication / DHCP / DNS), the total connection
     attempts and failure count, latency summary, and the RECENT FAILED connection
@@ -874,7 +874,7 @@ def unifi_wifi_connectivity() -> dict:
 
 @mcp.tool()
 def unifi_firewall_zones() -> dict:
-    """List firewall zones (v2) — the security zones (Internal, External, Gateway,
+    """List firewall zones (v2) â€” the security zones (Internal, External, Gateway,
     VPN, Hotspot, etc.) that the zone-based firewall policies act between. Shows each
     zone's name, key, whether it's a default zone, and how many networks are in it.
     Pairs with unifi_firewall_policies (policies are rules between two zones)."""
@@ -893,7 +893,7 @@ def unifi_firewall_zones() -> dict:
 
 @mcp.tool()
 def unifi_traffic_routes() -> dict:
-    """List policy-based traffic routes (v2) — per-client/network routing overrides,
+    """List policy-based traffic routes (v2) â€” per-client/network routing overrides,
     e.g. "send this device's traffic over the VPN" or WAN steering. Distinct from
     static routes (unifi_routes): these match on clients/apps/domains and steer to an
     interface. Empty if none configured."""
@@ -913,7 +913,7 @@ def unifi_traffic_routes() -> dict:
 
 @mcp.tool()
 def unifi_dashboard() -> dict:
-    """The aggregated overview dashboard (v2) — a single rich snapshot the UI home
+    """The aggregated overview dashboard (v2) â€” a single rich snapshot the UI home
     page uses: internet/WAN routability & activity, Wi-Fi doctor & connectivity
     summary, ISP metrics, most-active clients/APs/apps, radio activity/density, TX
     retries, upgradable device count, and traffic identification. Best one-call
@@ -928,7 +928,7 @@ def unifi_dashboard() -> dict:
 
 
 # ===========================================================================
-# WRITE / action tools — all confirm-gated. Each changes the live network.
+# WRITE / action tools â€” all confirm-gated. Each changes the live network.
 # ===========================================================================
 def _require_confirm(confirm: bool, what: str) -> Optional[dict]:
     if not confirm:

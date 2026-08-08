@@ -1,8 +1,8 @@
-#!/usr/bin/env -S uv run --script
+﻿#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
-#   "mcp>=1.4.0",
+#   "mcp>=1.4.0,<2.0.0",
 #   "httpx>=0.27",
 #   "ruamel.yaml>=0.18",
 # ]
@@ -13,16 +13,16 @@ Drives a self-hosted SearXNG metasearch instance through the Model Context
 Protocol. Verified live against SearXNG 2026.5.7 (Granian) running in Docker
 on an aarch64 host. Three-layered, mirroring the other gh-tools plugins:
 
-* GENERIC HTTP passthrough (`searx_http` / `searx_endpoints`) — reaches any
+* GENERIC HTTP passthrough (`searx_http` / `searx_endpoints`) â€” reaches any
   runtime route. SearXNG has no OpenAPI doc, so the route catalog is a
   hand-enumerated, live-verified map of the real surface (see `searx_endpoints`).
 
-* CURATED runtime tools — search (all query params), autocomplete, instance
+* CURATED runtime tools â€” search (all query params), autocomplete, instance
   `/config`, the full engine inventory, and engine-failure diagnostics parsed
   from `/stats/errors` (the tool that explains SearXNG's #1 failure mode:
   upstream engines CAPTCHA/rate-limit a datacenter IP and get suspended).
 
-* CONFIG-MANAGEMENT layer — SearXNG has NO API to change configuration; the
+* CONFIG-MANAGEMENT layer â€” SearXNG has NO API to change configuration; the
   control surface is `settings.yml` inside the container. These tools SSH to
   the host, edit `settings.yml` with a round-trip YAML parser (comments and
   formatting preserved), auto-back-up before every write, and apply changes
@@ -238,7 +238,7 @@ def _apply_note(apply: bool) -> str:
     if apply:
         out = _restart()
         return f" Applied: container restarted ({out})."
-    return " NOT yet applied — run searx_restart (or pass apply=True) to reload."
+    return " NOT yet applied â€” run searx_restart (or pass apply=True) to reload."
 
 
 # --------------------------------------------------------------------------- #
@@ -281,12 +281,12 @@ def searx_endpoints() -> str:
 
     SearXNG has no OpenAPI document; this is the hand-enumerated, live-verified
     route catalog. Use searx_http to call any of them directly."""
-    lines = [f"SearXNG @ {BASE_URL} — HTTP route catalog:", ""]
+    lines = [f"SearXNG @ {BASE_URL} â€” HTTP route catalog:", ""]
     for r in _ROUTES:
         lines.append(f"  {r['methods']:9} {r['path']}")
         lines.append(f"            {r['desc']}")
     lines.append("")
-    lines.append("Config-layer (settings.yml over SSH) is separate — see searx_settings_* tools.")
+    lines.append("Config-layer (settings.yml over SSH) is separate â€” see searx_settings_* tools.")
     return "\n".join(lines)
 
 
@@ -344,7 +344,7 @@ def searx_status() -> str:
         "probe_unresponsive_engines": [u[0] if isinstance(u, list) else u for u in unresp],
         "config_layer": "available" if SSH_HOST else "read-only (no ssh_host)",
     }
-    verdict = "HEALTHY" if n > 0 else "DEGRADED — search returned 0 results (see searx_engine_errors)"
+    verdict = "HEALTHY" if n > 0 else "DEGRADED â€” search returned 0 results (see searx_engine_errors)"
     return f"{verdict}\n" + json.dumps(out, indent=2)
 
 
@@ -393,7 +393,7 @@ def searx_search(q: str, categories: str = "", engines: str = "", language: str 
         ],
     }
     if not results:
-        out["_hint"] = ("0 results — engines likely suspended (CAPTCHA/rate-limit). "
+        out["_hint"] = ("0 results â€” engines likely suspended (CAPTCHA/rate-limit). "
                         "Run searx_engine_errors, then searx_engines(failing=True). "
                         "On a datacenter IP, prefer engines that don't CAPTCHA "
                         "(bing, mojeek, mwmbl, wikipedia, brave sometimes).")
@@ -413,7 +413,7 @@ def searx_autocomplete(q: str) -> str:
 def searx_config(section: str = "") -> str:
     """Instance /config as JSON. section: optional top-level key to extract
     (e.g. "categories", "engines", "plugins", "default_locale"). Omit engines
-    unless asked — it's large; use searx_engines instead."""
+    unless asked â€” it's large; use searx_engines instead."""
     cfg = _get_json("/config")
     if section:
         if section not in cfg:
@@ -481,7 +481,7 @@ def searx_engine_errors() -> str:
     can see what's suspended and why."""
     errors = _get_json("/stats/errors") or {}
     if not errors:
-        return "No engine errors reported — all engines are responding."
+        return "No engine errors reported â€” all engines are responding."
     out = {}
     for engine, recs in errors.items():
         classes: dict = {}
@@ -500,11 +500,11 @@ def searx_engine_errors() -> str:
 @mcp.tool()
 @_tool_error
 def searx_stats(engine: str = "") -> str:
-    """Engine reliability & response-time stats (from /stats, HTML → text).
+    """Engine reliability & response-time stats (from /stats, HTML â†’ text).
     engine: optional single engine name to focus on."""
     params = {"engine": engine} if engine else None
     r = _get("/stats", params)
-    # crude HTML→text: strip tags, collapse whitespace
+    # crude HTMLâ†’text: strip tags, collapse whitespace
     import re
     text = re.sub(r"<script.*?</script>", " ", r.text, flags=re.S)
     text = re.sub(r"<style.*?</style>", " ", text, flags=re.S)
@@ -532,7 +532,7 @@ def searx_health() -> str:
     if errors:
         parts.append(f"failing/suspended engines ({len(errors)}): {', '.join(sorted(errors))}")
     verdict = ("HEALTHY" if n > 0 else
-               "DEGRADED — 0 results; engines suspended. See searx_engine_errors "
+               "DEGRADED â€” 0 results; engines suspended. See searx_engine_errors "
                "and consider searx tuning (disable CAPTCHA-prone engines).")
     return verdict + "\n" + "\n".join("  " + p for p in parts)
 
@@ -557,7 +557,7 @@ def searx_settings_read(section: str = "", include_engines: bool = False) -> str
     buf = io.StringIO()
     slim = {k: v for k, v in data.items() if k != "engines" or include_engines}
     if not include_engines and "engines" in data:
-        slim_note = f"(engines: {len(data['engines'])} items — omitted; use section='engines')"
+        slim_note = f"(engines: {len(data['engines'])} items â€” omitted; use section='engines')"
     else:
         slim_note = ""
     y.dump(slim, buf)
@@ -619,7 +619,7 @@ def searx_engine_add(name: str, engine: str, shortcut: str, categories: str = ""
                 f"to settings.yml on {SSH_HOST}. Re-call with confirm=True.")
     y, data = _load_settings_obj()
     if any(e.get("name") == name for e in data.get("engines", [])):
-        raise SearxError(f"engine '{name}' already exists — use searx_engine_toggle / edit instead.")
+        raise SearxError(f"engine '{name}' already exists â€” use searx_engine_toggle / edit instead.")
     block: dict = {"name": name, "engine": engine, "shortcut": shortcut}
     if categories:
         block["categories"] = [c.strip() for c in categories.split(",") if c.strip()]
@@ -634,7 +634,7 @@ def searx_engine_add(name: str, engine: str, shortcut: str, categories: str = ""
 def _engines_dir() -> str:
     """Locate searx/engines inside the container. The official searxng image
     installs to /usr/local/searxng/searx; probe that, then fall back to a find.
-    (Avoid `import searx` — the bare container python lacks some runtime deps.)"""
+    (Avoid `import searx` â€” the bare container python lacks some runtime deps.)"""
     default = "/usr/local/searxng/searx/engines"
     if _dexec(f"test -d {default} && echo yes || echo no").strip() == "yes":
         return default
@@ -655,10 +655,10 @@ def searx_engine_module_deploy(module_name: str, python_code: str, register_name
     settings.yml. Use for engines that need real code (custom request/response,
     signing, pagination); for plain JSON/HTML/SQL sources use searx_engine_add.
     python_code must implement the SearXNG engine API (module attrs + request(
-    query, params) + response(resp)) — see references/writing-engines.md. The
+    query, params) + response(resp)) â€” see references/writing-engines.md. The
     module is syntax-checked (py_compile) and removed if it fails. confirm=True
     required; auto-backs-up settings.yml. Note: this runs your code inside the
-    search container — review it first."""
+    search container â€” review it first."""
     if not confirm:
         return (f"CONFIRM: write searx/engines/{module_name}.py ({len(python_code)} bytes) "
                 f"into container '{CONTAINER}' on {SSH_HOST} and register engine "
@@ -669,7 +669,7 @@ def searx_engine_module_deploy(module_name: str, python_code: str, register_name
     eng_dir = _engines_dir()
     target = f"{eng_dir}/{module_name}.py"
     if _dexec(f"test -f {target} && echo yes || echo no").strip() == "yes":
-        raise SearxError(f"{target} already exists — pick another module_name or remove it first.")
+        raise SearxError(f"{target} already exists â€” pick another module_name or remove it first.")
     _dexec(f"cat > {target}", input_bytes=python_code.encode("utf-8"))
     chk = _dexec(f"python -m py_compile {target} 2>&1 && echo COMPILE_OK || echo COMPILE_FAIL")
     if "COMPILE_OK" not in chk:
@@ -728,7 +728,7 @@ def searx_setting_set(key_path: str, value: str, confirm: bool = False,
     "search.autocomplete", "search.safe_search", "general.instance_name".
     value: interpreted as bool/int/float, JSON (for lists/objects, e.g.
     '["html","json","csv"]'), or string. confirm=True required; auto-backs-up.
-    Does NOT create deeply-nested new trees — the parent path must exist."""
+    Does NOT create deeply-nested new trees â€” the parent path must exist."""
     if not confirm:
         return (f"CONFIRM: set {key_path} = {value} in settings.yml on {SSH_HOST}. "
                 f"Re-call with confirm=True.")
@@ -753,7 +753,7 @@ def searx_setting_set(key_path: str, value: str, confirm: bool = False,
     node = data
     for p in parts[:-1]:
         if p not in node:
-            raise SearxError(f"path '{key_path}' — '{p}' does not exist in settings.yml")
+            raise SearxError(f"path '{key_path}' â€” '{p}' does not exist in settings.yml")
         node = node[p]
     old = node.get(parts[-1], "<unset>")
     node[parts[-1]] = parsed

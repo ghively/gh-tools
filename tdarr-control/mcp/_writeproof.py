@@ -1,8 +1,8 @@
-#!/usr/bin/env -S uv run --script
+﻿#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
-#   "mcp>=1.4.0",
+#   "mcp>=1.4.0,<2.0.0",
 #   "httpx>=0.27",
 # ]
 # ///
@@ -15,7 +15,7 @@ Proves the write path by:
   4. delete_backup(confirm=True) the new one.
   5. Verify the system is back to original state.
 
-Fully reversible — no other state touched. Run after first deployment to
+Fully reversible â€” no other state touched. Run after first deployment to
 convert 'method-verified' writes to 'live-verified'.
 """
 from __future__ import annotations
@@ -43,7 +43,7 @@ step("1. create_backup(confirm=True)")
 r = srv.tdarr_create_backup(confirm=True)
 print(f"  result: {r}")
 if not (r is True or r == {"status": True} or r == True):
-    print(f"  unexpected create response — proceeding if list grows anyway")
+    print(f"  unexpected create response â€” proceeding if list grows anyway")
 
 time.sleep(2)  # let the backup file land on disk
 
@@ -56,7 +56,7 @@ if not isinstance(after, list):
 new = [b for b in after if b not in before]
 print(f"  new backups: {len(new)}")
 if not new:
-    print("  no new backup detected — create may not have completed; aborting")
+    print("  no new backup detected â€” create may not have completed; aborting")
     sys.exit(1)
 
 target = new[0]
@@ -74,7 +74,7 @@ final = srv.tdarr_backups()
 print(f"  after delete: {len(final) if isinstance(final, list) else final}")
 if isinstance(final, list) and target not in final:
     print("\n=== Tdarr backup write-path proof PASSED ===")
-    print(f"    create ✓ / verify ✓ / delete ✓ / verify-gone ✓")
+    print(f"    create âœ“ / verify âœ“ / delete âœ“ / verify-gone âœ“")
 else:
-    print("\n=== Tdarr backup write-path proof FAILED — backup still present ===")
+    print("\n=== Tdarr backup write-path proof FAILED â€” backup still present ===")
     sys.exit(1)

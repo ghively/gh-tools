@@ -1,8 +1,8 @@
-#!/usr/bin/env -S uv run --script
+﻿#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
-#   "mcp>=1.4.0",
+#   "mcp>=1.4.0,<2.0.0",
 #   "httpx>=0.27",
 # ]
 # ///
@@ -162,9 +162,9 @@ class RadarrClient:
             path = "/api/v3" + ("" if path.startswith("/") else "/") + path
         resp = self._client.request(method.upper(), path, params=params, json=body)
         if resp.status_code == 401:
-            raise RadarrError("401 Unauthorized — the API key was rejected.")
+            raise RadarrError("401 Unauthorized â€” the API key was rejected.")
         if resp.status_code == 403:
-            raise RadarrError(f"403 Forbidden on {method} {path} — operation not allowed for this key.")
+            raise RadarrError(f"403 Forbidden on {method} {path} â€” operation not allowed for this key.")
         if resp.status_code >= 400:
             detail = resp.text[:400]
             raise RadarrError(f"HTTP {resp.status_code} on {method} {path}: {detail}")
@@ -186,7 +186,7 @@ class RadarrClient:
         """Fetch and parse /api/v3/system/routes (Graphviz DOT format) into a
         clean list of {method, path}. Cached for the process lifetime.
 
-        Radarr/Sonarr expose their FULL route table here — using it makes the
+        Radarr/Sonarr expose their FULL route table here â€” using it makes the
         endpoint catalog authoritative-by-construction (vs. a hand-typed list
         that drifts). Falls back to the static ENDPOINT_CATALOG on failure.
         """
@@ -383,7 +383,7 @@ ENDPOINT_CATALOG: list[dict] = [
 
 @mcp.tool()
 def radarr_call(method: str, path: str, params: str = "", body: str = "") -> Any:
-    """Call ANY Radarr REST operation — the generic passthrough that reaches
+    """Call ANY Radarr REST operation â€” the generic passthrough that reaches
     the server's entire API surface (~50 endpoints). Use radarr_list_endpoints
     to find an endpoint first.
 
@@ -411,7 +411,7 @@ def radarr_call(method: str, path: str, params: str = "", body: str = "") -> Any
 @mcp.tool()
 def radarr_list_endpoints(search: str = "", method: str = "", limit: int = 100,
                           curated_only: bool = False) -> Any:
-    """Search the FULL endpoint catalog — pulled live from /api/v3/system/routes
+    """Search the FULL endpoint catalog â€” pulled live from /api/v3/system/routes
     so it's always accurate for the deployed Radarr version (~470 operations on
     6.3). The master index for radarr_call.
 
@@ -558,7 +558,7 @@ def radarr_system_backups() -> Any:
 def radarr_list_movies(monitored: Optional[bool] = None, has_file: Optional[bool] = None,
                        page: int = 1, page_size: int = 50, compact: bool = True) -> Any:
     """List movies (paged, optionally filtered). Returns compact summaries by
-    default — set compact=false for the full objects.
+    default â€” set compact=false for the full objects.
 
     Args:
         monitored: Filter to monitored=true or unmonitored=false. None = no filter.
@@ -647,7 +647,7 @@ def radarr_add_movie(tmdb_id: int, quality_profile_id: int, root_folder_path: st
         minimum_availability: Announced | InCinemas | Released (default Released).
         search_for_movie: Trigger an initial search after adding (default false).
         tags: Optional list of tag ids.
-        confirm: Must be true — this adds to the live library.
+        confirm: Must be true â€” this adds to the live library.
     """
     try:
         if not confirm:
@@ -655,7 +655,7 @@ def radarr_add_movie(tmdb_id: int, quality_profile_id: int, root_folder_path: st
                 f"add TMDB {tmdb_id} to '{root_folder_path}' "
                 f"(profile {quality_profile_id}, monitored={monitored}, search={search_for_movie})"
             )
-        # Lookup the full record first — POST needs the full object.
+        # Lookup the full record first â€” POST needs the full object.
         lookup = CLIENT.request("GET", "/api/v3/movie/lookup/tmdb", params={"tmdbId": tmdb_id})
         if not isinstance(lookup, dict):
             raise RadarrError(f"TMDB lookup returned no record for {tmdb_id}")
@@ -691,7 +691,7 @@ def radarr_update_movie(movie_id: int, patch: str, confirm: bool = False) -> Any
         movie_id: Radarr movie id.
         patch: JSON object string with just the keys to change,
             e.g. '{"monitored": false}'.
-        confirm: Must be true — this mutates the live library.
+        confirm: Must be true â€” this mutates the live library.
     """
     try:
         change = _parse_json_arg("patch", patch)
@@ -721,7 +721,7 @@ def radarr_delete_movie(movie_id: int, delete_files: bool = False,
         movie_id: Radarr movie id.
         delete_files: Also delete the movie file from disk (irreversible).
         add_import_exclusion: Add to import exclusion list so it won't re-add.
-        confirm: Must be true — irreversible (especially with delete_files).
+        confirm: Must be true â€” irreversible (especially with delete_files).
     """
     try:
         current = CLIENT.request("GET", f"/api/v3/movie/{movie_id}")
@@ -948,7 +948,7 @@ RADARR_COMMANDS = {
 def radarr_command(name: str, movie_ids: Optional[list] = None,
                    confirm: bool = False, **extra: Any) -> Any:
     """Trigger a Radarr async command (POST /command). Returns the created job.
-    WRITES: confirm-gated (this triggers downloads, scans, renames — active work).
+    WRITES: confirm-gated (this triggers downloads, scans, renames â€” active work).
 
     Common names: RefreshMovie, MoviesSearch, DownloadedMoviesScan, RenameMovie,
     Backup, ApplicationUpdate, RefreshMonitoredDownloads, MissingMoviesSearch.
@@ -956,7 +956,7 @@ def radarr_command(name: str, movie_ids: Optional[list] = None,
     Args:
         name: Command name (see radarr list of commands in the skill).
         movie_ids: Optional list of movie ids the command applies to.
-        confirm: Must be true — this triggers active work.
+        confirm: Must be true â€” this triggers active work.
         extra: Pass-through extra params (e.g. sendUpdatesToClient=true).
     """
     try:
@@ -1134,7 +1134,7 @@ def radarr_queue_delete(queue_id: int, blacklist: bool = False,
         queue_id: The queue record id (from radarr_queue).
         blacklist: Add the release to the blocklist so it won't be re-grabbed.
         remove_from_client: Also delete the download from the download client
-            (SABnzbd/qBittorrent/etc.). Irreversible — use with care.
+            (SABnzbd/qBittorrent/etc.). Irreversible â€” use with care.
         confirm: Must be true.
     """
     try:
@@ -1159,7 +1159,7 @@ def radarr_queue_grab(queue_id: int, confirm: bool = False) -> Any:
 
     Args:
         queue_id: The queue record id.
-        confirm: Must be true — triggers a download.
+        confirm: Must be true â€” triggers a download.
     """
     try:
         if not confirm:
@@ -1214,7 +1214,7 @@ def radarr_movies_bulk_edit(movie_ids: list, monitored: Optional[bool] = None,
 @mcp.tool()
 def radarr_parse(title: str) -> Any:
     """Parse a release title to see what movie + quality Radarr would match it
-    to. READ-ONLY — the cheapest way to answer "would this release work?"
+    to. READ-ONLY â€” the cheapest way to answer "would this release work?"
 
     Args:
         title: A release string like "Dune.2021.2160p.UHD.BluRay.x265-GROUP".
@@ -1388,7 +1388,7 @@ def radarr_update_config_section(section: str, patch: str,
         section: host, ui, mediamanagement, indexer, downloadclient, metadata,
             importlist, naming.
         patch: JSON object string with keys to change.
-        confirm: Must be true — affects live server behavior.
+        confirm: Must be true â€” affects live server behavior.
     """
     try:
         change = _parse_json_arg("patch", patch)
@@ -1452,7 +1452,7 @@ def radarr_manual_import(folder: str, import_mode: str = "move",
     Args:
         folder: The server-side path to scan (e.g. /volume2/Downloads/Movies).
         import_mode: 'move' (default) | 'copy'.
-        confirm: Must be true — moves/copy files into the library.
+        confirm: Must be true â€” moves/copy files into the library.
     """
     try:
         if not folder:
@@ -1478,7 +1478,7 @@ def radarr_manual_import(folder: str, import_mode: str = "move",
 def radarr_provider_test(provider_type: str, definition: str) -> Any:
     """Test a notification / downloadclient / indexer / importlist / metadata
     configuration WITHOUT saving. Useful when setting up a new provider.
-    WRITE (no save) but no confirm needed — it just makes a live test call.
+    WRITE (no save) but no confirm needed â€” it just makes a live test call.
 
     Args:
         provider_type: One of notification, downloadclient, indexer,
@@ -1501,7 +1501,7 @@ def radarr_provider_test(provider_type: str, definition: str) -> Any:
 
 @mcp.tool()
 def radarr_system_routes() -> Any:
-    """Return the LIVE route table (~470 operations) — Radarr's own introspection
+    """Return the LIVE route table (~470 operations) â€” Radarr's own introspection
     of its full API surface. Useful for finding endpoints not yet in curated tools.
     """
     try:
@@ -1514,7 +1514,7 @@ def radarr_system_routes() -> Any:
 def radarr_system_restart(confirm: bool = False, acknowledge: str = "") -> Any:
     """Restart the Radarr service/process.
 
-    DOUBLY GATED — requires confirm=true AND acknowledge='restart' (typed).
+    DOUBLY GATED â€” requires confirm=true AND acknowledge='restart' (typed).
     Interrupts active downloads/scans. Only invoke after explicit owner
     approval.
 
@@ -1539,8 +1539,8 @@ def radarr_system_restart(confirm: bool = False, acknowledge: str = "") -> Any:
 def radarr_system_shutdown(confirm: bool = False, acknowledge: str = "") -> Any:
     """Shut down Radarr. The service/container must be restarted externally.
 
-    DOUBLY GATED — requires confirm=true AND acknowledge='shutdown' (typed).
-    Same hardening as SABnzbd shutdown — Radarr honors this literally and
+    DOUBLY GATED â€” requires confirm=true AND acknowledge='shutdown' (typed).
+    Same hardening as SABnzbd shutdown â€” Radarr honors this literally and
     won't auto-restart depending on DSM.
 
     Args:
@@ -1566,7 +1566,7 @@ def radarr_crud(resource: str, action: str, id: Optional[int] = None,
                 data: str = "", confirm: bool = False) -> Any:
     """Generic CRUD wrapper for Radarr resources that follow the standard
     list/get/create/update/delete/bulk pattern. Use this for the long tail of
-    config entities — notifications, download clients, indexers, import lists,
+    config entities â€” notifications, download clients, indexers, import lists,
     metadata, quality profiles, custom formats, delay/release profiles, root
     folders, remote path mappings, auto-tagging, custom filters, exclusions.
 
@@ -1616,7 +1616,7 @@ def radarr_crud(resource: str, action: str, id: Optional[int] = None,
         act = (action or "").strip().lower()
         if act not in valid_actions:
             raise RadarrError(f"action must be one of {valid_actions}; got {action!r}")
-        # Reads — no confirm needed
+        # Reads â€” no confirm needed
         if act == "list":
             return _finish(CLIENT.request("GET", f"/api/v3/{res}"))
         if act == "schema":
@@ -1627,7 +1627,7 @@ def radarr_crud(resource: str, action: str, id: Optional[int] = None,
             return CLIENT.request("GET", f"/api/v3/{res}/{int(id)}")
         if act == "testall":
             return CLIENT.request("POST", f"/api/v3/{res}/testall")
-        # Writes — confirm-gated
+        # Writes â€” confirm-gated
         if not confirm:
             return _need_confirm(f"{act} {resource} id={id} data={data[:200]}")
         body = _parse_json_arg("data", data)
@@ -1762,7 +1762,7 @@ def radarr_provider_action(provider_type: str, id: int, action_name: str,
 def radarr_calendar_ics(start: str = "", end: str = "", tags: str = "",
                         unmonitored: bool = False) -> Any:
     """Fetch the iCalendar feed of upcoming movie releases (the .ics payload).
-    Returns the raw iCalendar text — useful for importing into a calendar app.
+    Returns the raw iCalendar text â€” useful for importing into a calendar app.
 
     Args:
         start: YYYY-MM-DD (default 7 days ago).
@@ -1785,7 +1785,7 @@ def radarr_calendar_ics(start: str = "", end: str = "", tags: str = "",
 
 
 # --------------------------------------------------------------------------- #
-# Curated-tool registry — drives the `curated: True/False` annotation in      #
+# Curated-tool registry â€” drives the `curated: True/False` annotation in      #
 # radarr_list_endpoints so the user sees at-a-glance what's ergonomic vs       #
 # generic-only. Keys are (METHOD, path-pattern); paths use {id} for any path   #
 # parameter.                                                                   #
@@ -1952,7 +1952,7 @@ CURATED_TOOLS: dict[tuple[str, str], str] = {
 # --------------------------------------------------------------------------- #
 def main() -> None:
     if not CONFIG.get("api_key"):
-        log("WARNING: no api_key configured — every call will 401. "
+        log("WARNING: no api_key configured â€” every call will 401. "
             "Fill config.local.json or set RADARR_API_KEY.")
     mcp.run()
 
