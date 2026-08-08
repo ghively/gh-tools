@@ -83,6 +83,7 @@ fails, the problem is connectivity/auth (see Troubleshooting), not the task.
 | Notifications | `unraid_notifications`, `_create`, `_archive`, `_unread`, `_delete`, `_archive_all`, `_delete_archived` |
 | Array & disks | `unraid_array`, `_array_set_state` (start/stop), `unraid_disks`, `_assignable_disks`, `_disk`, `_array_disk_add`/`_remove`/`_mount`/`_unmount`/`_clear_stats`, `unraid_parity_history`, `unraid_parity_check` |
 | Docker | `unraid_docker_containers`, `_container`, `_logs`, `_stats` (live, via WebSocket), `_networks`, `_start`/`_stop`/`_restart`/`_pause`/`_unpause`/`_remove`/`_update`/`_update_all`/`_autostart_set` |
+| Docker env vars (SSH-backed, separate from the GraphQL layer above) | `unraid_ssh_test` (check connectivity first), `unraid_docker_env_get` (read, masks secret-looking values), `unraid_docker_env_set` (write, confirm-gated — stops/recreates the container) |
 | VMs | `unraid_vms`, `_vm_start`/`_stop`/`_pause`/`_resume`/`_force_stop`/`_reboot`/`_reset` |
 | Shares | `unraid_shares` |
 | Users / API keys | `unraid_me`, `unraid_api_keys`, `_api_key_roles_catalog`, `_api_key_create`, `_api_key_delete`, `_api_key_role` |

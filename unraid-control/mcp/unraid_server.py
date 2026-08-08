@@ -5,6 +5,7 @@
 #   "mcp>=1.4.0,<2.0.0",
 #   "httpx>=0.27",
 #   "websockets>=12",
+#   "paramiko>=3.4",
 # ]
 # ///
 """Unraid MCP server.
@@ -26,6 +27,17 @@ Claude through the Model Context Protocol. The design is two-layered:
 Auth is a single `x-api-key` header — no session/cookie/CSRF dance like
 older REST-CGI style NAS APIs. All logging goes to stderr; stdout is
 reserved for the MCP protocol.
+
+A SEPARATE, narrowly-scoped SSH layer (`unraid_ssh_test` / `unraid_docker_env_get`
+/ `unraid_docker_env_set`) exists only because Unraid's own GraphQL API has NO
+mutation for editing a running container's environment variables — that's
+template-file territory (`/boot/config/plugins/dockerMan/templates-user/*.xml`)
+outside the API entirely. This is intentionally NOT a generic remote-shell
+tool: it does exactly one job (read/set container env vars, via a full
+docker-inspect-then-recreate, with best-effort template sync so the Unraid
+UI's "Edit" screen stays consistent) and nothing else. Requires separate SSH
+credentials in config (ssh_host/ssh_port/ssh_user/ssh_password or
+ssh_key_path) — leave them unset to disable this layer entirely.
 """
 from __future__ import annotations
 
@@ -33,6 +45,7 @@ import asyncio
 import json
 import os
 import re
+import shlex
 import sys
 import threading
 from pathlib import Path
@@ -40,6 +53,7 @@ from typing import Any, Optional
 
 import httpx
 import websockets
+import paramiko
 from mcp.server.fastmcp import FastMCP
 
 
@@ -99,6 +113,15 @@ def load_config() -> dict:
         "api_key": env.get("UNRAID_API_KEY", cfg.get("api_key", "")),
         "verify_ssl": _truthy(env.get("UNRAID_VERIFY_SSL"), cfg.get("verify_ssl", False)),
         "timeout": float(env.get("UNRAID_TIMEOUT", cfg.get("timeout", 30)) or 30),
+        # Separate, optional SSH credentials — only used by the
+        # unraid_ssh_test / unraid_docker_env_get / unraid_docker_env_set
+        # tools. Leave unset to disable that layer entirely. ssh_host
+        # defaults to the same host as the GraphQL API.
+        "ssh_host": env.get("UNRAID_SSH_HOST", cfg.get("ssh_host", "")) or env.get("UNRAID_HOST", cfg.get("host", "")),
+        "ssh_port": int(env.get("UNRAID_SSH_PORT", cfg.get("ssh_port", 22)) or 22),
+        "ssh_user": env.get("UNRAID_SSH_USER", cfg.get("ssh_user", "root")),
+        "ssh_password": env.get("UNRAID_SSH_PASSWORD", cfg.get("ssh_password", "")),
+        "ssh_key_path": env.get("UNRAID_SSH_KEY_PATH", cfg.get("ssh_key_path", "")),
     }
     return out
 
@@ -1162,6 +1185,298 @@ def unraid_docker_autostart_set(entries: list[dict], confirm: bool = False) -> d
             "mutation($e: [DockerAutostartEntryInput!]!) { docker { updateAutostartConfiguration(entries: $e) } }",
             {"e": norm},
         ))
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+# ============================================================================ #
+# DOCKER — SSH-backed env-var editing (see module docstring)                  #
+# ============================================================================ #
+_SECRET_KEY_RE = re.compile(r"(PASS|SECRET|TOKEN|KEY|CRED)", re.IGNORECASE)
+
+
+def _ssh_configured(cfg: dict) -> bool:
+    return bool(cfg.get("ssh_host")) and bool(cfg.get("ssh_password") or cfg.get("ssh_key_path"))
+
+
+def _ssh_connect(cfg: dict) -> "paramiko.SSHClient":
+    if not _ssh_configured(cfg):
+        raise RuntimeError(
+            "SSH is not configured. Set ssh_host/ssh_user + (ssh_password or "
+            "ssh_key_path) in config.local.json or the UNRAID_SSH_* env vars."
+        )
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    kwargs: dict[str, Any] = {
+        "hostname": cfg["ssh_host"], "port": cfg["ssh_port"],
+        "username": cfg["ssh_user"], "timeout": 15,
+        # Without these, paramiko probes the local ssh-agent / default key
+        # files first — on Windows this can throw ("lost ssh-agent") before
+        # ever trying the credential we were actually given. Go straight to
+        # the configured auth method instead.
+        "allow_agent": False, "look_for_keys": False,
+    }
+    if cfg.get("ssh_key_path"):
+        kwargs["key_filename"] = cfg["ssh_key_path"]
+    else:
+        kwargs["password"] = cfg["ssh_password"]
+    client.connect(**kwargs)
+    return client
+
+
+def _ssh_exec(cfg: dict, command: str, timeout: float = 30) -> tuple[int, str, str]:
+    client = _ssh_connect(cfg)
+    try:
+        _stdin, stdout, stderr = client.exec_command(command, timeout=timeout)
+        out = stdout.read().decode("utf-8", "replace")
+        errtext = stderr.read().decode("utf-8", "replace")
+        code = stdout.channel.recv_exit_status()
+        return code, out, errtext
+    finally:
+        client.close()
+
+
+def _ssh_read_file(cfg: dict, path: str) -> str:
+    client = _ssh_connect(cfg)
+    try:
+        sftp = client.open_sftp()
+        try:
+            with sftp.open(path, "r") as f:
+                return f.read().decode("utf-8", "replace")
+        finally:
+            sftp.close()
+    finally:
+        client.close()
+
+
+def _ssh_write_file(cfg: dict, path: str, content: str) -> None:
+    client = _ssh_connect(cfg)
+    try:
+        sftp = client.open_sftp()
+        try:
+            with sftp.open(path, "w") as f:
+                f.write(content.encode("utf-8"))
+        finally:
+            sftp.close()
+    finally:
+        client.close()
+
+
+def _mask_env(env_list: list, reveal: bool) -> dict:
+    out = {}
+    for item in env_list:
+        if "=" not in item:
+            continue
+        k, _, v = item.partition("=")
+        if not reveal and v and _SECRET_KEY_RE.search(k):
+            v = "********"
+        out[k] = v
+    return out
+
+
+@mcp.tool()
+def unraid_ssh_test() -> dict:
+    """Verify SSH connectivity/credentials for the container env-var-editing
+    tools, without changing anything. Returns hostname + docker version on
+    success. If this fails, unraid_docker_env_get/unraid_docker_env_set
+    cannot work — check ssh_host/ssh_user/ssh_password/ssh_key_path in
+    config.local.json or the UNRAID_SSH_* env vars."""
+    cfg = load_config()
+    try:
+        code, out, errtext = _ssh_exec(
+            cfg, "hostname && docker version --format '{{.Server.Version}}'"
+        )
+        if code != 0:
+            return err(RuntimeError(f"exit {code}: {errtext.strip() or out.strip()}"))
+        lines = [ln for ln in out.splitlines() if ln.strip()]
+        return ok({
+            "reachable": True,
+            "hostname": lines[0] if lines else "",
+            "docker_version": lines[1] if len(lines) > 1 else "",
+        })
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+@mcp.tool()
+def unraid_docker_env_get(container_name: str, reveal_secrets: bool = False) -> dict:
+    """Read a container's CURRENT environment variables via SSH + `docker
+    inspect` — Unraid's GraphQL API does not expose this at all. Values
+    whose key looks like a secret (PASS/SECRET/TOKEN/KEY/CRED) are masked
+    unless reveal_secrets=True; treat reveal_secrets=True like any other
+    credential-exposing read.
+
+    Args:
+        container_name: Container name or id (see unraid_docker_containers).
+        reveal_secrets: If true, returns secret-looking values unmasked.
+    """
+    cfg = load_config()
+    try:
+        code, out, errtext = _ssh_exec(
+            cfg, f"docker inspect {shlex.quote(container_name)} "
+                 "--format '{{json .Config.Env}}'"
+        )
+        if code != 0:
+            return err(RuntimeError(f"docker inspect failed: {errtext.strip() or out.strip()}"))
+        env_list = json.loads(out.strip())
+        return ok({"container": container_name, "env": _mask_env(env_list, reveal_secrets)})
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+def _template_path_for(container_name: str) -> str:
+    return f"/boot/config/plugins/dockerMan/templates-user/my-{container_name}.xml"
+
+
+def _sync_template_env(cfg: dict, container_name: str, updates: dict, removes: list) -> dict:
+    """Best-effort: keep the Unraid XML template's <Config Target=VAR>
+    entries in sync so the 'Edit' screen in the Unraid UI stays accurate.
+    Never raises — failures are reported but don't block the container
+    recreation itself, which is the operation that actually matters."""
+    path = _template_path_for(container_name)
+    try:
+        text = _ssh_read_file(cfg, path)
+    except Exception as e:  # noqa: BLE001
+        return {"synced": False, "reason": f"no template at {path} or unreadable: {e}"}
+    original = text
+    for name in removes:
+        text = re.sub(
+            rf'\s*<Config\b[^>]*Target="{re.escape(name)}"[^>]*(?:/>|>.*?</Config>)',
+            "", text, flags=re.DOTALL,
+        )
+    for name, value in updates.items():
+        esc_value = str(value).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        pattern = rf'<Config\b[^>]*Target="{re.escape(name)}"[^>]*(?:/>|>.*?</Config>)'
+        m = re.search(pattern, text, flags=re.DOTALL)
+        if m:
+            attrs_match = re.match(r'(<Config\b[^>]*?)\s*(?:/>|>.*)$', m.group(0), flags=re.DOTALL)
+            attrs = attrs_match.group(1) if attrs_match else m.group(0)
+            text = text[:m.start()] + f"{attrs}>{esc_value}</Config>" + text[m.end():]
+        else:
+            new_elem = (
+                f'  <Config Name="{name}" Target="{name}" Default="" Mode="{{3}}" '
+                f'Description="Added by unraid_docker_env_set." Type="Variable" '
+                f'Display="advanced" Required="false" Mask="true">{esc_value}</Config>\n'
+            )
+            text = (text.replace("</Container>", new_elem + "</Container>")
+                    if "</Container>" in text else text + "\n" + new_elem)
+    if text == original:
+        return {"synced": False, "reason": "no changes needed"}
+    try:
+        _ssh_write_file(cfg, path, text)
+        return {"synced": True, "path": path}
+    except Exception as e:  # noqa: BLE001
+        return {"synced": False, "reason": f"write failed: {e}"}
+
+
+@mcp.tool()
+def unraid_docker_env_set(container_name: str, env: Optional[dict] = None,
+                           remove: Optional[list] = None,
+                           confirm: bool = False) -> dict:
+    """Add/update/remove environment variables on a container by recreating
+    it via SSH: `docker inspect` for the full current config (image, mounts,
+    ports, log options, labels, network mode) → `docker stop` + `rm` + `run`
+    with that same config plus your changes. WRITES: confirm-gated,
+    DISRUPTIVE — the container restarts (a few seconds of downtime). Also
+    best-effort syncs the matching Unraid XML template
+    (`/boot/config/plugins/dockerMan/templates-user/my-<name>.xml`) so the
+    Unraid UI's Edit screen stays accurate; a template-sync failure is
+    reported but does not block the actual container recreation.
+
+    This exists because Unraid's GraphQL API has no mutation for editing a
+    running container's environment variables — confirmed against the
+    schema (DockerMutations only has start/stop/pause/unpause/
+    removeContainer/updateContainer/updateContainers/updateAllContainers/
+    updateAutostartConfiguration). Requires ssh_host/ssh_user +
+    (ssh_password or ssh_key_path) configured — check with unraid_ssh_test
+    first.
+
+    Args:
+        container_name: Container name (as in unraid_docker_containers'
+            `names`, without the leading slash) or id.
+        env: Dict of {VAR_NAME: value} to add or update.
+        remove: List of VAR_NAME to drop entirely.
+        confirm: Must be true — stops and recreates a live container.
+    """
+    env = env or {}
+    remove = remove or []
+    if not env and not remove:
+        return err(ValueError("provide env and/or remove — nothing to change"))
+    cfg = load_config()
+    if not confirm:
+        return refuse(
+            f"recreate container '{container_name}' with env changes "
+            f"set={list(env)} remove={remove} (a few seconds of downtime)."
+        )
+    try:
+        code, out, errtext = _ssh_exec(cfg, f"docker inspect {shlex.quote(container_name)}")
+        if code != 0:
+            return err(RuntimeError(f"docker inspect failed: {errtext.strip() or out.strip()}"))
+        inspect = json.loads(out)[0]
+
+        cur_env = {}
+        for item in inspect["Config"]["Env"]:
+            if "=" in item:
+                k, _, v = item.partition("=")
+                cur_env[k] = v
+        cur_env.update({k: str(v) for k, v in env.items()})
+        for name in remove:
+            cur_env.pop(name, None)
+
+        image = inspect["Config"]["Image"]
+        name = inspect["Name"].lstrip("/")
+        host_config = inspect.get("HostConfig") or {}
+        binds = host_config.get("Binds") or []
+        port_bindings = host_config.get("PortBindings") or {}
+        log_cfg = host_config.get("LogConfig") or {}
+        network_mode = host_config.get("NetworkMode", "")
+        labels = (inspect.get("Config") or {}).get("Labels") or {}
+        restart_name = (host_config.get("RestartPolicy") or {}).get("Name", "no")
+
+        args = ["docker", "run", "-d", "--name", name]
+        if network_mode:
+            args += ["--network", network_mode]
+        for b in binds:
+            args += ["-v", b]
+        seen_ports = set()
+        for container_port, hostbindings in port_bindings.items():
+            cport = container_port.split("/")[0]
+            for hb in (hostbindings or [{}]):
+                hp = (hb or {}).get("HostPort", "")
+                key = (hp, cport)
+                if key in seen_ports:
+                    continue
+                seen_ports.add(key)
+                args += ["-p", f"{hp}:{cport}" if hp else cport]
+        if log_cfg.get("Type"):
+            args += ["--log-driver", log_cfg["Type"]]
+        for k, v in (log_cfg.get("Config") or {}).items():
+            args += ["--log-opt", f"{k}={v}"]
+        for k, v in labels.items():
+            if k.startswith("org.opencontainers.image."):
+                continue  # baked into the image already; avoid duplicate/conflicting labels
+            args += ["--label", f"{k}={v}"]
+        if restart_name and restart_name != "no":
+            args += ["--restart", restart_name]
+        for k, v in cur_env.items():
+            args += ["-e", f"{k}={v}"]
+        args += [image]
+
+        run_cmd = " ".join(shlex.quote(a) for a in args)
+        full_cmd = f"docker stop {shlex.quote(name)} && docker rm {shlex.quote(name)} && {run_cmd}"
+        code, out, errtext = _ssh_exec(cfg, full_cmd, timeout=60)
+        if code != 0:
+            return err(RuntimeError(f"recreate failed: {errtext.strip() or out.strip()}"))
+
+        template_result = _sync_template_env(cfg, name, env, remove)
+        return ok({
+            "recreated": True,
+            "container": name,
+            "new_container_id": out.strip().splitlines()[-1] if out.strip() else None,
+            "env_set": list(env),
+            "env_removed": remove,
+            "template_sync": template_result,
+        })
     except Exception as e:  # noqa: BLE001
         return err(e)
 

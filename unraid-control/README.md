@@ -19,6 +19,13 @@ API, from Claude Code. Built and tested against **GH-Nvidia**, running
     Docker (including live per-container stats over WebSocket), VMs, shares,
     notifications, UPS, network, users/API keys, settings, plugins (both
     classic `.plg` and API-level), and RClone/flash backups.
+  - **A separate, opt-in SSH layer** (`unraid_ssh_test`,
+    `unraid_docker_env_get`, `unraid_docker_env_set`) for the one real gap
+    in Unraid's GraphQL API: there is no mutation to edit a container's
+    environment variables. This layer does `docker inspect` →
+    `stop`+`rm`+`run` with the same config plus your changes over SSH, and
+    best-effort syncs the matching Unraid XML template. Confirm-gated,
+    disabled unless you configure SSH credentials.
 - **Skill** (`skills/unraid-control/`) — teaches Claude how to drive the
   server, with a categorized **API map + honest gap audit**
   (Works/Fixable/Hard-limit), verified **task recipes**, and an
@@ -37,14 +44,20 @@ API, from Claude Code. Built and tested against **GH-Nvidia**, running
    field can instead be set via environment variables (`UNRAID_HOST`,
    `UNRAID_PORT`, `UNRAID_HTTPS`, `UNRAID_API_KEY`, `UNRAID_VERIFY_SSL`,
    `UNRAID_TIMEOUT`), which override the file.
-2. **Runtime.** The MCP server launches via [`uv`](https://docs.astral.sh/uv/)
+2. **SSH credentials (optional)** — only needed for `unraid_docker_env_get`/
+   `unraid_docker_env_set`. Add `ssh_user` + (`ssh_password` or
+   `ssh_key_path`) to `config.local.json` (`ssh_host` defaults to `host`,
+   `ssh_port` defaults to 22). Leave them unset to disable this layer
+   entirely — every other tool works without it. `unraid_ssh_test` verifies
+   connectivity without changing anything.
+3. **Runtime.** The MCP server launches via [`uv`](https://docs.astral.sh/uv/)
    (`uv run --script`), which auto-provisions its dependencies (`mcp`,
-   `httpx`, `websockets`) in a cached environment — no manual `pip install`
-   needed. `uv` must be on PATH. `mcp` is pinned `<2.0.0` — the 2.0 release
+   `httpx`, `websockets`, `paramiko`) in a cached environment — no manual
+   `pip install` needed. `uv` must be on PATH. `mcp` is pinned `<2.0.0` — the 2.0 release
    renamed `FastMCP`→`MCPServer` and moved its module path, which would break
    this (and every other unpinned `mcp>=1.4.0` plugin in this marketplace) on
    a fresh install otherwise.
-3. **Load the plugin** in Claude Code (`/plugin marketplace add <this repo>`
+4. **Load the plugin** in Claude Code (`/plugin marketplace add <this repo>`
    → `/plugin install unraid-control@gh-tools`), then run `/reload-plugins`
    or restart. Ask Claude to "check the Unraid server" or run
    `/unraid-health`.
@@ -58,9 +71,13 @@ API, from Claude Code. Built and tested against **GH-Nvidia**, running
 - Every disruptive/destructive tool (array start/stop, disk add/remove/
   unmount, container stop/restart/pause/remove/update, VM stop/pause/
   force-stop/reboot/reset, API key create/delete, SSH/UPS/temperature/system-
-  time settings, plugin install, RClone remote create/delete, flash backup)
-  requires `confirm=True`. The skill instructs Claude to confirm with you
-  first regardless of the gate.
+  time settings, plugin install, RClone remote create/delete, flash backup,
+  `unraid_docker_env_set`) requires `confirm=True`. The skill instructs
+  Claude to confirm with you first regardless of the gate.
+- SSH credentials, if configured, are a SEPARATE and more powerful trust
+  boundary than the API key — root shell access. `unraid_docker_env_get`
+  masks any env var whose name looks like a secret (PASS/SECRET/TOKEN/KEY/
+  CRED) unless you explicitly pass `reveal_secrets=True`.
 
 ## Coverage notes (this server)
 

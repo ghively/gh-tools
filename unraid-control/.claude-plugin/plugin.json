@@ -1,7 +1,7 @@
 {
   "name": "unraid-control",
-  "description": "Full control of an Unraid server (Unraid OS 7.x, live-verified on 7.3.2 / unraid-api 4.35.1) from Claude Code. Bundles an MCP server that authenticates to Unraid's official GraphQL API (api-key auth) and exposes both a generic GraphQL passthrough reaching the entire schema (Query/Mutation/Subscription, bundled offline since live introspection is disabled by default) and curated tools for system health, the array & disks, Docker containers, VMs, shares, notifications, UPS, network, users/API keys, plugins and logs — plus a control skill and slash-command workflows.",
-  "version": "0.1.0",
+  "description": "Full control of an Unraid server (Unraid OS 7.x, live-verified on 7.3.2 / unraid-api 4.35.1) from Claude Code. Bundles an MCP server that authenticates to Unraid's official GraphQL API (api-key auth) and exposes both a generic GraphQL passthrough reaching the entire schema (Query/Mutation/Subscription, bundled offline since live introspection is disabled by default) and curated tools for system health, the array & disks, Docker containers, VMs, shares, notifications, UPS, network, users/API keys, plugins and logs — plus a control skill and slash-command workflows. Also ships a separate, opt-in SSH layer (unraid_ssh_test/unraid_docker_env_get/unraid_docker_env_set) closing the one real gap in Unraid's GraphQL API: there is no mutation to edit a container's environment variables at all.",
+  "version": "0.2.0",
   "author": {
     "name": "poomonkey405"
   },
