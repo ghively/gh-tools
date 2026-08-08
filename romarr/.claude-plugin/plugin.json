@@ -1,0 +1,11 @@
+{
+  "name": "romarr",
+  "description": "Full control of a ROMarr instance (the *arr for games — Cartridge ecosystem, v0.7.0) from Claude Code. Bundles an MCP server authenticated with a ROMarr API key (X-Api-Key header), exposing both a generic passthrough reaching every /api/v1 endpoint (self-discovered from the live OpenAPI 3.1 spec) and curated tools for status/health, library, wanted/missing, calendar, queue, history, blocklist, interactive search & release grab, collection/DAT set-completion batches, indexers, download clients, library backends (RomM/Gaseous/Retrom/folder), connections/notifications, metadata lookup, frontend exports (LaunchBox/ES-DE/Playnite), backup/restore, and the ROM Hub plugin catalogue. Writes are confirm-gated. Verified live against ROMarr 0.7.0 on Unraid.",
+  "version": "0.1.0",
+  "author": {
+    "name": "ghively"
+  },
+  "keywords": ["romarr", "roms", "retro-gaming", "emulation", "game-library", "servarr", "mcp", "homelab", "cartridge"],
+  "skills": "./skills/",
+  "commands": "./commands/"
+}

@@ -1,6 +1,6 @@
 # gh-tools — deep infrastructure control for Claude Code and Hermes Agent
 
-One methodology, 13 plugins: enumerate the system's full API surface, build a
+One methodology, 15 plugins: enumerate the system's full API surface, build a
 generic passthrough + curated tools, live-verify everything, and report honestly
 (works / fixable / hard limit). Each plugin lives in its own directory (see its
 `README.md`) with an identical shape: `.claude-plugin/`, `.mcp.json`, `mcp/`,
@@ -26,6 +26,8 @@ and neither one's files are touched by the other's tooling.
 | `unifi-network` (`unifi/`) | Ubiquiti UniFi console (UDR7) | v1/v2/UniFi-OS APIs, ~30 curated tools |
 | `emby` | Emby media server | ~484-op REST passthrough, ~30 curated tools |
 | `romm` | RomM ROM-library server | ~189-op REST passthrough, ~70 curated tools |
+| `romarr` | ROMarr (the *arr for games) | 53-op REST passthrough, ~44 curated tools, found a real credential-leak bug |
+| `unraid-control` | Unraid server (7.x) | full GraphQL schema passthrough, 84 curated tools |
 | `comfyui-control` | ComfyUI generation server | full API passthrough + image/video generation suite |
 | `opencode-control` | OpenCode coding agent | 188-op passthrough + 49 curated tools, HTTP + ACP |
 | `searxng-control` | Self-hosted SearXNG | search + 249-engine inventory + settings.yml tuning over SSH |
