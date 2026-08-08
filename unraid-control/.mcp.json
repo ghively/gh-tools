@@ -1,0 +1,9 @@
+{
+  "unraid": {
+    "command": "uv",
+    "args": ["run", "--script", "${CLAUDE_PLUGIN_ROOT}/mcp/unraid_server.py"],
+    "env": {
+      "UNRAID_CONFIG": "${CLAUDE_PLUGIN_ROOT}/config.local.json"
+    }
+  }
+}
