@@ -27,6 +27,10 @@ Code. Verified against **RomM 5.0.0**.
   scan types, matching workflow, and safety rules.
 - **Workflow commands**: `/romm-health`, `/romm-library`, `/romm-scan`,
   `/romm-match`, `/romm-collections`, `/romm-users`, `/romm-setup`.
+- **Smoke test** (`mcp/_smoketest.py`, also a `uv run --script` file):
+  exercises every read tool against your configured server and calls every
+  write tool *without* `confirm` to prove the confirmation gate holds — no
+  mutations. Run it after setup to verify the config end to end.
 
 ## Setup
 
