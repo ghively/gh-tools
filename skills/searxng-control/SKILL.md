@@ -8,7 +8,7 @@ metadata:
     requires_tools: [searx_status]
     config:
       - {key: searxng.base_url, prompt: SearXNG base URL, default: "http://gh-arm:8888"}
-version: 0.2.0
+version: 0.2.1
 author: ghively
 ---
 
@@ -36,7 +36,8 @@ three layers; know which one a task needs:
 ## Searching
 
 - `searx_search(q, categories=, engines=, language=, time_range=, safesearch=,
-  pageno=, fmt=)` — `fmt="json"` (default) returns `{url,title,content,engines}`.
+  pageno=, fmt=, limit=)` — `fmt="json"` (default) returns `{url,title,content,engines}`
+  for up to `limit` results (default 20, max 50).
   Scope to reliable engines with `engines="bing,mojeek"` when the defaults are
   degraded. `categories` = general/news/images/videos/it/science/…
 - `searx_autocomplete(q)` — only returns suggestions if a backend is set

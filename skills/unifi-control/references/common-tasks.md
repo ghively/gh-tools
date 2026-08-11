@@ -80,7 +80,8 @@ unifi_call("rest/wlanconf/<_id>", method="PUT", json=w)   # confirm first
 ```
 unifi_firewall_policies()             # the ACTIVE firewall (85 policies)
 unifi_firewall_groups()               # address/port groups
-# toggle a policy: read-modify-write via v2
+unifi_firewall_policy_set_enabled("<_id>", enabled=False, confirm=True)  # toggle (curated RMW)
+# edit other policy fields: read-modify-write via v2
 pols = unifi_call("firewall-policies", surface="v2")["data"]
 p = next(x for x in pols if x["name"] == "Block IoT to LAN")
 p["enabled"] = False
@@ -122,6 +123,7 @@ unifi_call("rest/networkconf", method="POST", json={
 ```
 unifi_device_restart(mac="<mac>", confirm=True)   # ⚠ gateway restart = whole net down
 unifi_device_locate(mac="<mac>", on=True, confirm=True)   # flash LED to find it
+unifi_device_port_cycle(mac="<switch mac>", port_idx=5, confirm=True)  # PoE power-cycle
 ```
 
 ## Guest / hotspot

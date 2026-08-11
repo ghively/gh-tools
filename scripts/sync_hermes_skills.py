@@ -40,6 +40,8 @@ SOURCES = [
     "gitlab/skills/gitlab-control",
     "emby/skills/emby-control",
     "romm/skills/romm-control",
+    "romarr/skills/romarr-control",
+    "unraid-control/skills/unraid-control",
     "unifi/skills/unifi-control",
     "comfyui-control/skills/comfyui-control",
     "opencode-control/skills/opencode-control",

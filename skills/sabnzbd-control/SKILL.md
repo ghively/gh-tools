@@ -25,7 +25,7 @@ required_environment_variables:
   - name: SABNZBD_API_KEY
     prompt: SABnzbd API key (Config > General > API Key)
     required_for: authenticating sabnzbd_* mode-based API calls
-version: 0.2.0
+version: 0.3.0
 author: ghively
 ---
 
@@ -77,13 +77,22 @@ non-trivial health check.
 | Per-server bytes | `sabnzbd_server_stats()` |
 | Warnings | `sabnzbd_warnings()` |
 | Read config | `sabnzbd_get_config(section=, keyword=)` |
-| Pause (write) | `sabnzbd_pause(minutes=, confirm=)` |
-| Resume (write) | `sabnzbd_resume(confirm=)` |
+| List categories | `sabnzbd_categories()` |
+| List post-proc scripts | `sabnzbd_scripts()` |
+| Pause queue (write) | `sabnzbd_pause(minutes=, confirm=)` |
+| Resume queue (write) | `sabnzbd_resume(confirm=)` |
+| Pause ONE job (write) | `sabnzbd_pause_job(nzo_id=, confirm=)` |
+| Resume ONE job (write) | `sabnzbd_resume_job(nzo_id=, confirm=)` |
 | Set speed limit (write) | `sabnzbd_speed_limit(value=, confirm=)` |
 | Add NZB by URL (write) | `sabnzbd_add_url(url=, pp=, category=, priority=, confirm=)` |
-| Delete jobs (write) | `sabnzbd_delete_jobs(nzo_ids=, delete_files=, confirm=)` |
+| Add server-side NZB file (write) | `sabnzbd_add_local_file(path=, pp=, category=, priority=, confirm=)` |
+| Delete jobs (write) | `sabnzbd_delete_jobs(nzo_ids=, delete_files=, from_history=, confirm=)` |
 | Retry a failed job (write) | `sabnzbd_retry_job(nzo_id=, confirm=)` |
+| Change a job's category (write) | `sabnzbd_queue_change_category(nzo_id=, category=, confirm=)` |
+| Change a job's priority (write) | `sabnzbd_queue_change_priority(nzo_id=, priority=, confirm=)` |
+| Clear history (write) | `sabnzbd_history_clear(failed_only=, confirm=)` |
 | Update config (write) | `sabnzbd_set_config(section=, keyword=, value=, confirm=)` |
+| Test email notification (write) | `sabnzbd_test_email(email_address=, confirm=)` |
 | Restart (DANGER) | `sabnzbd_restart(confirm=, acknowledge="restart")` |
 | Shutdown (DANGER) | `sabnzbd_shutdown(confirm=, acknowledge="shutdown")` |
 
@@ -120,7 +129,13 @@ change, pass `confirm=true` only after the user says yes.
 - "Add this NZB" → `sabnzbd_add_url(url="...", confirm=true)` (use a real
   URL the user provided; never invent one).
 - "Clear that stuck download" → get the `nzo_id` from `sabnzbd_queue` or
-  `sabnzbd_history`, then `sabnzbd_delete_jobs(nzo_ids=[...], confirm=true)`.
+  `sabnzbd_history`, then `sabnzbd_delete_jobs(nzo_ids=[...], confirm=true)`
+  (pass `from_history=true` if the job already moved to history — queue and
+  history are separate delete endpoints).
+- "Hold just this one download" → `sabnzbd_pause_job(nzo_id=..., confirm=true)`;
+  undo with `sabnzbd_resume_job`.
+- "Move it to the TV category" → `sabnzbd_categories()` to check the name,
+  then `sabnzbd_queue_change_category(nzo_id=..., category=..., confirm=true)`.
 
 ## Generic passthrough
 
@@ -139,9 +154,13 @@ or after explicit owner approval.
   returned real data).
 - **Method-verified (writes):** the HTTP shape is correct; the decline
   path is verified (every confirm-gated tool correctly returns
-  `confirmation_required: true` without `confirm=true`).
-- **Not implemented:** `addfile` (multipart NZB upload) and `addlocalfile`
-  (server-side path). The generic `sabnzbd_call` can reach them.
+  `confirmation_required: true` without `confirm=true`). The newer tools
+  (`sabnzbd_pause_job`, `sabnzbd_resume_job`, `sabnzbd_history_clear`,
+  `sabnzbd_queue_change_category`, `sabnzbd_queue_change_priority`,
+  `sabnzbd_add_local_file`) follow the documented API shape but have not
+  been executed against a live server.
+- **Not implemented:** `addfile` (multipart NZB upload). The generic
+  `sabnzbd_call` can reach it, but the file body has to come from elsewhere.
 - **Hard limits:** `mode=shutdown` is honored literally; no auto-restart.
 
 See `references/api-map.md` for the full mode catalog.

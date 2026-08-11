@@ -60,7 +60,7 @@ relative to the site unless marked. Reach any of them with
 | Manager | Commands (verified routing) |
 |---------|------------------------------|
 | `cmd/stamgr` | `block-sta`, `unblock-sta`, `kick-sta` (reconnect), `authorize-guest` (`+minutes`), `unauthorize-guest`, `forget-sta` |
-| `cmd/devmgr` | `restart`, `force-provision`, `set-locate`, `unset-locate`, `adopt`, `speedtest`, `speedtest-status`, `upgrade` |
+| `cmd/devmgr` | `restart`, `force-provision`, `set-locate`, `unset-locate`, `adopt`, `speedtest`, `speedtest-status`, `upgrade`, `power-cycle` (`+port_idx`, PoE — curated `unifi_device_port_cycle`) |
 | `cmd/firewall` | firewall manager ops |
 | `cmd/backup` | `list-backups`, `delete-backup`, … |
 | `cmd/sitemgr` | `add-site`, `update-site`, `delete-site` |
@@ -73,7 +73,7 @@ relative to the site unless marked. Reach any of them with
 
 | Path | Object | Notes |
 |------|--------|-------|
-| `firewall-policies` | zone-based firewall (85 here) | the ACTIVE firewall; curated `unifi_firewall_policies` |
+| `firewall-policies` | zone-based firewall (85 here) | the ACTIVE firewall; curated `unifi_firewall_policies`, toggle via `unifi_firewall_policy_set_enabled` |
 | `firewall/zone` | firewall zones (7) | curated `unifi_firewall_zones` |
 | `trafficrules` | block/allow by app/domain/IP | curated `unifi_traffic_rules`; read-modify-write full object on PUT |
 | `trafficroutes` | policy routes (VPN/WAN steering) | curated `unifi_traffic_routes` |

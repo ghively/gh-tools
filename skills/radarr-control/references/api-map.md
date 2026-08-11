@@ -98,11 +98,20 @@ Command names (verified live by GET /api/v3/command schema presence):
   both `movieIds` and `movieId` depending on command; the curated tool sends
   the canonical `movieIds`).
 
-## Not covered here (out of MVP scope)
+## Beyond this map
 
-- `POST /api/v3/notification` / `/downloadclient` / `/indexer` (creating new
-  integrations — left to the UI; reachable via `radarr_call`).
-- Quality profile CRUD (same reason).
-- Bulk edit via `PUT /api/v3/movie` (use `radarr_update_movie` per-id).
+This file lists the originally hand-verified core. Since then:
 
-Reachable via `radarr_call` if needed.
+- Provider/config CRUD (notifications, download clients, indexers, import
+  lists, metadata, quality/custom-format/delay/release profiles, root
+  folders, remote path mappings, auto-tagging, custom filters, exclusions)
+  is curated via `radarr_crud` (+ `radarr_provider_test` /
+  `radarr_provider_action`).
+- Bulk movie edit/delete via `PUT`/`DELETE /api/v3/movie/editor`
+  (`radarr_movies_bulk_edit` / `radarr_movies_bulk_delete`).
+- Interactive release search + grab via `GET`/`POST /api/v3/release`
+  (`radarr_releases` / `radarr_grab_release`).
+- The authoritative, always-current index is the live route table:
+  `radarr_list_endpoints` (backed by `GET /api/v3/system/routes`).
+
+Anything else is reachable via `radarr_call`.

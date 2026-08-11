@@ -17,7 +17,7 @@ required_environment_variables:
   - name: GITLAB_TOKEN
     prompt: GitLab Personal Access Token (api scope; admin recommended for full instance control)
     required_for: authenticating gitlab_* REST + GraphQL calls
-version: 0.5.0
+version: 0.5.1
 author: poomonkey405
 ---
 
@@ -28,7 +28,7 @@ with an **admin** token — instance administration works, not just project acce
 
 ## Layered approach — pick the right tool
 
-1. **Curated tools first** (79): `list_projects`, `get_project`, `manage_project`,
+1. **Curated tools first** (75; 79 total with the generic layer): `list_projects`, `get_project`, `manage_project`,
    `repo_tree`, `read_file`, `write_files`, `repo_extras`, `branches`, `tags`, `commits`,
    `compare_refs`, `protected`, `list_merge_requests`, `get_merge_request`,
    `manage_merge_request`, `mr_discussions`, `list_issues`, `get_issue`, `manage_issue`,

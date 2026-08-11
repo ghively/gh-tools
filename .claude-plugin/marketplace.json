@@ -8,46 +8,51 @@
     {
       "name": "synology-nas",
       "source": "./synology-nas",
-      "description": "Full control of a Synology DiskStation (DSM 7.x) \u2014 MCP server reaching all ~870 DSM Web APIs plus curated tools, a control skill, and workflow commands.",
-      "category": "infrastructure"
+      "description": "Full control of a Synology DiskStation (DSM 7.x) — MCP server reaching all ~870 DSM Web APIs plus curated tools, a control skill, and workflow commands.",
+      "category": "infrastructure",
+      "version": "0.2.0"
     },
     {
       "name": "deep-integration-builder",
       "source": "./deep-integration-builder",
       "description": "Methodology skill + command for building comprehensive, deeply-tested control integrations (MCP + skill + workflows) for any system with an API. Captures the discover-first, generic+curated, live-verify, honest-gap-taxonomy, reverse-engineer-from-UI-traffic workflow.",
-      "category": "development"
+      "category": "development",
+      "version": "1.1.0"
     },
     {
       "name": "gitlab",
       "source": "./gitlab",
-      "description": "Deep control of a self-hosted GitLab CE instance (live-verified on 19.0.0) \u2014 REST+GraphQL passthrough over all 177 API resource groups + 59 curated tools (incl. Pages, ML model registry+MLflow, CI catalog, protected refs, feature flags, project/group access tokens, badges, import/export), an 11-reference control skill (CI/CD, admin & self-hosting hard limits, CE-vs-EE gating, GraphQL, templates, workflows, AI/model-registry), 20 bulletproof templates (10 .gitlab-ci.yml live-validated valid:true on 19.0.0 via the CI Lint API + project scaffolding + config presets), and 13 workflow commands.",
+      "description": "Deep control of a self-hosted GitLab CE instance (live-verified on 19.0.0) — REST+GraphQL passthrough over all 177 API resource groups + 75 curated tools (incl. Pages, ML model registry+MLflow, CI catalog, protected refs, feature flags, project/group access tokens, badges, import/export), an 11-reference control skill (CI/CD, admin & self-hosting hard limits, CE-vs-EE gating, GraphQL, templates, workflows, AI/model-registry), 20 bulletproof templates (10 .gitlab-ci.yml live-validated valid:true on 19.0.0 via the CI Lint API + project scaffolding + config presets), and 13 workflow commands.",
       "category": "development",
-      "version": "0.3.0"
+      "version": "0.5.1"
     },
     {
       "name": "emby",
       "source": "./emby",
-      "description": "Full control of an Emby media server (verified on 4.7.14.0) \u2014 MCP server with a generic passthrough reaching all ~484 REST operations (self-discovered from the live OpenAPI spec), ~30 curated tools (status, library & metadata, users & policies, sessions & remote playback control, transcoding analysis, scheduled tasks, plugins & catalog, collections, playlists, configuration), a control skill with official-docs references (configuration, troubleshooting, optimization, plugin management & development), and workflow commands.",
-      "category": "media"
+      "description": "Full control of an Emby media server (verified on 4.7.14.0) — MCP server with a generic passthrough reaching all ~484 REST operations (self-discovered from the live OpenAPI spec), 54 curated tools (status, library & metadata, users & policies, sessions & remote playback control, transcoding analysis, scheduled tasks, plugins & catalog, collections, playlists, configuration), a control skill with official-docs references (configuration, troubleshooting, optimization, plugin management & development), and workflow commands.",
+      "category": "media",
+      "version": "0.1.0"
     },
     {
       "name": "romm",
       "source": "./romm",
-      "description": "Full control of a RomM ROM-library server (verified on 5.0.0) \u2014 MCP server with a generic passthrough reaching all ~189 REST operations (self-discovered from the live OpenAPI spec), ~70 curated tools (platforms, ROM search & metadata matching, manuals/soundtracks/patches, screenshots, collections, users & fine-grained permissions, saves/states, firmware, tasks, feeds, exports, device pairing & sync, netplay, chunked uploads), a pollable Socket.IO scan trigger, a control skill, and workflow commands.",
-      "category": "media"
+      "description": "Full control of a RomM ROM-library server (verified on 5.0.0) — MCP server with a generic passthrough reaching all ~189 REST operations (self-discovered from the live OpenAPI spec), ~70 curated tools (platforms, ROM search & metadata matching, manuals/soundtracks/patches, screenshots, collections, users & fine-grained permissions, saves/states, firmware, tasks, feeds, exports, device pairing & sync, netplay, chunked uploads), a pollable Socket.IO scan trigger, a control skill, and workflow commands.",
+      "category": "media",
+      "version": "0.2.0"
     },
     {
       "name": "romarr",
       "source": "./romarr",
-      "description": "Full control of a ROMarr instance (the *arr for games — Cartridge ecosystem, live-verified on 0.7.0) — MCP server with a generic passthrough reaching all 53 REST operations (self-discovered from the live OpenAPI 3.1 spec) and ~44 curated tools (status/health, library, wanted/missing, calendar, queue/history/blocklist, scored interactive search & release grab, request-a-game, DAT-based No-Intro/Redump collection set-completion batches, indexers, download clients, library backends RomM/Gaseous/Retrom/folder, notification connections, metadata lookup, frontend exports LaunchBox/ES-DE/Playnite, backup/restore, and the ROM Hub plugin catalogue). Found and documented a real security bug (the legacy /api/search endpoint leaks Prowlarr's API key in its download_url) and steers tooling toward the safe scored-search path instead. A control skill and workflow commands round it out. All writes confirm-gated. Pins mcp<2.0.0.",
+      "description": "Full control of a ROMarr instance (the *arr for games — Cartridge ecosystem, live-verified on 0.7.0) — MCP server with a generic passthrough reaching all 59 REST operations (self-discovered from the live OpenAPI 3.1 spec) and 51 curated tools (status/health, library, wanted/missing, calendar, queue/history/blocklist, scored interactive search & release grab, request-a-game, DAT-based No-Intro/Redump collection set-completion batches, indexers, download clients, library backends RomM/Gaseous/Retrom/folder, notification connections, metadata lookup, frontend exports LaunchBox/ES-DE/Playnite, backup/restore, and the ROM Hub plugin catalogue). Found and documented a real security bug (the legacy /api/search endpoint leaks Prowlarr's API key in its download_url) and steers tooling toward the safe scored-search path instead. A control skill and workflow commands round it out. All writes confirm-gated. Pins mcp<2.0.0.",
       "category": "media",
       "version": "0.1.0"
     },
     {
       "name": "unifi-network",
       "source": "./unifi",
-      "description": "Full control of a Ubiquiti UniFi console (UniFi OS) \u2014 MCP server reaching every Network endpoint across the classic v1, modern v2, and UniFi OS host APIs, plus ~30 curated tools for health, devices, clients, wireless, firewall, port-forwarding, traffic rules, events and statistics, a control skill, and workflow commands. Tested against a UniFi Dream Router 7.",
-      "category": "infrastructure"
+      "description": "Full control of a Ubiquiti UniFi console (UniFi OS) — MCP server reaching every Network endpoint across the classic v1, modern v2, and UniFi OS host APIs, plus ~35 curated tools for health, devices, clients, wireless, firewall, port-forwarding, traffic rules, events and statistics, a control skill, and workflow commands. Tested against a UniFi Dream Router 7.",
+      "category": "infrastructure",
+      "version": "0.1.0"
     },
     {
       "name": "comfyui-control",
@@ -61,49 +66,49 @@
       "source": "./opencode-control",
       "description": "Deep, near-complete control of the OpenCode AI coding agent (anomalyco/sst opencode; live-verified on 1.18.3). 49 curated tools + full 188-operation passthrough (self-discovered from the live OpenAPI /doc), across two connectors: the HTTP server (opencode serve) and an ACP (Agent Client Protocol) connector driving `opencode acp` over JSON-RPC/stdio (runs prompts as an agent, no server needed). Covers sessions/prompting, agents/commands/skills/plugins authoring, config & optimization, models/providers/auth, permissions & questions, projects/worktrees, revert/undo, VCS, diagnostics, PTY, TUI, stats/export/import, upgrade. Includes a control skill for configuration, optimization, and agent/workflow design.",
       "category": "development",
-      "version": "0.4.1"
+      "version": "0.4.2"
     },
     {
       "name": "searxng-control",
       "source": "./searxng-control",
-      "description": "Deep control of a self-hosted SearXNG metasearch instance (built with deep-integration-builder, live-verified on SearXNG 2026.5.7). Three layers: generic HTTP passthrough over the hand-enumerated runtime surface (/search json/csv/rss, /autocompleter, /config, /stats, /stats/errors, /healthz, /info); curated tools for search (all query params), the 249-engine inventory, autocomplete, and engine-failure diagnostics; and a config-management layer that edits settings.yml in the container over SSH and applies it with a restart (enable/disable engines, add config-only custom engines, deploy/remove custom Python engine modules with a syntax check, tune outgoing/limiter/search/server, backup & restore) \u2014 every write confirm-gated + auto-backed-up (write + module-deploy paths proven reversibly). Skill with a full settings.yml reference, a datacenter-IP engine-reliability/CAPTCHA playbook, and a complete engine-authoring knowledgebase (all search-resource types, the request/response API, result-dict schema & templates), plus workflows (health, diagnose-empty-results, tune-reliability, add-engine).",
+      "description": "Deep control of a self-hosted SearXNG metasearch instance (built with deep-integration-builder, live-verified on SearXNG 2026.5.7). Three layers: generic HTTP passthrough over the hand-enumerated runtime surface (/search json/csv/rss, /autocompleter, /config, /stats, /stats/errors, /healthz, /info); curated tools for search (all query params), the 249-engine inventory, autocomplete, and engine-failure diagnostics; and a config-management layer that edits settings.yml in the container over SSH and applies it with a restart (enable/disable engines, add config-only custom engines, deploy/remove custom Python engine modules with a syntax check, tune outgoing/limiter/search/server, backup & restore) — every write confirm-gated + auto-backed-up (write + module-deploy paths proven reversibly). Skill with a full settings.yml reference, a datacenter-IP engine-reliability/CAPTCHA playbook, and a complete engine-authoring knowledgebase (all search-resource types, the request/response API, result-dict schema & templates), plus workflows (health, diagnose-empty-results, tune-reliability, add-engine).",
       "category": "infrastructure",
-      "version": "0.2.0"
+      "version": "0.2.1"
     },
     {
       "name": "radarr-control",
       "source": "./radarr-control",
-      "description": "Control of a Radarr movie manager (built with deep-integration-builder, live-verified on Radarr 6.3.0.10514). Generic passthrough over the FULL /api/v3 surface (467 operations, discovered live via /system/routes — Radarr publishes no OpenAPI). 64 curated tools covering 31% of operations directly + a unified radarr_crud tool reaching all CRUD-shaped resources (14 resource types). Includes: status, library (movies/collections/files/lookup/add/update/delete/bulk-edit/bulk-delete), activity (wanted missing+cutoff, calendar incl .ics feed, queue with delete+grab+bulk, history incl since, blocklist with delete+bulk, manual import), commands, parse, filesystem browse, log files, config sections (8), tag CRUD, provider CRUD + test + action + testall, system restart/shutdown (double-gated). Every operation annotated curated vs generic-only in radarr_list_endpoints. API key from 1Password (Gregory vault). All writes confirm-gated.",
+      "description": "Control of a Radarr movie manager (built with deep-integration-builder, live-verified on Radarr 6.3.0.10514). Generic passthrough over the FULL /api/v3 surface (467 operations, discovered live via /system/routes — Radarr publishes no OpenAPI). 65 curated tools covering 31% of operations directly + a unified radarr_crud tool reaching all CRUD-shaped resources (14 resource types). Includes: status, library (movies/collections/files/lookup/add/update/delete/bulk-edit/bulk-delete), activity (wanted missing+cutoff, calendar incl .ics feed, queue with delete+grab+bulk, history incl since, blocklist with delete+bulk, manual import), commands, parse, filesystem browse, log files, config sections (8), tag CRUD, provider CRUD + test + action + testall, system restart/shutdown (double-gated). Every operation annotated curated vs generic-only in radarr_list_endpoints. API key from 1Password (Gregory vault). All writes confirm-gated.",
       "category": "media",
       "version": "0.3.0"
     },
     {
       "name": "sonarr-control",
       "source": "./sonarr-control",
-      "description": "Control of a Sonarr TV-series manager (built with deep-integration-builder, live-verified on Sonarr 4.0.18.2978). Generic passthrough over the FULL /api/v3 surface (463 operations, discovered live via /system/routes). 66 curated tools covering 31% of operations directly + a unified sonarr_crud tool reaching all CRUD-shaped resources (15 resource types including languageProfile). Includes: status, library (series/seasons/episodes, per-season monitoring toggle, lookup/add/update/delete/bulk-edit/bulk-delete, season-pass bulk monitoring), activity (wanted missing+cutoff per-episode, calendar incl .ics feed, queue with delete+grab+bulk, history incl per-series+since, blocklist with delete+bulk, manual import), commands, parse, filesystem, log files, config sections, tag CRUD, provider CRUD + test + action + testall, system restart/shutdown (double-gated). API key from 1Password (Gregory vault). All writes confirm-gated.",
+      "description": "Control of a Sonarr TV-series manager (built with deep-integration-builder, live-verified on Sonarr 4.0.18.2978). Generic passthrough over the FULL /api/v3 surface (463 operations, discovered live via /system/routes). 69 curated tools covering 31% of operations directly + a unified sonarr_crud tool reaching all CRUD-shaped resources (15 resource types including languageProfile). Includes: status, library (series/seasons/episodes, per-season monitoring toggle, lookup/add/update/delete/bulk-edit/bulk-delete, season-pass bulk monitoring), activity (wanted missing+cutoff per-episode, calendar incl .ics feed, queue with delete+grab+bulk, history incl per-series+since, blocklist with delete+bulk, manual import), commands, parse, filesystem, log files, config sections, tag CRUD, provider CRUD + test + action + testall, system restart/shutdown (double-gated). API key from 1Password (Gregory vault). All writes confirm-gated.",
       "category": "media",
       "version": "0.3.0"
     },
     {
       "name": "sabnzbd-control",
       "source": "./sabnzbd-control",
-      "description": "Control of a SABnzbd usenet downloader (built with deep-integration-builder, live-verified on SABnzbd 5.0.4). Generic passthrough over the hand-enumerated mode-based HTTP API + 21 curated tools for status, version, queue, history, server stats, warnings, get_config, categories, scripts; queue control (pause/resume/speed limit), job management (add by URL or server-side local file, delete, retry, change category/priority, clear history), set_config, test_email; and lifecycle control (restart/shutdown DOUBLY-gated with a typed acknowledge token, because SABnzbd honors mode=shutdown literally with no auto-restart on this homelab). API key from 1Password (Gregory vault).",
+      "description": "Control of a SABnzbd usenet downloader (built with deep-integration-builder, live-verified on SABnzbd 5.0.4). Generic passthrough over the hand-enumerated mode-based HTTP API + 25 curated tools for status, version, queue, history, server stats, warnings, get_config, categories, scripts; queue control (pause/resume/speed limit), job management (add by URL or server-side local file, delete, retry, change category/priority, clear history), set_config, test_email; and lifecycle control (restart/shutdown DOUBLY-gated with a typed acknowledge token, because SABnzbd honors mode=shutdown literally with no auto-restart on this homelab). API key from 1Password (Gregory vault).",
       "category": "media",
-      "version": "0.2.0"
+      "version": "0.3.0"
     },
     {
       "name": "tdarr-control",
       "source": "./tdarr-control",
-      "description": "Control of a Tdarr distributed transcoding server (v2 API) + comprehensive transcoding / analysis / audio knowledge base. LIVE-VERIFIED on Tdarr 2.84.01. Generic passthrough over 67 documented /api/v2 endpoints + ~30 curated tools. Skill ships 13 references (3,700+ lines): codecs encyclopedia, NVENC hardware acceleration (RTX 3060, HDR preservation), 6 canonical transcode workflows with real ffmpeg, 107 classic community plugins, FULL 85+ flow-plugin node catalog (audio/video/file/ffmpegCommand/tools/automations — webRequest, apprise 100+ notification services, customFunction, runCli, detectNonTdarrNvenc GPU-contention avoidance, variables+arithmetic, branching, file ops), Tdarr 2.x flows w/ templating + Worker Type routing, MEDIA-ANALYSIS reference (8 status tables, quick vs thorough health checks with custom -err_detect args, stream-property filters video/audio/bitrate/resolution/HDR/10-bit/framerate, post-transcode validation via compareFileSizeRatio+compareFileDurationRatio, footprint IDs for forensic history, 12 DB collections incl WorkerVerdictHistoryJSONDB), AUDIO DEEP DIVE (codecs, channels, bitrate reference, 2-pass EBU R128 loudnorm, downmix with pan coefficients incl Atmos→7.1, language routing, commentary removal, silent/clipping detection, Atmos preservation caveats), advanced-features catalog (staging/review queue, F2F, hold-after-scan, 24-hour schedules, auto-pause, stall detector, plugin SHA pinning, Tdarr Pro/unmapped nodes, Discord notifications), library + node config (mapped vs unmapped, path translators, gpuSelect, custom thorough-health-check args), diagnostics + health (statistics, job reports, troubleshooting playbook), integrations (auth with seededApiKey, tdarr_inform from Sonarr/Radarr, tdarr_autoscan, Emby/Plex triggers, Heimdall/Homer). All writes confirm-gated; kill-worker/disconnect-node/kill-file-scanner doubly-gated.",
+      "description": "Control of a Tdarr distributed transcoding server (v2 API) + comprehensive transcoding / analysis / audio knowledge base. LIVE-VERIFIED on Tdarr 2.84.01. Generic passthrough over 65 documented /api/v2 endpoints + 50 curated tools. Skill ships 13 references (3,700+ lines): codecs encyclopedia, NVENC hardware acceleration (RTX 3060, HDR preservation), 6 canonical transcode workflows with real ffmpeg, 107 classic community plugins, FULL 85+ flow-plugin node catalog (audio/video/file/ffmpegCommand/tools/automations — webRequest, apprise 100+ notification services, customFunction, runCli, detectNonTdarrNvenc GPU-contention avoidance, variables+arithmetic, branching, file ops), Tdarr 2.x flows w/ templating + Worker Type routing, MEDIA-ANALYSIS reference (8 status tables, quick vs thorough health checks with custom -err_detect args, stream-property filters video/audio/bitrate/resolution/HDR/10-bit/framerate, post-transcode validation via compareFileSizeRatio+compareFileDurationRatio, footprint IDs for forensic history, 12 DB collections incl WorkerVerdictHistoryJSONDB), AUDIO DEEP DIVE (codecs, channels, bitrate reference, 2-pass EBU R128 loudnorm, downmix with pan coefficients incl Atmos→7.1, language routing, commentary removal, silent/clipping detection, Atmos preservation caveats), advanced-features catalog (staging/review queue, F2F, hold-after-scan, 24-hour schedules, auto-pause, stall detector, plugin SHA pinning, Tdarr Pro/unmapped nodes, Discord notifications), library + node config (mapped vs unmapped, path translators, gpuSelect, custom thorough-health-check args), diagnostics + health (statistics, job reports, troubleshooting playbook), integrations (auth with seededApiKey, tdarr_inform from Sonarr/Radarr, tdarr_autoscan, Emby/Plex triggers, Heimdall/Homer). All writes confirm-gated; kill-worker/disconnect-node/kill-file-scanner doubly-gated.",
       "category": "media",
       "version": "0.5.0"
     },
     {
       "name": "unraid-control",
       "source": "./unraid-control",
-      "description": "Full control of an Unraid server (Unraid OS 7.x, live-verified on 7.3.2 / unraid-api 4.35.1) via its official GraphQL API (x-api-key auth, no session/CSRF). Generic passthrough (unraid_graphql) reaches the entire schema, including Subscription-only fields via a WebSocket helper (unraid_subscribe_once) — live introspection is disabled server-side by default, so the schema ships offline (pulled from github.com/unraid/api at the exact matching version tag) and is searchable via unraid_schema_search/unraid_schema_type. 84 curated tools: system health, array & disks & parity checks, Docker (incl. live per-container stats over WebSocket), VMs, shares, notifications, UPS, network, users/API keys, settings, plugins (classic .plg + API-level), RClone/flash backups. Found and worked around two genuine Unraid API bugs (createNotification's returned id doesn't match the real notification file; several non-null schema fields crash on null data for specific devices) plus a real API gap: no GraphQL mutation exists to edit a container's environment variables — closed with a separate, opt-in SSH layer (unraid_ssh_test/unraid_docker_env_get/unraid_docker_env_set) that recreates the container with the requested env changes and best-effort syncs the matching Unraid XML template. All disruptive/destructive writes confirm-gated. Pins mcp<2.0.0 (the 2.0 release renamed FastMCP→MCPServer).",
+      "description": "Full control of an Unraid server (Unraid OS 7.x, live-verified on 7.3.2 / unraid-api 4.35.1) via its official GraphQL API (x-api-key auth, no session/CSRF). Generic passthrough (unraid_graphql) reaches the entire schema, including Subscription-only fields via a WebSocket helper (unraid_subscribe_once) — live introspection is disabled server-side by default, so the schema ships offline (pulled from github.com/unraid/api at the exact matching version tag) and is searchable via unraid_schema_search/unraid_schema_type. 87 tools (80 curated + generic + SSH layer): system health, array & disks & parity checks, Docker (incl. live per-container stats over WebSocket), VMs, shares, notifications, UPS, network, users/API keys, settings, plugins (classic .plg + API-level), RClone/flash backups. Found and worked around two genuine Unraid API bugs (createNotification's returned id doesn't match the real notification file; several non-null schema fields crash on null data for specific devices) plus a real API gap: no GraphQL mutation exists to edit a container's environment variables — closed with a separate, opt-in SSH layer (unraid_ssh_test/unraid_docker_env_get/unraid_docker_env_set) that recreates the container with the requested env changes and best-effort syncs the matching Unraid XML template. All disruptive/destructive writes confirm-gated. Pins mcp<2.0.0 (the 2.0 release renamed FastMCP→MCPServer).",
       "category": "infrastructure",
-      "version": "0.2.0"
+      "version": "0.2.1"
     }
   ]
 }
