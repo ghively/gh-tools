@@ -58,7 +58,10 @@ tools = [
     ("synology_packages_list",         server.synology_packages_list),
     ("synology_services_list",         server.synology_services_list),
     ("synology_fs_shares",             server.synology_fs_shares),
-    ("synology_fs_list (/home)",       lambda: server.synology_fs_list(folder_path="/home", limit=5)),
+    # list whatever share actually exists rather than assuming /home (the
+    # user-home service may be disabled, which returns DSM error 408)
+    ("synology_fs_list (first share)", lambda: server.synology_fs_list(
+        folder_path=server.synology_fs_shares()["data"]["shares"][0]["path"], limit=5)),
     ("synology_users_list",            server.synology_users_list),
     ("synology_groups_list",           server.synology_groups_list),
     ("synology_shares_list",           server.synology_shares_list),
