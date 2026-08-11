@@ -15,7 +15,8 @@ API, from Claude Code. Built and tested against **GH-Nvidia**, running
     (`skills/unraid-control/references/schema.graphql`, pulled from
     github.com/unraid/api at the exact tag matching this server's API
     version) and searchable via `unraid_schema_search`/`unraid_schema_type`.
-  - **84 curated tools** across system health, the array & disks & parity,
+  - **80 curated tools** (87 total with the generic passthrough and SSH
+    layers) across system health, the array & disks & parity,
     Docker (including live per-container stats over WebSocket), VMs, shares,
     notifications, UPS, network, users/API keys, settings, plugins (both
     classic `.plg` and API-level), and RClone/flash backups.
@@ -47,9 +48,11 @@ API, from Claude Code. Built and tested against **GH-Nvidia**, running
 2. **SSH credentials (optional)** — only needed for `unraid_docker_env_get`/
    `unraid_docker_env_set`. Add `ssh_user` + (`ssh_password` or
    `ssh_key_path`) to `config.local.json` (`ssh_host` defaults to `host`,
-   `ssh_port` defaults to 22). Leave them unset to disable this layer
-   entirely — every other tool works without it. `unraid_ssh_test` verifies
-   connectivity without changing anything.
+   `ssh_port` defaults to 22). Each has an env-var override too
+   (`UNRAID_SSH_HOST`, `UNRAID_SSH_PORT`, `UNRAID_SSH_USER`,
+   `UNRAID_SSH_PASSWORD`, `UNRAID_SSH_KEY_PATH`). Leave them unset to
+   disable this layer entirely — every other tool works without it.
+   `unraid_ssh_test` verifies connectivity without changing anything.
 3. **Runtime.** The MCP server launches via [`uv`](https://docs.astral.sh/uv/)
    (`uv run --script`), which auto-provisions its dependencies (`mcp`,
    `httpx`, `websockets`, `paramiko`) in a cached environment — no manual
@@ -61,6 +64,12 @@ API, from Claude Code. Built and tested against **GH-Nvidia**, running
    → `/plugin install unraid-control@gh-tools`), then run `/reload-plugins`
    or restart. Ask Claude to "check the Unraid server" or run
    `/unraid-health`.
+5. **Smoke test (optional).** `cd unraid-control && uv run --script
+   mcp/_smoketest.py` calls every curated read-only tool against your live
+   server and prints each result's shape (no writes, no confirm-gated tools;
+   the SSH layer is probed only if configured). Without a
+   `config.local.json` it validates the offline schema tools and exits
+   cleanly.
 
 ## Security notes
 

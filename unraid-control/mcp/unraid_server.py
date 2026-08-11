@@ -198,6 +198,11 @@ class UnraidClient:
             raise RuntimeError(
                 f"cannot reach Unraid at {self.base}: {e}. Is the server up and the host/port correct?"
             ) from e
+        except httpx.TimeoutException as e:
+            raise RuntimeError(
+                f"request to {self.base} timed out after {self.cfg['timeout']}s: {e}. "
+                "Raise UNRAID_TIMEOUT / config timeout if the server is just slow."
+            ) from e
         try:
             body = r.json()
         except Exception as e:  # noqa: BLE001
@@ -206,6 +211,10 @@ class UnraidClient:
             ) from e
         if body.get("errors"):
             raise UnraidError(body["errors"])
+        if r.status_code >= 400:
+            # JSON body but no GraphQL errors array (e.g. a proxy or non-GraphQL
+            # error payload) — don't silently return {} as if it succeeded.
+            raise RuntimeError(f"HTTP {r.status_code} from {self.base}: {r.text[:300]}")
         return body.get("data") or {}
 
 
@@ -1375,9 +1384,15 @@ def unraid_docker_env_set(container_name: str, env: Optional[dict] = None,
                            confirm: bool = False) -> dict:
     """Add/update/remove environment variables on a container by recreating
     it via SSH: `docker inspect` for the full current config (image, mounts,
-    ports, log options, labels, network mode) → `docker stop` + `rm` + `run`
-    with that same config plus your changes. WRITES: confirm-gated,
-    DISRUPTIVE — the container restarts (a few seconds of downtime). Also
+    ports incl. protocol, log options, labels, network mode, restart policy,
+    runtime e.g. nvidia, privileged flag, devices, cap-add/drop, extra hosts,
+    user, and command/post-arguments) → `docker stop` + `rm` + `run` with
+    that same config plus your changes. NOT carried over (rare in Unraid
+    templates — check `docker inspect` first if the container is exotic):
+    tmpfs/shm-size, ulimits, sysctls, memory/cpu limits, healthcheck
+    overrides, and additional networks beyond the primary NetworkMode.
+    WRITES: confirm-gated, DISRUPTIVE — the container restarts (a few
+    seconds of downtime). Also
     best-effort syncs the matching Unraid XML template
     (`/boot/config/plugins/dockerMan/templates-user/my-<name>.xml`) so the
     Unraid UI's Edit screen stays accurate; a template-sync failure is
@@ -1423,14 +1438,15 @@ def unraid_docker_env_set(container_name: str, env: Optional[dict] = None,
         for name in remove:
             cur_env.pop(name, None)
 
-        image = inspect["Config"]["Image"]
+        config = inspect.get("Config") or {}
+        image = config["Image"]
         name = inspect["Name"].lstrip("/")
         host_config = inspect.get("HostConfig") or {}
         binds = host_config.get("Binds") or []
         port_bindings = host_config.get("PortBindings") or {}
         log_cfg = host_config.get("LogConfig") or {}
         network_mode = host_config.get("NetworkMode", "")
-        labels = (inspect.get("Config") or {}).get("Labels") or {}
+        labels = config.get("Labels") or {}
         restart_name = (host_config.get("RestartPolicy") or {}).get("Name", "no")
 
         args = ["docker", "run", "-d", "--name", name]
@@ -1440,14 +1456,16 @@ def unraid_docker_env_set(container_name: str, env: Optional[dict] = None,
             args += ["-v", b]
         seen_ports = set()
         for container_port, hostbindings in port_bindings.items():
-            cport = container_port.split("/")[0]
+            # container_port keeps its protocol suffix ("8080/tcp", "1900/udp")
+            # — dropping it would silently turn udp mappings into tcp and
+            # collapse tcp+udp bindings on the same port number into one.
             for hb in (hostbindings or [{}]):
                 hp = (hb or {}).get("HostPort", "")
-                key = (hp, cport)
+                key = (hp, container_port)
                 if key in seen_ports:
                     continue
                 seen_ports.add(key)
-                args += ["-p", f"{hp}:{cport}" if hp else cport]
+                args += ["-p", f"{hp}:{container_port}" if hp else container_port]
         if log_cfg.get("Type"):
             args += ["--log-driver", log_cfg["Type"]]
         for k, v in (log_cfg.get("Config") or {}).items():
@@ -1458,9 +1476,39 @@ def unraid_docker_env_set(container_name: str, env: Optional[dict] = None,
             args += ["--label", f"{k}={v}"]
         if restart_name and restart_name != "no":
             args += ["--restart", restart_name]
+        # Settings Unraid containers commonly rely on — dropping any of these
+        # on recreate silently degrades the container (e.g. an NVIDIA runtime
+        # or /dev/dri passthrough disappearing from a media server).
+        runtime = host_config.get("Runtime") or ""
+        if runtime and runtime != "runc":
+            args += ["--runtime", runtime]
+        if host_config.get("Privileged"):
+            args += ["--privileged"]
+        for dev in host_config.get("Devices") or []:
+            spec = (dev or {}).get("PathOnHost", "")
+            if not spec:
+                continue
+            if dev.get("PathInContainer"):
+                spec += f":{dev['PathInContainer']}"
+                if dev.get("CgroupPermissions"):
+                    spec += f":{dev['CgroupPermissions']}"
+            args += ["--device", spec]
+        for cap in host_config.get("CapAdd") or []:
+            args += ["--cap-add", cap]
+        for cap in host_config.get("CapDrop") or []:
+            args += ["--cap-drop", cap]
+        for eh in host_config.get("ExtraHosts") or []:
+            args += ["--add-host", eh]
+        if config.get("User"):
+            args += ["--user", config["User"]]
         for k, v in cur_env.items():
             args += ["-e", f"{k}={v}"]
         args += [image]
+        # Preserve the effective command (Unraid templates' "Post Arguments"
+        # live here; without this they'd be silently dropped on recreate).
+        # Passing it explicitly even when it merely equals the image default
+        # reproduces current behavior exactly.
+        args += list(config.get("Cmd") or [])
 
         run_cmd = " ".join(shlex.quote(a) for a in args)
         full_cmd = f"docker stop {shlex.quote(name)} && docker rm {shlex.quote(name)} && {run_cmd}"
