@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env -S uv run --script
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
@@ -15,7 +15,7 @@ Proves the write path by:
   4. delete_backup(confirm=True) the new one.
   5. Verify the system is back to original state.
 
-Fully reversible â€” no other state touched. Run after first deployment to
+Fully reversible — no other state touched. Run after first deployment to
 convert 'method-verified' writes to 'live-verified'.
 """
 from __future__ import annotations
@@ -43,7 +43,7 @@ step("1. create_backup(confirm=True)")
 r = srv.tdarr_create_backup(confirm=True)
 print(f"  result: {r}")
 if not (r is True or r == {"status": True} or r == True):
-    print(f"  unexpected create response â€” proceeding if list grows anyway")
+    print(f"  unexpected create response — proceeding if list grows anyway")
 
 time.sleep(2)  # let the backup file land on disk
 
@@ -56,13 +56,20 @@ if not isinstance(after, list):
 new = [b for b in after if b not in before]
 print(f"  new backups: {len(new)}")
 if not new:
-    print("  no new backup detected â€” create may not have completed; aborting")
+    print("  no new backup detected — create may not have completed; aborting")
     sys.exit(1)
 
 target = new[0]
+name = None
 if isinstance(target, dict):
     name = target.get("name") or target.get("fileName") or target.get("file")
-    print(f"  target name: {name}")
+elif isinstance(target, str):
+    name = target
+print(f"  target name: {name}")
+if not name:
+    print(f"  ERROR: could not determine backup name from {target!r}; "
+          f"delete it manually via the Tdarr UI")
+    sys.exit(1)
 
 step("3. delete_backup(name, confirm=True)")
 r = srv.tdarr_delete_backup(name=name, confirm=True)
@@ -74,7 +81,7 @@ final = srv.tdarr_backups()
 print(f"  after delete: {len(final) if isinstance(final, list) else final}")
 if isinstance(final, list) and target not in final:
     print("\n=== Tdarr backup write-path proof PASSED ===")
-    print(f"    create âœ“ / verify âœ“ / delete âœ“ / verify-gone âœ“")
+    print(f"    create ✓ / verify ✓ / delete ✓ / verify-gone ✓")
 else:
-    print("\n=== Tdarr backup write-path proof FAILED â€” backup still present ===")
+    print("\n=== Tdarr backup write-path proof FAILED — backup still present ===")
     sys.exit(1)

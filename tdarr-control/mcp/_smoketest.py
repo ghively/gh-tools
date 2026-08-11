@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env -S uv run --script
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
@@ -8,16 +8,16 @@
 # ///
 """Smoke test the Tdarr MCP server.
 
-**DOC-VERIFIED plugin â€” Tdarr is not yet deployed on this homelab.**
+**DOC-VERIFIED plugin — Tdarr is not yet deployed on this homelab.**
 
 This smoke test will fail with a connection error until Tdarr is deployed
-and config.local.json is filled in. That's expected and intended â€” the
+and config.local.json is filled in. That's expected and intended — the
 test exists so that the FIRST thing you do after deploying Tdarr is run:
 
     cd tdarr-control && uv run --script mcp/_smoketest.py
 
-Every passing tool closes one "doc-verified â†’ live-verified" gap. Write
-tools are NOT called (confirm-gated in the server) â€” use _writeproof.py
+Every passing tool closes one "doc-verified → live-verified" gap. Write
+tools are NOT called (confirm-gated in the server) — use _writeproof.py
 after manually verifying the read paths.
 """
 from __future__ import annotations
@@ -38,9 +38,9 @@ def show(name: str, result):
     if isinstance(result, dict) and "error" in result:
         err = str(result['error'])[:120]
         print(f"  ERROR: {err}")
-        # A connection error means Tdarr isn't deployed yet â€” that's expected
+        # A connection error means Tdarr isn't deployed yet — that's expected
         if "ConnectError" in err or "Connection" in err or "Errno" in err:
-            print("  (Tdarr probably isn't deployed yet â€” see README)")
+            print("  (Tdarr probably isn't deployed yet — see README)")
         return False
     text = json.dumps(result, default=str, indent=2)
     if len(text) > 600:
@@ -62,6 +62,8 @@ tools = [
     ("tdarr_search_plugins",      lambda: server.tdarr_search_plugins(string="")),
     ("tdarr_search_flow_plugins", lambda: server.tdarr_search_flow_plugins(string="")),
     ("tdarr_collections",         server.tdarr_collections),
+    ("tdarr_libraries",           server.tdarr_libraries),
+    ("tdarr_staged_files",        lambda: server.tdarr_staged_files(limit=3)),
     ("tdarr_list_endpoints",      lambda: server.tdarr_list_endpoints(rw="R")),
     # Confirm-gated (decline path)
     ("tdarr_create_backup(decline)",  server.tdarr_create_backup),
@@ -90,7 +92,7 @@ for name, fn in tools:
 print(f"\n{'='*50}")
 print(f"{ok} OK, {fail} FAIL")
 if not_deployed:
-    print(f"\nOf the failures, {not_deployed} are connection errors â€” Tdarr is "
+    print(f"\nOf the failures, {not_deployed} are connection errors — Tdarr is "
           f"not deployed yet. Run this same test after deploying to verify.")
     print("The plugin is DOC-VERIFIED but NOT LIVE-VERIFIED. See README.")
 sys.exit(0 if fail == 0 else 1)
