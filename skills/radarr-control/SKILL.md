@@ -42,8 +42,8 @@ pick the right tool/endpoint and interpret results. Verified against
 
 ## Mental model
 
-Radarr is one REST surface under `/api/v3/<resource>` (~50 endpoints). Key
-conventions the tools encode:
+Radarr is one REST surface under `/api/v3/<resource>` (~470 operations on
+6.3, discovered live via `/system/routes`). Key conventions the tools encode:
 
 - All writes need the FULL object: POST/PUT to `/movie/{id}` ignores omitted
   fields or resets them. The write tools here GET-merge-PUT internally; use
@@ -60,8 +60,9 @@ Two layers of tools:
 
 1. **Curated tools** — ergonomic one-shot calls for common jobs. Prefer these.
 2. **Generic passthrough** — `radarr_call` reaches *any* /api/v3 endpoint;
-   `radarr_list_endpoints` searches the hand-enumerated catalog (Radarr
-   publishes no OpenAPI).
+   `radarr_list_endpoints` searches the LIVE route table (with a static
+   fallback catalog — Radarr publishes no OpenAPI) and annotates each
+   operation as curated vs generic-only.
 
 **Golden rule:** if a curated tool exists, use it. Otherwise find the
 endpoint with `radarr_list_endpoints`, then call it with `radarr_call`.
@@ -92,9 +93,26 @@ health warnings, and disk usage.
 | Active downloads | `radarr_queue()` |
 | Recent activity | `radarr_history(movie_id=, event_type=)` |
 | Auto-rejected releases | `radarr_blocklist()` |
-| Logs | `radarr_logs(level="warn")` |
+| Logs | `radarr_logs(level="warn")`, on-disk files: `radarr_log_files()` |
 | Scheduled tasks | `radarr_system_tasks()` |
 | DB backups | `radarr_system_backups()` |
+| Interactive release search | `radarr_releases(movie_id)` (slow — hits all indexers) |
+| Grab a specific release (write) | `radarr_grab_release(guid, indexer_id, confirm=)` |
+| Delete a media file (write) | `radarr_delete_movie_file(file_id, confirm=)` |
+| Remove/re-grab queue items (write) | `radarr_queue_delete`, `radarr_queue_grab`, `radarr_queue_bulk_delete` |
+| Bulk edit/delete movies (write) | `radarr_movies_bulk_edit`, `radarr_movies_bulk_delete` |
+| Un-block releases (write) | `radarr_blocklist_delete`, `radarr_blocklist_bulk_delete` |
+| Manual import (write) | `radarr_manual_import(folder, import_mode=)` |
+| Rename preview (read) | `radarr_rename_preview(movie_ids)` |
+| Parse a release title | `radarr_parse(title)` |
+| History since a timestamp | `radarr_history_since(since)` |
+| iCal feed | `radarr_calendar_ics(start=, end=)` |
+| Browse server filesystem | `radarr_filesystem(path)` |
+| Config sections (read/write) | `radarr_config_section(section)`, `radarr_update_config_section(section, patch, confirm=)` |
+| Tag CRUD (write) | `radarr_tag_create`, `radarr_tag_delete`, details: `radarr_tag_details()` |
+| Provider/config CRUD | `radarr_crud(resource, action, ...)` — notifications, download clients, indexers, import lists, metadata, quality/custom-format/delay/release profiles, root folders, remote path mappings, auto-tagging, custom filters, exclusions |
+| Test / act on a provider | `radarr_provider_test`, `radarr_provider_action` |
+| Restart / shutdown (double-gated) | `radarr_system_restart`, `radarr_system_shutdown` (need `confirm=true` AND typed `acknowledge=`) |
 
 ## Commands (trigger async jobs)
 
@@ -168,6 +186,7 @@ or after explicit owner approval for writes.
   live library (Dune, TRON Legacy, etc.).
 - **Method-verified (writes):** the HTTP shape is correct; live execution
   awaits explicit owner approval.
-- **Hard limits:** no OpenAPI; catalog hand-enumerated as of 2026-07-19.
+- **Hard limits:** no OpenAPI; the endpoint index is read live from
+  `/system/routes` (static fallback catalog hand-enumerated 2026-07-19).
 
 See `references/api-map.md` for the full endpoint list.

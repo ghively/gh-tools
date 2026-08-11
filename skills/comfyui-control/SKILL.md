@@ -44,6 +44,7 @@ the vpt9 library API), `references/conventions.md`, `references/common-tasks.md`
 | Model folders / files (+sizes) | `comfy_models(folder?, detailed?)` |
 | Find node classes / schemas | `comfy_nodes(search / node_class)` |
 | Queue, finished runs, log tail | `comfy_queue`, `comfy_history`, `comfy_logs` |
+| List server output/input/temp files | `comfy_output_files(directory?)` |
 | Text→image (LoRA via `loras=`) | `comfy_txt2img` (`hires_scale=` for the latent hires-fix master path) |
 | Restyle / vary an image | `comfy_img2img(image, prompt, denoise)` (same-seed denoise 0.2-0.4 = the refine recipe) |
 | Regenerate a masked region | `comfy_inpaint(image, mask, prompt)` |

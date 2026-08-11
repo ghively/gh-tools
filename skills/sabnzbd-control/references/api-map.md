@@ -43,11 +43,20 @@ control.
 - `mode=resume`
 - `mode=speedlimit&value=<Kbps or %>`
 - `mode=addurl&name=<url>&pp=&cat=&priority=` → returns nzo_ids
-- `mode=addlocalfile&name=<path>` (server-side path)
 - `mode=queue&name=delete&value=<id1,id2>&del_files=1` (delete from queue)
-- `mode=history&name=delete&value=<id>` (delete from history)
+- `mode=history&name=delete&value=<id>` (delete from history; `value=all`
+  or `value=failed` clears in bulk — used by `sabnzbd_history_clear`)
 - `mode=retry&value=<nzo_id>` (retry a failed job)
 - `mode=set_config&section=&keyword=&value=`
+
+### Write (curated, documented API shape — NOT yet live-executed)
+- `mode=queue&name=pause&value=<nzo_id>` / `name=resume` (per-job
+  pause/resume — `sabnzbd_pause_job` / `sabnzbd_resume_job`)
+- `mode=queue&name=change_cat&value=<nzo_id>&category=<cat>`
+  (`sabnzbd_queue_change_category`)
+- `mode=queue&name=priority&value=<nzo_id>&priority=<n>`
+  (`sabnzbd_queue_change_priority`)
+- `mode=addlocalfile&name=<server-side path>` (`sabnzbd_add_local_file`)
 
 ### Modes that exist but NOT implemented in tools
 - `mode=addfile` (multipart NZB upload — needs form-data; reachable via

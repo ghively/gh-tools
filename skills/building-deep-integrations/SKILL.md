@@ -77,6 +77,10 @@ drive it, and **slash-command workflows** for multi-step jobs. See
 - Prefer **reads** while building. For writes, verify the method *exists* and its
   param shape via safe probing (empty/fake params → distinguish "no such method" from
   "method exists, needs params") without mutating anything.
+- Capture the verification as **`mcp/_smoketest.py`** — a rerunnable script (same
+  uv-script header as the server) that imports the server, calls every curated read
+  tool live, and prints the result shapes. Never call confirm-gated writes from it.
+  See `references/plugin-scaffold.md` for the pattern.
 
 ## Phase 3 — Systematic gap audit (this is where depth comes from)
 
@@ -137,8 +141,9 @@ technique (including the XHR-interceptor snippet) is in
 ## Phase 7 — Publish to gh-tools (always)
 
 Every finished integration is published to **`ghively/gh-tools`** — the standing home
-for control-integration plugins (synology-nas, gitlab, emby, unifi, comfyui-control
-live there). Do not put integrations in other repos or leave them local-only.
+for control-integration plugins (15 live there: synology-nas, gitlab, emby, unifi,
+radarr/sonarr/sabnzbd/tdarr-control, unraid-control, comfyui-control, …). Do not put
+integrations in other repos or leave them local-only.
 
 1. Working clone: `~/projects/gh-tools` (if absent: `gh repo clone ghively/gh-tools
    ~/projects/gh-tools`; set `git config user.email/user.name` on fresh clones — SSH
@@ -146,17 +151,21 @@ live there). Do not put integrations in other repos or leave them local-only.
 2. Plugin goes in its **own subdirectory** (`./<plugin-name>/`) with the scaffold from
    `references/plugin-scaffold.md`. Never commit `config.local.json` (gitignore it).
 3. Append an entry to `.claude-plugin/marketplace.json` (`source: "./<plugin-name>"`,
-   honest description noting what was live-verified).
-4. Commit (conventional style) + push to main.
-5. Make it installable NOW: `git -C ~/.claude/plugins/marketplaces/gh-tools pull`,
+   honest description noting what was live-verified, `version` matching plugin.json).
+4. The repo also serves Hermes Agent: run `python3 scripts/sync_hermes_skills.py` to
+   refresh the generated repo-root `skills/` mirror (never edit it by hand), and add
+   the server to `hermes.mcp.example.yaml` (command/args copied from `.mcp.json`).
+5. Commit (conventional style) + push to main.
+6. Make it installable NOW: `git -C ~/.claude/plugins/marketplaces/gh-tools pull`,
    then copy the local `config.local.json` into that clone's plugin dir (it is
    git-ignored, so it never arrives on its own — without this step the installed
    MCP server starts with defaults and host-side tools error).
-6. Tell the user: `/plugin install <plugin-name>@gh-tools` → `/reload-plugins`.
+7. Tell the user: `/plugin install <plugin-name>@gh-tools` → `/reload-plugins`.
 
 Updating an existing integration = same flow: edit in `~/projects/gh-tools/<plugin>`,
-bump the version in `.claude-plugin/plugin.json` AND the marketplace entry, commit,
-push, pull the marketplace clone.
+bump the version in `.claude-plugin/plugin.json` AND the marketplace entry, re-run
+`sync_hermes_skills.py` if any SKILL.md/references changed, commit, push, pull the
+marketplace clone.
 
 ## Definition of done
 

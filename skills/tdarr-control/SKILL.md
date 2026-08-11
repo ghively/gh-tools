@@ -65,7 +65,7 @@ that beat guessing.
 
 ## Mental model
 
-Tdarr is one POST-based HTTP API under `/api/v2/<endpoint>` (~67 endpoints).
+Tdarr is one POST-based HTTP API under `/api/v2/<endpoint>` (65 endpoints).
 Almost every endpoint takes POST with body `{"data": {...}}` — the client
 wraps your params in `data` automatically.
 
@@ -241,6 +241,8 @@ node config (workerLimits, schedule, gpuSelect, etc.).
 | Statistics (Tdarr score, etc.) | `tdarr_db(mode="getAll", collection="StatisticsJSONDB")` |
 | Global settings (all advanced features) | `tdarr_db(mode="getAll", collection="SettingsGlobalJSONDB")` |
 | Node settings (workerLimits, schedule, gpuSelect) | `tdarr_db(mode="getById", collection="NodeJSONDB", doc_id=...)` |
+| List libraries + their settings | `tdarr_libraries()` |
+| Staging/review queue (staged transcodes) | `tdarr_staged_files(limit=)` |
 | Search files | `tdarr_search_db(string=, less_than_gb=, greater_than_gb=)` |
 | Scan files (write) | `tdarr_scan_files(scan_config=, confirm=)` |
 | Filescanner status | `tdarr_filescanner_status(db_name)` |
@@ -252,6 +254,7 @@ node config (workerLimits, schedule, gpuSelect, etc.).
 | Search flow templates | `tdarr_search_flow_templates(string=)` |
 | Install community plugin | `tdarr_install_plugin(plugin_id=, confirm=)` |
 | Read a plugin | `tdarr_read_plugin(plugin_id)` |
+| Create a local plugin | `tdarr_create_plugin(definition=, confirm=)` |
 | Delete a plugin | `tdarr_delete_plugin(plugin_id=, confirm=)` |
 | Sync/update all plugins | `tdarr_sync_plugins(confirm=)`, `tdarr_update_plugins(confirm=)` |
 | Restart a node | `tdarr_restart_node(node_id=, confirm=)` |
@@ -260,10 +263,10 @@ node config (workerLimits, schedule, gpuSelect, etc.).
 | Cancel a worker item | `tdarr_cancel_worker_item(node_id, worker_type, confirm=)` |
 | Kill a worker (DANGER) | `tdarr_kill_worker(node_id, worker_type, confirm=, acknowledge="kill")` |
 | Backups | `tdarr_backup_status()`, `tdarr_backups()`, `tdarr_create_backup(confirm=)`, `tdarr_delete_backup(name, confirm=)` |
-| Direct DB access | `tdarr_db(mode, collection, doc_id, obj, confirm=)` |
+| Direct DB access (writes DOUBLY gated) | `tdarr_db(mode, collection, doc_id, obj, confirm=, acknowledge="<mode>")` |
 | DB collection list | `tdarr_collections()` |
 | Toggle folder watch | `tdarr_toggle_folder_watch(library_id, confirm=)` |
-| Codec excludes | `tdarr_add_video_codec_exclude(library_id, codec, confirm=)`, `tdarr_add_audio_codec_exclude(...)` |
+| Codec excludes | `tdarr_add_video_codec_exclude(library_id, codec, confirm=)`, `tdarr_add_audio_codec_exclude(...)`, `tdarr_remove_video_codec_exclude(...)`, `tdarr_remove_audio_codec_exclude(...)` |
 | FFmpeg/HandBrake help | `tdarr_run_help_command(mode="ffmpeg", text="-decoders")` |
 | Footprint reports (per-file transcode history) | `tdarr_list_footprint_reports(footprint_id=...)` |
 | Mark a file's verdict (transcode / ignore) | `tdarr_transcode_user_verdict(file_path, verdict=, confirm=)` |
@@ -431,8 +434,9 @@ See `library-and-nodes.md` for the full checklist.
   consequences before passing confirm.
 - DOUBLY-gated ops (`kill_worker`, `disconnect_node`, `kill_file_scanner`,
   `/cruddb` writes via `tdarr_db`) require `confirm=true` AND a typed
-  `acknowledge` token. Never pass the acknowledge token without explicit owner
-  approval AND a recovery plan.
+  `acknowledge` token (for `tdarr_db` the token is the mode name, e.g.
+  `acknowledge="removeAll"`). Never pass the acknowledge token without
+  explicit owner approval AND a recovery plan.
 - **Never transcode a file twice.** Always check the source codec first.
 - **Never strip HDR by accident.** HDR sources MUST have color_primaries/
   color_trc/colorspace flags in any ffmpeg command. See `workflows.md` #6.
@@ -454,6 +458,9 @@ See `library-and-nodes.md` for the full checklist.
   - `scan_files(scan_config)` — exact scanConfig shape.
   - `toggle_schedule(type)`, `transcode_user_verdict(verdict)`, and write
     modes of `tdarr_db` — always probe with `getAll`/`getById` first.
+  - `tdarr_staged_files`, `tdarr_create_plugin(definition)`, and
+    `tdarr_remove_video/audio_codec_exclude` — added after the 2026-07-20
+    verification; not yet exercised live.
 - **Hardware limits**: no AV1 encode on RTX 3060 (NVENC AV1 is RTX 40+).
 
 ## See also
