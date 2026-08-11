@@ -20,7 +20,7 @@ metadata:
     requires_tools: [oc_status]
     config:
       - {key: opencode.base_url, prompt: opencode serve base URL, default: "http://127.0.0.1:4096"}
-version: 0.4.1
+version: 0.4.2
 author: Gene Hively
 ---
 
@@ -29,7 +29,7 @@ author: Gene Hively
 You drive a live **opencode** install two ways, both exposed by the `opencode` MCP server:
 
 1. **HTTP server** (`opencode serve`) — the same REST+SSE API the TUI/desktop/IDE
-   clients use. ~162 operations. Reached via a **generic passthrough** (`oc_call` /
+   clients use. ~188 operations. Reached via a **generic passthrough** (`oc_call` /
    `oc_discover` / `oc_schema`) plus **curated tools** for the common jobs.
 2. **ACP** (Agent Client Protocol) — `oc_acp_prompt` spawns `opencode acp` and drives
    it as a JSON-RPC agent over stdio. This runs prompts **without needing a running
@@ -96,7 +96,7 @@ endpoint, `oc_schema("<operationId>")` to get its params, then `oc_call(...)`.
 
 **ACP connector** (see `references/acp.md`)
 - `oc_acp_probe(cwd)` — prove the ACP channel (handshake only, no model call, always safe)
-- `oc_acp_prompt(prompt, cwd, mode, files, permission, confirm, timeout)` — run one
+- `oc_acp_prompt(prompt, cwd, mode, model, files, permission, confirm, timeout)` — run one
   prompt as an ACP agent
 
 ## Safety — confirm-gate every write
