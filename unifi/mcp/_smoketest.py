@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env -S uv run --script
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = ["mcp>=1.4.0,<2.0.0", "httpx>=0.27"]
@@ -66,3 +66,9 @@ print(f"{'PASS' if not r.get('success') else 'FAIL'}  "
 r = U.unifi_device_restart("00:11:22:33:44:55")
 print(f"{'PASS' if not r.get('success') else 'FAIL'}  "
       f"{'unifi_device_restart gate':34} refused-without-confirm={not r.get('success')}")
+r = U.unifi_firewall_policy_set_enabled("000000000000000000000000", enabled=False)
+print(f"{'PASS' if not r.get('success') else 'FAIL'}  "
+      f"{'unifi_firewall_policy gate':34} refused-without-confirm={not r.get('success')}")
+r = U.unifi_device_port_cycle("00:11:22:33:44:55", 1)
+print(f"{'PASS' if not r.get('success') else 'FAIL'}  "
+      f"{'unifi_device_port_cycle gate':34} refused-without-confirm={not r.get('success')}")
