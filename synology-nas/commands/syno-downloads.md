@@ -17,7 +17,8 @@ Use the `synology` MCP tools to manage downloads.
    - "pause all" / "resume all" → collect the relevant task ids and call
      `synology_download_control(task_ids=[...], action="pause"|"resume")`.
    - "clean completed" / "remove <name>" → identify the matching task ids and,
-     **after confirming with the user**, call `synology_download_control(action="delete")`.
+     **after confirming with the user**, call
+     `synology_download_control(task_ids=[...], action="delete", confirm=True)`.
 
 Deleting tasks removes them from Download Station — confirm before deleting. Adding,
 pausing, and resuming are low-risk. Report the resulting task list after any change.

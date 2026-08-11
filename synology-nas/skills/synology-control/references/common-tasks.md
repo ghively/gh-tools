@@ -40,7 +40,8 @@ Call shape: `synology_call(api=..., method=..., version=<optional>, params={...}
 - Auto-update settings: `SYNO.Core.Upgrade.Setting` · `get`
 
 ## Storage extras (beyond `synology_storage`)
-- Per-share snapshots: `SYNO.Core.Share.Snapshot` · `list` · `params={"name":"<ShareName>"}`
+- Per-share snapshots: curated `synology_snapshots_list(share_name=...)`
+  (= `SYNO.Core.Share.Snapshot` · `list` · `params={"name":"<ShareName>"}`)
 - Share details/permissions: `SYNO.Core.Share.Permission` · `list` · `params={"name":"<ShareName>"}`
 - S.M.A.R.T. / disk health is included in `synology_storage`'s `disks[]`.
 
@@ -49,7 +50,8 @@ Call shape: `synology_call(api=..., method=..., version=<optional>, params={...}
 - USB storage/printers: filter `synology_list_apis("ExternalDevice")`.
 
 ## Logs
-- System log (with info/warn/error counts): `SYNO.Core.SyslogClient.Log` · `list` · `params={"limit":50}`
+- System log (with info/warn/error counts): curated `synology_logs(limit=50)`
+  (= `SYNO.Core.SyslogClient.Log` · `list` · `params={"limit":50}`)
 - Log Center entries: `SYNO.LogCenter.Log` · `list` · `params={"limit":50}`
 - Connection log: `SYNO.Core.SyslogClient.Log` with a log-type filter.
 
@@ -91,7 +93,8 @@ permissions**, change **network** config) return **error 403** even for an admin
 DSM gates these behind a password re-confirmation: call
 `SYNO.Core.User.PasswordConfirm` · `auth` · `params={"password": "..."}` to get a
 `SynoConfirmPWToken`, then include that token in the sensitive `set`/`create`/`delete`
-call. (The MCP client can implement this automatically once enabled.)
+call. The server automates this: pass `elevate=True` to `synology_call`, and the
+curated share/user/group/network write tools already do it for you.
 
 ## Known gaps on this box (honest list)
 - **VMM `SYNO.Virtualization.*`** — permission-denied (401/402/403). Full API control
@@ -101,7 +104,8 @@ call. (The MCP client can implement this automatically once enabled.)
 - **Firewall individual rules** — read/write via `SYNO.Core.Security.Firewall.Rules`
   `load`/`save` (needs the right `profile` id param), not `list`/`get`/`set`. Firewall
   on/off + profiles work.
-- **Task Scheduler** — `get`/`create` exist but the `list` method is elusive; partial.
+- **Task Scheduler** — listing works via curated `synology_scheduler_list`
+  (`SYNO.Core.TaskScheduler` · `list` · **v3**, not max version); create/edit is partial.
 - **Send a notification** — notification *config* is readable; a one-off send method
   isn't wired.
 - **Container Manager `SYNO.Docker.*`** — only while the package runs (start it first).

@@ -15,7 +15,7 @@ Use the `synology` MCP tools to report on storage. Read-only.
 3. **Shared folders** — `synology_shares_list`; list shares with their volume and note
    any that are encrypted or hidden.
 4. **Snapshots (optional)** — if `$ARGUMENTS` names a share, list its snapshots via
-   `synology_call(api="SYNO.Core.Share.Snapshot", method="list", params={"name":"$ARGUMENTS"})`.
+   `synology_snapshots_list(share_name="$ARGUMENTS")`.
 
 If the user wants to free space, offer to run `/syno-find-large` to locate big files.
 
