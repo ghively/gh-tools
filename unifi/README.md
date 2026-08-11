@@ -17,8 +17,9 @@ UniFi console over the Network API. Built and tested against a **UniFi Dream Rou
     routing, traffic rules, Wi-Fi connectivity diagnostics, an aggregated
     dashboard, events, alarms, settings, statistics, and speedtests.
   - **Confirm-gated write tools** — block/unblock/reconnect a client, restart/locate
-    a device, enable/disable a WLAN, port-forward, or traffic rule, and run a
-    speedtest. Every mutating tool refuses unless called with `confirm=True`.
+    a device, power-cycle a PoE port, enable/disable a WLAN, port-forward, traffic
+    rule, or zone firewall policy, and run a speedtest. Every mutating tool refuses
+    unless called with `confirm=True`.
 - **Skill** (`skills/unifi-control/`) — teaches Claude how to drive the server, with
   a categorized **API map** of this console, verified **task recipes**, and the
   **auth/conventions** reference (CSRF, error vocabulary, the zone-firewall quirk,
@@ -35,7 +36,7 @@ UniFi console over the Network API. Built and tested against a **UniFi Dream Rou
    Full Management. `config.local.json` is git-ignored. Any field can instead be set
    via environment variables (`UNIFI_HOST`, `UNIFI_PORT`, `UNIFI_HTTPS`,
    `UNIFI_USERNAME`, `UNIFI_PASSWORD`, `UNIFI_API_KEY`, `UNIFI_SITE`,
-   `UNIFI_VERIFY_SSL`), which override the file.
+   `UNIFI_VERIFY_SSL`, `UNIFI_TIMEOUT`), which override the file.
 2. **Runtime.** The MCP server launches via [`uv`](https://docs.astral.sh/uv/)
    (`uv run --script`), which auto-provisions its dependencies (`mcp`, `httpx`) in a
    cached environment — no manual `pip install`. `uv` must be on PATH.

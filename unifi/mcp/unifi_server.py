@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env -S uv run --script
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
@@ -14,7 +14,7 @@ Network application 10.4.x. The design is two-layered, mirroring the Synology
 plugin in this repo:
 
 * A GENERIC passthrough (`unifi_call` / `unifi_list_endpoints`) that can reach
-  *any* Network endpoint across all three API surfaces UniFi OS exposes â€” the
+  *any* Network endpoint across all three API surfaces UniFi OS exposes — the
   classic v1 API (`/proxy/network/api/s/{site}/...`), the newer v2 API
   (`/proxy/network/v2/api/site/{site}/...`), and the UniFi OS host API
   (`/api/...`). This is what makes "control everything" true rather than
@@ -114,7 +114,7 @@ def load_config() -> dict:
 API_ERR_HELP = {
     "api.err.Invalid": "Invalid parameters for this method.",
     "api.err.InvalidObject": "The request body/params were rejected (wrong shape).",
-    "api.err.LoginRequired": "Not authenticated â€” session expired or missing.",
+    "api.err.LoginRequired": "Not authenticated — session expired or missing.",
     "api.err.NoSiteContext": "The site does not exist or is not in context.",
     "api.err.ApGroupMissing": "This WLAN write needs an ap_group_ids array.",
     "api.err.NoPermission": "The logged-in account lacks permission for this.",
@@ -128,7 +128,7 @@ class UniFiError(RuntimeError):
         self.http_status = http_status
         help_txt = API_ERR_HELP.get(msg, "")
         ctx = f" [{path}]" if path else ""
-        detail = f" â€” {help_txt}" if help_txt else ""
+        detail = f" — {help_txt}" if help_txt else ""
         http = f" (HTTP {http_status})" if http_status else ""
         super().__init__(f"UniFi error: {msg}{http}{detail}{ctx}")
 
@@ -295,7 +295,7 @@ class UniFiClient:
             )
             # A rotated/expired session shows up as 401; re-auth once.
             if r.status_code == 401 and not _retried:
-                log("401 â€” re-authenticating and retrying once")
+                log("401 — re-authenticating and retrying once")
                 self.logged_in = False
                 self.csrf = None
                 self.login()
@@ -364,7 +364,7 @@ ENDPOINT_CATALOG = [
     ("cmd/stamgr", "v1", "POST",
      "Client actions: block-sta, unblock-sta, kick-sta, authorize-guest, unauthorize-guest, forget-sta"),
     ("cmd/devmgr", "v1", "POST",
-     "Device actions: restart, force-provision, set-locate, unset-locate, adopt, speedtest, speedtest-status, upgrade"),
+     "Device actions: restart, force-provision, set-locate, unset-locate, adopt, speedtest, speedtest-status, upgrade, power-cycle (PoE port)"),
     ("cmd/firewall", "v1", "POST", "Firewall manager actions"),
     ("cmd/backup", "v1", "POST", "Backup: list-backups, delete-backup, etc."),
     ("cmd/system", "v1", "POST", "System-level commands"),
@@ -376,7 +376,6 @@ ENDPOINT_CATALOG = [
     ("clients/active", "v2", "GET", "Active clients (v2 richer shape)"),
     ("clients/history", "v2", "GET", "Historical/known clients (v2)"),
     ("trafficrules", "v2", "GET/POST/PUT/DELETE", "Traffic rules (block/allow by app/domain)"),
-    ("trafficroutes", "v2", "GET/POST/PUT/DELETE", "Policy-based traffic routes (VPN routing)"),
     ("trafficroutes", "v2", "GET/POST/PUT/DELETE", "Policy-based traffic routes (VPN/WAN steering)"),
     ("firewall-policies", "v2", "GET/POST/PUT/DELETE", "Zone-based firewall policies (new UI)"),
     ("firewall/zone", "v2", "GET/POST/PUT/DELETE", "Firewall zones (curated: unifi_firewall_zones)"),
@@ -387,7 +386,7 @@ ENDPOINT_CATALOG = [
     ("sites/overview", "v2", "GET", "Overview across all sites"),
     ("port-forwarding", "v2", "GET/POST/PUT/DELETE", "Port forwards (v2 shape)"),
     ("ping/{mac}, ping-start/{mac}, ping-stop/{mac}", "v2", "GET/POST",
-     "Live per-client path ping â€” WEBSOCKET-DRIVEN; REST returns nulls, results stream over wss. Not curated."),
+     "Live per-client path ping — WEBSOCKET-DRIVEN; REST returns nulls, results stream over wss. Not curated."),
     # ---- UniFi OS host API (not site-scoped) ---- #
     ("/api/system", "host", "GET", "Console hardware/firmware/apps/storage/WAN state"),
     ("/api/users/self", "host", "GET", "The logged-in admin account"),
@@ -441,6 +440,8 @@ def unifi_status() -> dict:
         c = client()
         c.ensure_session()
         system = c.call("/api/system")
+        if not isinstance(system, dict):
+            system = {}
         health = _aslist(c.v1("stat/health"))
         subs = {h.get("subsystem"): h for h in health if isinstance(h, dict)}
         wan = subs.get("wan", {})
@@ -493,7 +494,7 @@ def unifi_list_endpoints(filter: str = "") -> dict:
 @mcp.tool()
 def unifi_call(path: str, method: str = "GET", surface: str = "auto",
                params: Optional[dict] = None, json: Optional[dict] = None) -> dict:
-    """THE universal tool â€” call any UniFi Network / UniFi OS endpoint. This reaches
+    """THE universal tool — call any UniFi Network / UniFi OS endpoint. This reaches
     every controllable feature, including ones without a curated wrapper.
 
     `surface` controls how `path` is resolved:
@@ -511,7 +512,7 @@ def unifi_call(path: str, method: str = "GET", surface: str = "auto",
       unifi_call("/api/system", surface="host")
       unifi_call("rest/wlanconf/<id>", method="PUT", json={"enabled": false})
 
-    Reads are safe. Writes (POST/PUT/DELETE) change the live network â€” confirm with
+    Reads are safe. Writes (POST/PUT/DELETE) change the live network — confirm with
     the user first."""
     try:
         c = client()
@@ -701,7 +702,7 @@ def unifi_wlans() -> dict:
 def unifi_firewall_rules() -> dict:
     """List classic firewall rules (rulesets like WAN_IN, LAN_IN): name, action,
     enabled, ruleset, and index. Empty on consoles using only the newer zone-based
-    firewall â€” see unifi_firewall_policies for those."""
+    firewall — see unifi_firewall_policies for those."""
     try:
         data = _aslist(client().v1("rest/firewallrule"))
         return ok({"count": len(data), "rules": data})
@@ -760,7 +761,7 @@ def unifi_routes() -> dict:
 
 @mcp.tool()
 def unifi_traffic_rules() -> dict:
-    """List traffic rules (block/allow traffic by app, domain, IP, or category â€”
+    """List traffic rules (block/allow traffic by app, domain, IP, or category —
     e.g. 'Block YouTube for kids'). This is the v2 API."""
     try:
         data = _aslist(client().v2("trafficrules"))
@@ -837,7 +838,7 @@ def unifi_rogue_aps() -> dict:
 
 @mcp.tool()
 def unifi_wifi_connectivity() -> dict:
-    """Wi-Fi connection-quality diagnostics (v2) â€” the primary tool for "why won't
+    """Wi-Fi connection-quality diagnostics (v2) — the primary tool for "why won't
     clients connect / why is Wi-Fi flaky". Returns the success ratios for each stage
     of association (association / authentication / DHCP / DNS), the total connection
     attempts and failure count, latency summary, and the RECENT FAILED connection
@@ -874,7 +875,7 @@ def unifi_wifi_connectivity() -> dict:
 
 @mcp.tool()
 def unifi_firewall_zones() -> dict:
-    """List firewall zones (v2) â€” the security zones (Internal, External, Gateway,
+    """List firewall zones (v2) — the security zones (Internal, External, Gateway,
     VPN, Hotspot, etc.) that the zone-based firewall policies act between. Shows each
     zone's name, key, whether it's a default zone, and how many networks are in it.
     Pairs with unifi_firewall_policies (policies are rules between two zones)."""
@@ -893,7 +894,7 @@ def unifi_firewall_zones() -> dict:
 
 @mcp.tool()
 def unifi_traffic_routes() -> dict:
-    """List policy-based traffic routes (v2) â€” per-client/network routing overrides,
+    """List policy-based traffic routes (v2) — per-client/network routing overrides,
     e.g. "send this device's traffic over the VPN" or WAN steering. Distinct from
     static routes (unifi_routes): these match on clients/apps/domains and steer to an
     interface. Empty if none configured."""
@@ -913,7 +914,7 @@ def unifi_traffic_routes() -> dict:
 
 @mcp.tool()
 def unifi_dashboard() -> dict:
-    """The aggregated overview dashboard (v2) â€” a single rich snapshot the UI home
+    """The aggregated overview dashboard (v2) — a single rich snapshot the UI home
     page uses: internet/WAN routability & activity, Wi-Fi doctor & connectivity
     summary, ISP metrics, most-active clients/APs/apps, radio activity/density, TX
     retries, upgradable device count, and traffic identification. Best one-call
@@ -928,7 +929,7 @@ def unifi_dashboard() -> dict:
 
 
 # ===========================================================================
-# WRITE / action tools â€” all confirm-gated. Each changes the live network.
+# WRITE / action tools — all confirm-gated. Each changes the live network.
 # ===========================================================================
 def _require_confirm(confirm: bool, what: str) -> Optional[dict]:
     if not confirm:
@@ -1054,6 +1055,52 @@ def unifi_traffic_rule_set_enabled(rule_id: str, enabled: bool, confirm: bool = 
             return {"success": False, "error": f"No traffic rule with _id {rule_id}"}
         target["enabled"] = enabled
         return ok(client().v2(f"trafficrules/{rule_id}", "PUT", json_body=target))
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+@mcp.tool()
+def unifi_firewall_policy_set_enabled(policy_id: str, enabled: bool,
+                                      confirm: bool = False) -> dict:
+    """Enable or disable a zone-based firewall policy by its _id (v2 PUT
+    firewall-policies). Get the _id from unifi_firewall_policies. Uses
+    read-modify-write (v2 requires the full object on PUT). Confirm-gated
+    (changes what traffic is allowed between zones)."""
+    guard = _require_confirm(confirm,
+                             f"{'ENABLE' if enabled else 'DISABLE'} firewall policy {policy_id}")
+    if guard:
+        return guard
+    try:
+        policies = _aslist(client().v2("firewall-policies"))
+        target = next((p for p in policies
+                       if isinstance(p, dict) and p.get("_id") == policy_id), None)
+        if not target:
+            return {"success": False, "error": f"No firewall policy with _id {policy_id}"}
+        if target.get("predefined"):
+            return {"success": False,
+                    "error": f"Firewall policy {policy_id} is predefined (system-managed) "
+                             f"and cannot be toggled via the API."}
+        target["enabled"] = enabled
+        return ok(client().v2(f"firewall-policies/{policy_id}", "PUT", json_body=target))
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+@mcp.tool()
+def unifi_device_port_cycle(mac: str, port_idx: int, confirm: bool = False) -> dict:
+    """Power-cycle a PoE switch port (cmd/devmgr power-cycle) — reboots whatever is
+    powered by that port (camera, AP, phone). `mac` is the SWITCH's MAC, `port_idx`
+    the port number. Find both via unifi_devices(mac=...) -> port_table.
+    Confirm-gated."""
+    guard = _require_confirm(confirm,
+                             f"POWER-CYCLE port {port_idx} on switch {mac} "
+                             f"(the powered device reboots)")
+    if guard:
+        return guard
+    try:
+        return ok(client().cmd("devmgr", {"cmd": "power-cycle",
+                                          "mac": mac.lower(),
+                                          "port_idx": int(port_idx)}))
     except Exception as e:  # noqa: BLE001
         return err(e)
 
