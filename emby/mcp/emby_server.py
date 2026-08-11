@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env -S uv run --script
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
@@ -32,14 +32,14 @@ Emby conventions this file encodes (all verified against the live server):
 * Paths work with or without the `/emby` prefix; we use the bare form.
 * List queries return {"Items": [...], "TotalRecordCount": n}.
 * Durations/positions are TICKS: 1 tick = 100 ns; seconds = ticks / 10^7.
-* POST /System/Configuration (and /Items/{id}) expect the FULL object â€”
+* POST /System/Configuration (and /Items/{id}) expect the FULL object —
   posting a partial object silently resets omitted fields. All write tools
   here therefore GET the current object, merge the patch, and POST back.
 * User-scoped data (watched state, resume points, favorites) requires a
   UserId; tools default to the configured/first admin user.
 
 Destructive/disruptive writes are confirm-gated in code (`confirm=True`
-required). DELETE /Items can remove media FILES from disk â€” treat with care.
+required). DELETE /Items can remove media FILES from disk — treat with care.
 
 All logging goes to stderr; stdout is reserved for the MCP protocol.
 """
@@ -154,11 +154,23 @@ class EmbyClient:
         """Make a request; return parsed JSON, text, or None (204/empty)."""
         if not path.startswith("/"):
             path = "/" + path
-        resp = self._client.request(method.upper(), path, params=params, json=body)
+        try:
+            resp = self._client.request(method.upper(), path, params=params, json=body)
+        except httpx.TimeoutException as e:
+            # str() of httpx timeout errors is often empty — say what happened.
+            raise EmbyError(
+                f"Timeout ({type(e).__name__}) after {self.cfg['timeout']}s on "
+                f"{method} {path} — server slow or unreachable at {self.base}."
+            ) from e
+        except httpx.HTTPError as e:
+            raise EmbyError(
+                f"{type(e).__name__} on {method} {path}: "
+                f"{str(e) or 'connection failed'} (target {self.base})"
+            ) from e
         if resp.status_code == 401:
-            raise EmbyError("401 Unauthorized â€” the API key was rejected.")
+            raise EmbyError("401 Unauthorized — the API key was rejected.")
         if resp.status_code == 403:
-            raise EmbyError(f"403 Forbidden on {method} {path} â€” operation not allowed for this key.")
+            raise EmbyError(f"403 Forbidden on {method} {path} — operation not allowed for this key.")
         if resp.status_code >= 400:
             detail = resp.text[:400]
             raise EmbyError(f"HTTP {resp.status_code} on {method} {path}: {detail}")
@@ -296,7 +308,9 @@ def _finish(data: Any) -> Any:
 
 
 def _err(e: Exception) -> dict:
-    return {"error": str(e)}
+    # Some exceptions (notably httpx timeouts) stringify to "" — never return
+    # an empty error message.
+    return {"error": str(e).strip() or type(e).__name__}
 
 
 def _parse_json_arg(name: str, value: str) -> Any:
@@ -328,7 +342,7 @@ mcp = FastMCP("emby")
 # --------------------------------------------------------------------------- #
 @mcp.tool()
 def emby_call(method: str, path: str, params: str = "", body: str = "") -> Any:
-    """Call ANY Emby REST operation â€” the generic passthrough that reaches the
+    """Call ANY Emby REST operation — the generic passthrough that reaches the
     server's entire API surface (~484 operations). Use emby_list_endpoints to
     find the operation first.
 
@@ -444,13 +458,13 @@ def emby_get_config(section: str = "") -> Any:
 def emby_set_config(patch: str, section: str = "", confirm: bool = False) -> Any:
     """Update server configuration SAFELY: reads the current (full) config
     object, merges your patch keys over it, and POSTs the full object back.
-    (Emby resets omitted fields if you POST a partial object â€” never do that.)
+    (Emby resets omitted fields if you POST a partial object — never do that.)
 
     Args:
         patch: JSON object string with just the keys to change,
             e.g. '{"EnableThrottling": true}'.
         section: Empty for the main config, or a named store like "encoding".
-        confirm: Must be true â€” this changes live server behavior.
+        confirm: Must be true — this changes live server behavior.
     """
     try:
         change = _parse_json_arg("patch", patch)
@@ -579,7 +593,7 @@ def emby_run_task(task_id: str, action: str = "start", confirm: bool = False) ->
     Args:
         task_id: The task id.
         action: "start" or "stop".
-        confirm: Must be true â€” tasks can be heavy (full library scans).
+        confirm: Must be true — tasks can be heavy (full library scans).
     """
     try:
         if action not in ("start", "stop"):
@@ -679,7 +693,7 @@ def emby_update_user_policy(user: str, patch: str, confirm: bool = False) -> Any
 
 @mcp.tool()
 def emby_create_user(name: str, confirm: bool = False) -> Any:
-    """Create a new user (no password â€” set one after with
+    """Create a new user (no password — set one after with
     emby_set_user_password; tune access with emby_update_user_policy)."""
     try:
         if not confirm:
@@ -830,7 +844,7 @@ def emby_items(
     user: str = "",
     is_missing: str = "",
 ) -> Any:
-    """Flexible library query â€” the workhorse for browsing/reporting.
+    """Flexible library query — the workhorse for browsing/reporting.
 
     Args:
         include_types: CSV, e.g. "Movie", "Series", "Episode", "BoxSet".
@@ -953,7 +967,7 @@ def emby_refresh_item(item_id: str, replace_all_metadata: bool = False,
 
 @mcp.tool()
 def emby_delete_item(item_id: str, confirm: bool = False) -> Any:
-    """DELETE an item â€” this removes the underlying MEDIA FILES from disk,
+    """DELETE an item — this removes the underlying MEDIA FILES from disk,
     not just the database entry. Requires confirm=true after the user has
     explicitly named the item and approved."""
     try:
@@ -971,7 +985,7 @@ def emby_delete_item(item_id: str, confirm: bool = False) -> Any:
 
 @mcp.tool()
 def emby_set_userdata(item_id: str, user: str = "", played: str = "",
-                      favorite: str = "") -> Any:
+                      favorite: str = "", confirm: bool = False) -> Any:
     """Set per-user item state: watched/unwatched and/or favorite flag.
 
     Args:
@@ -979,9 +993,17 @@ def emby_set_userdata(item_id: str, user: str = "", played: str = "",
         user: User name/id (default: configured admin).
         played: "true" to mark watched, "false" to mark unwatched, "" to skip.
         favorite: "true"/"false"/"" likewise.
+        confirm: Must be true (marking watched also clears any resume point).
     """
     try:
         u = CLIENT.resolve_user(user)
+        if not played and not favorite:
+            raise EmbyError("Nothing to do — pass played and/or favorite.")
+        if not confirm:
+            wants = ", ".join(
+                f"{k}={v}" for k, v in (("played", played), ("favorite", favorite)) if v)
+            return _need_confirm(
+                f"set {wants} on item {item_id} for user '{u['Name']}'")
         out: dict[str, Any] = {"user": u["Name"], "item_id": item_id}
         if played:
             if _truthy(played):
@@ -995,8 +1017,6 @@ def emby_set_userdata(item_id: str, user: str = "", played: str = "",
             else:
                 CLIENT.request("DELETE", f"/Users/{u['Id']}/FavoriteItems/{item_id}")
             out["favorite"] = _truthy(favorite)
-        if len(out) == 2:
-            raise EmbyError("Nothing to do â€” pass played and/or favorite.")
         return out
     except Exception as e:  # noqa: BLE001
         return _err(e)
@@ -1082,7 +1102,7 @@ def emby_playback_control(session_id: str, command: str,
         session_id: Target session.
         command: "Pause", "Unpause", "PlayPause", "Stop", "Seek",
             "NextTrack", "PreviousTrack".
-        seek_seconds: Required for "Seek" â€” absolute position in seconds.
+        seek_seconds: Required for "Seek" — absolute position in seconds.
         confirm: Must be true (this changes what someone is watching).
     """
     try:
@@ -1291,7 +1311,7 @@ def _plugin_config_target(plugin: str) -> tuple[str, str]:
 
     candidates: list[str] = []
     if match:
-        # legacy route first â€” some third-party plugins do implement it
+        # legacy route first — some third-party plugins do implement it
         try:
             CLIENT.request("GET", f"/Plugins/{match['Id']}/Configuration")
             return "legacy", f"/Plugins/{match['Id']}/Configuration"
@@ -1330,7 +1350,7 @@ def emby_plugin_config(plugin: str = "", patch: str = "", confirm: bool = False)
         plugin: Plugin name ("Open Subtitles"), plugin id, or named config
             store key ("opensubtitles"). EMPTY: list every dashboard config
             page so you can see what's configurable.
-        patch: Empty to READ. Or a JSON object of keys to change â€” the full
+        patch: Empty to READ. Or a JSON object of keys to change — the full
             current config is round-tripped with your patch merged.
         confirm: Must be true when writing.
     """
@@ -1375,7 +1395,7 @@ def _franchise_key(name: str) -> str:
     """Normalize a movie name to a franchise base for grouping."""
     import re as _re
     n = name.lower().strip()
-    n = _re.sub(r"\s*[:\-â€“]\s.*$", "", n)                      # drop subtitle
+    n = _re.sub(r"\s*[:\-–]\s.*$", "", n)                      # drop subtitle
     n = _re.sub(r"\s+(\d+|i{2,3}|iv|v|vi{0,3}|ix|x)$", "", n)  # trailing number/roman
     for suf in _FRANCHISE_STRIP:
         idx = n.find(suf)
@@ -1394,17 +1414,17 @@ def emby_collection(action: str, name: str = "", collection_id: str = "",
 
     Args:
         action:
-            "list" â€” all collections (with child counts).
-            "items" â€” contents of collection_id.
-            "for_item" â€” which collections contain item_ids (reverse lookup).
-            "create" â€” new collection `name`, optionally seeded with item_ids
+            "list" — all collections (with child counts).
+            "items" — contents of collection_id.
+            "for_item" — which collections contain item_ids (reverse lookup).
+            "create" — new collection `name`, optionally seeded with item_ids
                 CSV OR with a query (genres/years/person/studios/filters).
-            "add" / "remove" â€” modify collection_id membership (item_ids CSV).
-            "sync_query" â€” top up collection_id with every item matching the
+            "add" / "remove" — modify collection_id membership (item_ids CSV).
+            "sync_query" — top up collection_id with every item matching the
                 query that isn't already a member (smart-collection refresh).
-            "find_franchises" â€” scan the library for movie-name franchises
+            "find_franchises" — scan the library for movie-name franchises
                 (e.g. 'Sonic the Hedgehog 1/2/3') not yet collected; returns
-                ready-to-create groups. Name-heuristic based â€” ALWAYS have the
+                ready-to-create groups. Name-heuristic based — ALWAYS have the
                 user review groups before creating. (TMDb collection names are
                 not exposed by Emby 4.7.)
         include_types/genres/years/person/studios/filters/search_term: query
@@ -1536,7 +1556,7 @@ def emby_collection(action: str, name: str = "", collection_id: str = "",
                             "item_ids": ",".join(g["ids"])})
             return _finish({
                 "candidate_groups": out,
-                "note": "Name-heuristic groups â€” REVIEW WITH THE USER, then "
+                "note": "Name-heuristic groups — REVIEW WITH THE USER, then "
                         "create the approved ones via action=create with "
                         "item_ids. After creating, emby_refresh_item on the "
                         "new collection pulls TMDb collection art/overview."})
@@ -1621,13 +1641,13 @@ def emby_identify(item_id: str, action: str = "search", name: str = "",
                   result_json: str = "", replace_images: bool = True,
                   confirm: bool = False) -> Any:
     """Re-match an item against metadata providers (the dashboard 'Identify'
-    feature) â€” the fix for wrongly-matched movies/series/collections.
+    feature) — the fix for wrongly-matched movies/series/collections.
 
     Args:
         item_id: The item to identify.
         action: "providers" (which external ids this item type supports) |
             "search" (query providers; returns candidate matches) |
-            "apply" (adopt one candidate â€” pass its full JSON back).
+            "apply" (adopt one candidate — pass its full JSON back).
         name / year: Search criteria (default: the item's current name).
         provider_ids: Optional JSON object for exact lookup,
             e.g. '{"Imdb": "tt1375666"}' or '{"Tmdb": "27205"}'.
@@ -1666,7 +1686,7 @@ def emby_identify(item_id: str, action: str = "search", name: str = "",
             if not confirm:
                 return _need_confirm(
                     f"re-identify '{item.get('Name')}' as '{result.get('Name')}' "
-                    f"({result.get('ProductionYear')}, {result.get('ProviderIds')}) â€” "
+                    f"({result.get('ProductionYear')}, {result.get('ProviderIds')}) — "
                     f"this REWRITES its metadata{' and artwork' if replace_images else ''}")
             CLIENT.request("POST", f"/Items/RemoteSearch/Apply/{item_id}",
                            params={"ReplaceAllImages": replace_images}, body=result)
@@ -1751,7 +1771,7 @@ def emby_subtitles(item_id: str, action: str = "list", language: str = "eng",
                    subtitle_id: str = "", index: int = -1,
                    confirm: bool = False) -> Any:
     """Manage subtitles for a video (search/download uses the installed
-    subtitle providers â€” Open Subtitles is configured on this server).
+    subtitle providers — Open Subtitles is configured on this server).
 
     Args:
         item_id: The movie/episode.
@@ -1824,7 +1844,7 @@ def emby_bulk_update(patch: str, include_types: str = "", parent_id: str = "",
                      person: str = "", studios: str = "", filters: str = "",
                      lock_edited: bool = True, limit: int = 100,
                      confirm: bool = False) -> Any:
-    """Apply one metadata patch to EVERY item matching a query â€” the Metadata
+    """Apply one metadata patch to EVERY item matching a query — the Metadata
     Manager's bulk-edit, scriptable. Example: tag all 80s horror movies
     '{"Tags": ["retro-horror"]}'.
 
@@ -1838,7 +1858,7 @@ def emby_bulk_update(patch: str, include_types: str = "", parent_id: str = "",
             so future metadata refreshes don't undo the edit (recommended).
         limit: Safety cap on affected items (default 100).
         confirm: Must be true. WITHOUT confirm this returns the full list of
-            items that WOULD be edited â€” always show it to the user first.
+            items that WOULD be edited — always show it to the user first.
     """
     try:
         change = _parse_json_arg("patch", patch)
@@ -1894,7 +1914,7 @@ def emby_versions(action: str, item_ids: str = "", scan_limit: int = 1000,
     library entry (Emby's 'Merge versions' / 'Alternate sources' feature).
 
     Args:
-        action: "find_duplicates" (scan movies sharing a TMDb/IMDb id â€” merge
+        action: "find_duplicates" (scan movies sharing a TMDb/IMDb id — merge
             candidates) | "list" (versions of one item) | "merge" (group
             item_ids CSV into one entry) | "split" (un-merge item_ids back
             into separate entries).
@@ -1977,7 +1997,7 @@ def emby_sync_jobs(action: str, target_id: str = "", item_ids: str = "",
                    quality: str = "", container: str = "", bitrate: int = 0,
                    unwatched_only: bool = False, job_id: str = "",
                    confirm: bool = False) -> Any:
-    """Sync/downloads & media CONVERSION jobs (Emby Premiere â€” active here).
+    """Sync/downloads & media CONVERSION jobs (Emby Premiere — active here).
     Conversion = a sync job targeting "originalmediafolder" (new file next to
     the original) or "originalmediafolderreplace" (REPLACES the original).
 
@@ -1992,7 +2012,7 @@ def emby_sync_jobs(action: str, target_id: str = "", item_ids: str = "",
         unwatched_only: Sync only unwatched items.
         job_id: For cancel.
         confirm: Required for create/cancel. Creating a
-            'originalmediafolderreplace' job OVERWRITES source files â€” warn
+            'originalmediafolderreplace' job OVERWRITES source files — warn
             loudly.
     """
     try:
@@ -2015,7 +2035,7 @@ def emby_sync_jobs(action: str, target_id: str = "", item_ids: str = "",
                 return _need_confirm(
                     f"create a sync/conversion job of items {item_ids} to target "
                     f"'{target_id}'"
-                    + (" â€” this target REPLACES THE ORIGINAL FILES with the "
+                    + (" — this target REPLACES THE ORIGINAL FILES with the "
                        "converted output!" if replace else ""))
             body: dict[str, Any] = {"TargetId": target_id,
                                     "ItemIds": _csv(item_ids), "UserId": uid,
@@ -2050,13 +2070,13 @@ def emby_library_manage(action: str, name: str = "", collection_type: str = "",
                         options_patch: str = "", refresh: bool = False,
                         confirm: bool = False) -> Any:
     """Create/delete/rename libraries, manage their folders, and edit
-    LibraryOptions â€” the full library-management surface.
+    LibraryOptions — the full library-management surface.
 
     Args:
         action: "create" | "delete" | "rename" | "add_path" | "remove_path" |
             "get_options" | "update_options".
         name: The library name (all actions).
-        collection_type: For create â€” the COMPLETE list this server's wizard
+        collection_type: For create — the COMPLETE list this server's wizard
             offers (extracted from its own UI code, 4.7.14): "movies",
             "tvshows", "music", "musicvideos", "homevideos" (videos+photos),
             "audiobooks", "books" (ebooks AND comics: epub/pdf/cbz/cbr),
@@ -2065,7 +2085,7 @@ def emby_library_manage(action: str, name: str = "", collection_type: str = "",
         path: For create/add_path/remove_path: the server-side folder path.
         new_name: For rename.
         options_patch: For update_options: JSON object of LibraryOptions keys
-            to change (e.g. '{"EnableRealtimeMonitor": true}') â€” the full
+            to change (e.g. '{"EnableRealtimeMonitor": true}') — the full
             options object is round-tripped.
         refresh: Trigger a library scan after the change.
         confirm: Required for every action except get_options.
@@ -2103,7 +2123,7 @@ def emby_library_manage(action: str, name: str = "", collection_type: str = "",
                     f"DELETE library '{vf['Name']}' (folders {vf.get('Locations')} "
                     "stay on disk, but the library and its metadata are removed)")
             # 4.7 gotcha (proven live): the route 500s unless the folder's
-            # Guid is passed as Id â€” Name alone is not enough.
+            # Guid is passed as Id — Name alone is not enough.
             CLIENT.request("DELETE", "/Library/VirtualFolders",
                            params={"Id": vf["Guid"], "Name": vf["Name"],
                                    "RefreshLibrary": refresh})
@@ -2170,7 +2190,7 @@ def emby_display_prefs(user: str = "", client: str = "emby", patch: str = "",
     Args:
         user: User name/id (default: configured admin).
         client: "emby" (web/apps), "emby.tv" etc.
-        patch: Empty to READ. Or a JSON object merged into CustomPrefs â€”
+        patch: Empty to READ. Or a JSON object merged into CustomPrefs —
             home rows: {"homesection0": "resume", "homesection1": "nextup",
             "homesection2": "latestmedia", ...} with values: "smalllibrarytiles"
             (My Media), "librarybuttons", "resume" (Continue Watching),
@@ -2178,7 +2198,7 @@ def emby_display_prefs(user: str = "", client: str = "emby", patch: str = "",
             "none" (hide), "" (server default). Also: "accentColor",
             "skipForwardLength"/"skipBackLength" (ms), "enableLogoAsTitle".
             Top-level DisplayPreferences fields (e.g. "ShowBackdrop") can be
-            patched too â€” keys are routed automatically.
+            patched too — keys are routed automatically.
         confirm: Required when writing.
     """
     try:
@@ -2350,8 +2370,8 @@ def emby_livetv_guide_provider(action: str, provider_type: str = "xmltv",
 
     Args:
         action: "list" | "available" | "add" | "delete".
-        provider_type: For add: "xmltv" (XMLTV file/URL â€” typical for IPTV) or
-            "embygn" (Emby Guide Data â€” Premiere, US/CA broadcast lineups).
+        provider_type: For add: "xmltv" (XMLTV file/URL — typical for IPTV) or
+            "embygn" (Emby Guide Data — Premiere, US/CA broadcast lineups).
         path: For xmltv: the XMLTV guide file path or URL (.xml, may be .gz).
         listings_id: For embygn: the lineup id.
         country: For embygn.
@@ -2402,12 +2422,16 @@ def emby_livetv_channels(search: str = "", limit: int = 50,
     data exists). include_disabled=True uses the management view that also
     shows channels hidden from users."""
     try:
+        # When searching, fetch a wide window and filter — otherwise the filter
+        # would only see the first `limit` channels of the lineup.
+        fetch_limit = 2000 if search else limit
+        fetch_start = 0 if search else start_index
         if include_disabled:
             data = CLIENT.request("GET", "/LiveTv/Manage/Channels",
-                                  params={"Limit": limit, "StartIndex": start_index})
+                                  params={"Limit": fetch_limit, "StartIndex": fetch_start})
         else:
             uid = CLIENT.resolve_user(user)["Id"]
-            params: dict[str, Any] = {"Limit": limit, "StartIndex": start_index,
+            params: dict[str, Any] = {"Limit": fetch_limit, "StartIndex": fetch_start,
                                       "UserId": uid, "AddCurrentProgram": True}
             data = CLIENT.request("GET", "/LiveTv/Channels", params=params)
         items = data.get("Items", [])
@@ -2415,6 +2439,7 @@ def emby_livetv_channels(search: str = "", limit: int = 50,
             s = search.lower()
             items = [c for c in items if s in (c.get("Name") or "").lower()
                      or s == str(c.get("ChannelNumber") or c.get("Number") or "")]
+            items = items[start_index:start_index + limit]
         return {"TotalRecordCount": data.get("TotalRecordCount"),
                 "Items": [{"Id": c.get("Id"), "Number": c.get("ChannelNumber") or c.get("Number"),
                            "Name": c.get("Name"),
@@ -2467,7 +2492,7 @@ def emby_livetv_guide(channel_ids: str = "", hours: int = 12, search: str = "",
 @mcp.tool()
 def emby_livetv_dvr(action: str, program_id: str = "", timer_id: str = "",
                     series: bool = False, confirm: bool = False) -> Any:
-    """DVR: recordings, timers, and scheduling (requires Emby Premiere â€”
+    """DVR: recordings, timers, and scheduling (requires Emby Premiere —
     active on this server).
 
     Args:
@@ -2524,7 +2549,7 @@ def main() -> None:
     if not CONFIG["host"] or not CONFIG["api_key"]:
         log("FATAL: host and api_key must be set (config.local.json or EMBY_HOST/EMBY_API_KEY)")
         sys.exit(1)
-    log(f"starting â€” target {CLIENT.base}")
+    log(f"starting — target {CLIENT.base}")
     mcp.run()
 
 

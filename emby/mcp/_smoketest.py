@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env -S uv run --script
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = ["mcp>=1.4.0,<2.0.0", "httpx>=0.27"]
@@ -168,6 +168,7 @@ if isinstance(col, dict) and col.get("Items"):
 show("gate emby_collection(create+query)", E.emby_collection("create", name="smoke", genres="Horror"), expect_gate=True)
 show("gate emby_display_prefs(write)", E.emby_display_prefs(patch='{"homesection0": "resume"}'), expect_gate=True)
 show("gate emby_task_triggers(write)", E.emby_task_triggers(task_id, '[]'), expect_gate=True)
+show("gate emby_set_userdata", E.emby_set_userdata(iid, played="true"), expect_gate=True)
 
 # validation-only (no flags -> friendly error, no mutation)
 res = E.emby_set_userdata("x")
