@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env -S uv run --script
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
@@ -47,11 +47,18 @@ tools = [
     ("sabnzbd_get_config categories", lambda: server.sabnzbd_get_config(section="categories")),
     ("sabnzbd_list_modes (R)",        lambda: server.sabnzbd_list_modes(rw="R")),
     ("sabnzbd_list_modes (W)",        lambda: server.sabnzbd_list_modes(rw="W")),
+    ("sabnzbd_categories",            server.sabnzbd_categories),
+    ("sabnzbd_scripts",               server.sabnzbd_scripts),
     # Confirm-gated tools with confirm=False: verify they decline cleanly
     ("sabnzbd_pause (decline)",       lambda: server.sabnzbd_pause()),
     ("sabnzbd_resume (decline)",      lambda: server.sabnzbd_resume()),
     ("sabnzbd_add_url (decline)",     lambda: server.sabnzbd_add_url(url="https://example.com/x.nzb")),
+    ("sabnzbd_pause_job (decline)",   lambda: server.sabnzbd_pause_job(nzo_id="SABnzbd_nzo_fake")),
+    ("sabnzbd_resume_job (decline)",  lambda: server.sabnzbd_resume_job(nzo_id="SABnzbd_nzo_fake")),
+    ("sabnzbd_delete_jobs (decline)", lambda: server.sabnzbd_delete_jobs(nzo_ids=["SABnzbd_nzo_fake"])),
+    ("sabnzbd_history_clear (decline)", lambda: server.sabnzbd_history_clear(failed_only=True)),
     ("sabnzbd_restart (decline)",     lambda: server.sabnzbd_restart(confirm=True, acknowledge="nope")),
+    ("sabnzbd_shutdown (decline)",    lambda: server.sabnzbd_shutdown(confirm=True, acknowledge="nope")),
 ]
 
 ok = 0

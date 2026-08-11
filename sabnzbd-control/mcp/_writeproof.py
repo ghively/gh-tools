@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env -S uv run --script
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
@@ -39,7 +39,7 @@ print(f"  paused before: {before.get('paused')}")
 print(f"  queue size before: {before.get('noofslots')}")
 was_paused = bool(before.get("paused"))
 
-step("1. sabnzbd_pause(confirm=True) â€” pause the queue")
+step("1. sabnzbd_pause(confirm=True) — pause the queue")
 result = server.sabnzbd_pause(confirm=True)
 print(f"  result: {result}")
 
@@ -50,7 +50,7 @@ during = server.sabnzbd_status()
 print(f"  paused during: {during.get('paused')}")
 assert during.get("paused") is True, "pause did not take effect"
 
-step("3. sabnzbd_resume(confirm=True) â€” restore original state")
+step("3. sabnzbd_resume(confirm=True) — restore original state")
 result = server.sabnzbd_resume(confirm=True)
 print(f"  result: {result}")
 
@@ -65,5 +65,5 @@ print(f"  queue size before: {before.get('noofslots')}")
 print(f"  queue size after:  {after.get('noofslots')}")
 assert before.get("noofslots") == after.get("noofslots"), "queue size changed during proof"
 
-print("\n=== SABNZBD write-path proof: PAUSE âœ“ / VERIFY âœ“ / RESUME âœ“ / VERIFY âœ“ ===")
+print("\n=== SABNZBD write-path proof: PAUSE ✓ / VERIFY ✓ / RESUME ✓ / VERIFY ✓ ===")
 print(f"    Original state restored (was_paused={was_paused}, now_paused={after.get('paused')})")
