@@ -3,9 +3,18 @@
   "description": "Full control of a Radarr movie manager instance (v3+ REST API) from Claude Code. Bundles an MCP server authenticated with a Radarr API key (X-Api-Key header), exposing both a generic passthrough reaching every /api/v3 endpoint and curated tools for status, library (list/get/lookup/add/update/delete movie, collections, movie files), wanted missing/cutoff, calendar, queue, history, commands (search/refresh/rescan), quality profiles, root folders, tags, custom formats, notifications, download clients, indexers, import lists, blocklist, logs, system tasks & backups. Writes are confirm-gated. Tested against Radarr 6.3.0.10514.",
   "version": "0.3.0",
   "author": {
-    "name": "ghively"
+    "name": "Gene Hively"
   },
-  "keywords": ["radarr", "movies", "media", "servarr", "mcp", "homelab", "usenet", "torrent"],
+  "keywords": [
+    "radarr",
+    "movies",
+    "media",
+    "servarr",
+    "mcp",
+    "homelab",
+    "usenet",
+    "torrent"
+  ],
   "skills": "./skills/",
   "commands": "./commands/"
 }

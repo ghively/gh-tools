@@ -2,6 +2,7 @@
 # Install agent-opencode into ~/.config/opencode/
 # Idempotent: re-running updates in place.
 set -euo pipefail
+shopt -s nullglob   # empty globs expand to nothing, not a literal pattern
 
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEST="${HOME}/.config/opencode"
