@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env -S uv run --script
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = ["mcp>=1.4.0,<2.0.0", "httpx>=0.27", "websockets>=12"]
@@ -6,16 +6,16 @@
 """ComfyUI control MCP server v2.
 
 Layers:
-  * Generic passthrough (comfy_call / comfy_discover) â€” reaches every HTTP route.
-  * Curated generation suite â€” txt2img (+LoRA), img2img, inpaint, upscale,
+  * Generic passthrough (comfy_call / comfy_discover) — reaches every HTTP route.
+  * Curated generation suite — txt2img (+LoRA), img2img, inpaint, upscale,
     batch, LTX-Video txt2video; websocket-driven progress with per-node timings.
-  * Model management â€” search/download (HuggingFace, Civitai) straight into the
+  * Model management — search/download (HuggingFace, Civitai) straight into the
     host model store, delete (gated).
-  * Workflow power tools â€” extract the graph embedded in any ComfyUI PNG,
+  * Workflow power tools — extract the graph embedded in any ComfyUI PNG,
     re-run/remix it, install custom nodes (gated; restarts the service).
 
 Conventions (verified live against ComfyUI 0.26.0 @ gh-nvidia):
-  * No auth. Plain JSON. /object_info is ~1.4 MB â€” always filtered server-side.
+  * No auth. Plain JSON. /object_info is ~1.4 MB — always filtered server-side.
   * Disruptive actions are confirm-gated. Logs to stderr; stdout is MCP.
 """
 
@@ -77,7 +77,7 @@ def _object_info() -> dict:
 def _clip(payload) -> str:
     text = payload if isinstance(payload, str) else json.dumps(payload, indent=1)
     if len(text) > MAX_INLINE:
-        return text[:MAX_INLINE] + f"\nâ€¦[truncated, {len(text)} chars total â€” narrow the query]"
+        return text[:MAX_INLINE] + f"\n…[truncated, {len(text)} chars total — narrow the query]"
     return text
 
 
@@ -94,7 +94,7 @@ ROUTES = [
     ("GET", "/features", "server feature flags"),
     ("GET", "/extensions", "frontend extension JS files"),
     ("GET", "/embeddings", "embedding names"),
-    ("GET", "/object_info", "ALL node classes (1.4MB â€” use comfy_nodes instead)"),
+    ("GET", "/object_info", "ALL node classes (1.4MB — use comfy_nodes instead)"),
     ("GET", "/object_info/{node_class}", "one node class definition"),
     ("GET", "/models", "model folder names"),
     ("GET", "/models/{folder}", "files in a model folder"),
@@ -144,7 +144,7 @@ def comfy_discover(search: str = "") -> str:
     """List every ComfyUI HTTP route this server can reach (the full enumerated
     surface). Optional case-insensitive substring filter over path+note."""
     s = search.lower()
-    rows = [f"{m:6} {p}  â€” {n}" for m, p, n in ROUTES
+    rows = [f"{m:6} {p}  — {n}" for m, p, n in ROUTES
             if s in p.lower() or s in n.lower()]
     return "\n".join(rows) or "no route matches"
 
@@ -210,7 +210,7 @@ def comfy_nodes(search: str = "", node_class: str = "", limit: int = 40) -> str:
         if s in hay:
             hits.append(f"{name}  [{d.get('category','?')}]  {d.get('display_name','')}")
             if len(hits) >= limit:
-                hits.append(f"â€¦more â€” narrow the search ({len(info)} classes total)")
+                hits.append(f"…more — narrow the search ({len(info)} classes total)")
                 break
     return "\n".join(hits) or f"no match in {len(info)} node classes"
 
@@ -281,6 +281,8 @@ def _download(o: dict) -> str:
     r = CLIENT.get("/view", params={"filename": o["filename"],
                                     "subfolder": o.get("subfolder", ""),
                                     "type": ftype})
+    if r.status_code != 200:
+        raise RuntimeError(f"/view HTTP {r.status_code} for {o['filename']}")
     dest.write_bytes(r.content)
     return str(dest)
 
@@ -347,7 +349,7 @@ def _execute(graph: dict, timeout: float) -> str:
         pid, timeline, entry = asyncio.run(_run_ws(graph, timeout))
     except RuntimeError as e:
         return str(e)
-    except Exception as e:  # WS layer failed â€” degrade to plain polling
+    except Exception as e:  # WS layer failed — degrade to plain polling
         print(f"[comfyui] ws failed ({e}); polling", file=sys.stderr)
         r = CLIENT.post("/prompt", json={"prompt": graph})
         if r.status_code != 200:
@@ -355,7 +357,7 @@ def _execute(graph: dict, timeout: float) -> str:
         pid, timeline = r.json()["prompt_id"], []
         entry = _wait_poll(pid, timeout)
     if not entry:
-        return f"submitted prompt_id={pid}, still running after {timeout}s â€” comfy_history('{pid}')"
+        return f"submitted prompt_id={pid}, still running after {timeout}s — comfy_history('{pid}')"
     st = entry.get("status", {})
     if st.get("status_str") == "error":
         detail = [t for t in timeline if t.startswith("ERROR")] or \
@@ -410,7 +412,7 @@ def comfy_txt2img(prompt: str, negative: str = "", checkpoint: str = "",
     """Text-to-image. checkpoint defaults to the first installed image model;
     SD3-family gets TripleCLIPLoader automatically. loras: comma list of
     'name.safetensors:strength'. hires_scale (1.5-2.0): latent-space hires-fix
-    â€” upscale the latent, re-sample at denoise 0.25 with the same seed, decode
+    — upscale the latent, re-sample at denoise 0.25 with the same seed, decode
     tiled (forced regardless of tiled_vae); the projection mastering path.
     Returns local file paths + per-node timings."""
     checkpoint = _default_checkpoint(checkpoint)
@@ -458,7 +460,7 @@ def comfy_upscale(image: str, model: str = "", wait_timeout: int = 180) -> str:
     (comfy_model_search('4x upscale') -> comfy_model_download)."""
     ups = CLIENT.get("/models/upscale_models").json()
     if not ups:
-        return "no upscale models installed â€” comfy_model_download one into 'upscale_models' first"
+        return "no upscale models installed — comfy_model_download one into 'upscale_models' first"
     model = model or ups[0]
     g = G.upscale(_resolve_image(image), model)
     return _execute(g, wait_timeout)
@@ -469,7 +471,7 @@ def comfy_batch(prompt: str, count: int = 4, checkpoint: str = "",
                 width: int = 1024, height: int = 1024, steps: int = 20,
                 cfg: float = 5.0, negative: str = "", loras: str = "",
                 wait_timeout: int = 900) -> str:
-    """Generate `count` (max 8) variations of one prompt with fresh seeds â€”
+    """Generate `count` (max 8) variations of one prompt with fresh seeds —
     queued together, reported together with their seeds."""
     count = min(count, 8)
     checkpoint = _default_checkpoint(checkpoint)
@@ -515,9 +517,9 @@ def _duration(path: Path) -> float:
 def _loop_prefix(src: Path, loop: str, fade: float) -> tuple[str, float]:
     """filter_complex prefix that always ends in a labeled [looped] pad, so
     gif and mp4 encoders can share the loop logic. Modes: 'crossfade'
-    (forward-only seamless wrap â€” the tail blends into the head; output
+    (forward-only seamless wrap — the tail blends into the head; output
     shortens by `fade` seconds), 'palindrome' (boomerang; fps/scale applies
-    downstream of the split/reverse now â€” slightly more memory, same look),
+    downstream of the split/reverse now — slightly more memory, same look),
     'none' (passthrough)."""
     if loop == "crossfade":
         d = _duration(src)
@@ -608,7 +610,7 @@ def _interpolate_loop(video_path: str, target_fps: int) -> str:
 def comfy_to_gif(video_path: str, fps: int = 12, width: int = 480,
                  loop: str = "crossfade", fade: float = 0.8) -> str:
     """Convert any local video file (e.g. a comfy_txt2video mp4) into an
-    animated GIF (ffmpeg two-pass palette â€” sharp colors, sane size).
+    animated GIF (ffmpeg two-pass palette — sharp colors, sane size).
     loop='crossfade' (default) = forward-only seamless wrap (owner-preferred);
     'palindrome' = boomerang; 'none' = plain. fade = crossfade seconds."""
     try:
@@ -622,12 +624,12 @@ def comfy_loop_video(video_path: str, fade: float = 0.8, format: str = "mp4",
                      fps: int = 15, gif_width: int = 960,
                      interpolate_fps: int = 0) -> str:
     """Turn any clip into a seamless forward-only loop. Crossfade wrap (tail
-    blends into head; output shortens by `fade`s), encoded h264 yuv420p mp4 â€”
+    blends into head; output shortens by `fade`s), encoded h264 yuv420p mp4 —
     vpt9-library-ready and ~40x smaller than GIF. format: mp4 | gif | both
     (gif is rendered FROM the wrapped mp4, no double-blend).
-    interpolate_fps (optional, SLOW â€” optical flow): loop-aware cadence
+    interpolate_fps (optional, SLOW — optical flow): loop-aware cadence
     smoothing applied AFTER the wrap. Do NOT run this tool on clips that are
-    already true cycles (comfy_img2video loop=True, comfy_animate_still) â€”
+    already true cycles (comfy_img2video loop=True, comfy_animate_still) —
     re-crossfading a perfect cycle breaks it; use comfy_to_gif(loop='none')
     for those instead."""
     src = Path(video_path).expanduser()
@@ -651,7 +653,7 @@ def comfy_master_still(image: str, width: int = 1920, height: int = 1080,
                        wait_timeout: int = 300) -> str:
     """Finish a still for delivery: optional 4x model upscale, then an exact
     width x height master (scale-to-cover + center crop, lanczos) saved as
-    jpg â€” the vpt9 library takes jpg, never png. Defaults to the 1080p
+    jpg — the vpt9 library takes jpg, never png. Defaults to the 1080p
     projector raster; pass width=height for square texture-set faces. Keep
     the returned master_png as the lossless master; the jpg is the delivery
     proxy."""
@@ -662,7 +664,7 @@ def comfy_master_still(image: str, width: int = 1920, height: int = 1080,
     if upscale:
         ups = CLIENT.get("/models/upscale_models").json()
         if not ups:
-            return ("no upscale models installed â€” comfy_model_download one "
+            return ("no upscale models installed — comfy_model_download one "
                     "into 'upscale_models' first, or pass upscale=False")
         g = G.upscale(_resolve_image(str(src)), upscale_model or ups[0])
         out = _execute(g, wait_timeout)
@@ -698,12 +700,12 @@ def _motion_chain(motion: str, w: int, h: int, duration: float, fps: int,
     (filter_complex, total_frames, needs_crossfade_wrap).
 
     Loop math: every motion except 'tunnel' drives its parameter around a
-    CLOSED CYCLE sampled at phase n/N over [0,T) â€” frame N would equal frame
+    CLOSED CYCLE sampled at phase n/N over [0,T) — frame N would equal frame
     0 exactly, so we render exactly N frames and playback wraps perfectly in
     position AND velocity (the Electric Sheep principle: rotate the
     parameters 360 degrees and the shape must return to its start). 'tunnel'
     is a perpetual exponential zoom (constant d/dt ln z, so seam velocity
-    matches) rendered T+fade long then crossfade-wrapped â€” the blend
+    matches) rendered T+fade long then crossfade-wrapped — the blend
     double-exposes the image at a scale ratio, so tunnel needs SELF-SIMILAR
     sources (mandala/fractal/radial); generic imagery ghosts."""
     N = max(2, round(duration * fps))
@@ -723,8 +725,8 @@ def _motion_chain(motion: str, w: int, h: int, duration: float, fps: int,
         return (f"{cover_sq},rotate={sign}2*PI*{k}*n/{N}:ow={w}:oh={h},{fmt}",
                 N, False)
     if motion in ("zoom_in", "zoom_out"):
-        # closed-cycle log-zoom: z = exp(A*(1âˆ“cos(2Ï€n/N))/2) is Câˆž-periodic â€”
-        # frame N â‰¡ frame 0 in position and velocity, no crossfade needed.
+        # closed-cycle log-zoom: z = exp(A*(1∓cos(2πn/N))/2) is C∞-periodic —
+        # frame N ≡ frame 0 in position and velocity, no crossfade needed.
         # cos is periodic, so zoompan's 0- vs 1-based `on` only phase-shifts.
         amp = math.log(1 + 0.6 * intensity)
         ph = "1-cos" if motion == "zoom_in" else "1+cos"
@@ -741,7 +743,7 @@ def _motion_chain(motion: str, w: int, h: int, duration: float, fps: int,
                 f"y='ih/2-(ih/zoom/2)':s={w}x{h}:fps={fps},{fmt}", M, True)
     if motion == "drift":
         # translate the mirror tile by exactly c periods over N frames:
-        # offset(N) â‰¡ offset(0) â‡’ exact cycle. 4x4 canvas keeps the crop
+        # offset(N) ≡ offset(0) ⇒ exact cycle. 4x4 canvas keeps the crop
         # window inside for any offset < one period.
         c = max(1, round(intensity))
         pw, ph2 = 2 * w, 2 * h
@@ -761,7 +763,7 @@ def _motion_chain(motion: str, w: int, h: int, duration: float, fps: int,
         k = max(1, round(intensity))
         return (f"{mirror};[mt]{cover_sq}[sq];"
                 f"[sq]rotate=2*PI*{k}*n/{N}:ow={w}:oh={h},{fmt}", N, False)
-    raise ValueError(f"unknown motion '{motion}' â€” one of: {', '.join(_MOTIONS)}")
+    raise ValueError(f"unknown motion '{motion}' — one of: {', '.join(_MOTIONS)}")
 
 
 @mcp.tool()
@@ -771,11 +773,11 @@ def comfy_animate_still(image: str, motion: str = "zoom_in",
                         intensity: float = 1.0, fade: float = 0.8,
                         format: str = "mp4") -> str:
     """Animate a still into a seamlessly LOOPING clip with parametric ffmpeg
-    motion â€” no GPU, loops are mathematically exact (closed parameter
+    motion — no GPU, loops are mathematically exact (closed parameter
     cycles). Motions: zoom_in/zoom_out (breathing log-zoom), rotate /
     rotate_ccw (full revolutions), drift (mirror-tile scroll), pulse
     (brightness/saturation breathe), kaleido (mirror symmetry + spin),
-    tunnel (perpetual zoom, crossfade-wrapped â€” SELF-SIMILAR sources only:
+    tunnel (perpetual zoom, crossfade-wrapped — SELF-SIMILAR sources only:
     mandala/fractal/radial). intensity ~0.3 ambient .. 2.0 bold. format:
     mp4 | gif | both. Texture-set tip: animate every face with the same
     duration+fps and the faces loop phase-locked on the rig."""
@@ -808,7 +810,7 @@ def comfy_animate_still(image: str, motion: str = "zoom_in",
 
 
 def _ltxv_models() -> tuple[str, str, str]:
-    """(ltx_checkpoint, t5_encoder, error) â€” error is "" when both found."""
+    """(ltx_checkpoint, t5_encoder, error) — error is "" when both found."""
     cps = CLIENT.get("/models/checkpoints").json()
     ltx = [c for c in cps if "ltx" in c.lower()]
     if not ltx:
@@ -817,7 +819,7 @@ def _ltxv_models() -> tuple[str, str, str]:
                         "folder='checkpoints') (~6GB)")
     t5s = [t for t in CLIENT.get("/models/text_encoders").json() if "t5" in t.lower()]
     if not t5s:
-        return "", "", "no T5 text encoder in text_encoders/ â€” LTXV needs t5xxl"
+        return "", "", "no T5 text encoder in text_encoders/ — LTXV needs t5xxl"
     return ltx[0], t5s[0], ""
 
 
@@ -844,8 +846,8 @@ def comfy_txt2video(prompt: str, negative: str = "low quality, blurry, distorted
                     seed: int = 0, gif: bool = False,
                     wait_timeout: int = 900) -> str:
     """Text-to-video via LTX-Video (needs an 'ltx' checkpoint in checkpoints/
-    and t5xxl in text_encoders/ â€” comfy_model_download can fetch them).
-    frames must be 8n+1 (97 â‰ˆ 4s @ 24fps). LTXV wants LONG, detailed,
+    and t5xxl in text_encoders/ — comfy_model_download can fetch them).
+    frames must be 8n+1 (97 ≈ 4s @ 24fps). LTXV wants LONG, detailed,
     motion-rich prompts. Output: mp4 downloaded locally; gif=True also
     renders an animated GIF alongside it."""
     ltx, t5, err = _ltxv_models()
@@ -867,10 +869,10 @@ def comfy_img2video(image: str, prompt: str,
     """Image-to-video via LTX-Video keyframe guides. image = local path
     (auto-uploaded) or a server-side input filename. The BEST style-control
     pipeline: render an SDXL still with your checkpoint+LoRA stack, then
-    animate it here. loop=True pins the image as BOTH first and last frame â€”
+    animate it here. loop=True pins the image as BOTH first and last frame —
     a true seamless cycle, no crossfade ghosting. Write a STEADY-STATE motion
     prompt (motion mid-cycle at start/end: "rotates continuously", "breathes
-    gently" â€” never "begins to..."). strength 0.7-1.0: how hard the guides
+    gently" — never "begins to..."). strength 0.7-1.0: how hard the guides
     anchor (1.0 can over-anchor to near-static). frames must be 8n+1."""
     name = _resolve_image(image)
     ltx, t5, err = _ltxv_models()
@@ -881,7 +883,7 @@ def comfy_img2video(image: str, prompt: str,
                          strength, loop)
     out = _execute(g, wait_timeout)
     if gif:
-        # a loop=True clip is already a perfect cycle â€” crossfading it again
+        # a loop=True clip is already a perfect cycle — crossfading it again
         # would double-blend the seam
         return _attach_gifs(out, loop="none" if loop else "crossfade")
     return out
@@ -911,7 +913,7 @@ def comfy_model_search(query: str, source: str = "huggingface",
         rows = [{"repo": m["id"], "downloads": m.get("downloads"),
                  "tags": [t for t in m.get("tags", [])[:5]]} for m in r.json()]
         return json.dumps(rows, indent=1) + \
-            "\n(pick a file: comfy_call GET https not needed â€” use " \
+            "\n(pick a file: comfy_call GET https not needed — use " \
             "comfy_model_download(hf_repo=..., hf_file=<file in repo>) ; " \
             "browse files at huggingface.co/<repo>/tree/main)"
     r = x.get("https://civitai.com/api/v1/models",
@@ -950,7 +952,7 @@ def comfy_model_download(folder: str, url: str = "", hf_repo: str = "",
                      headers=headers)
     with x.stream("GET", url) as r:
         if r.status_code == 401 and "civitai.com" in url:
-            return ("HTTP 401 â€” this Civitai file requires an API token: add "
+            return ("HTTP 401 — this Civitai file requires an API token: add "
                     '"civitai_token": "<key from civitai.com/user/account>" '
                     "to config.local.json")
         if r.status_code != 200:
@@ -968,7 +970,7 @@ def comfy_model_download(folder: str, url: str = "", hf_repo: str = "",
                     print(f"[dl] {filename}: {done/1e9:.1f}/{total/1e9:.1f}GB",
                           file=sys.stderr)
                     # chunked downloads (no Content-Length) bypass the
-                    # pre-check â€” re-verify free space as we stream
+                    # pre-check — re-verify free space as we stream
                     if shutil.disk_usage(dest_dir).free < 10 * 1024 ** 3:
                         aborted = True
                         break
@@ -980,7 +982,7 @@ def comfy_model_download(folder: str, url: str = "", hf_repo: str = "",
     return json.dumps({"saved": str(dest), "bytes": done,
                        "comfyui_sees_it": seen,
                        "note": None if seen else
-                       "not visible yet â€” COMBO caches may need a service restart"},
+                       "not visible yet — COMBO caches may need a service restart"},
                       indent=1)
 
 
@@ -1003,7 +1005,7 @@ def comfy_model_delete(folder: str, filename: str, confirm: bool = False) -> str
 @mcp.tool()
 def comfy_png_workflow(png_path: str) -> str:
     """Extract the full API-format workflow graph embedded in any
-    ComfyUI-generated PNG â€” every output carries its own recipe."""
+    ComfyUI-generated PNG — every output carries its own recipe."""
     return _clip(G.png_workflow(str(Path(png_path).expanduser())))
 
 
@@ -1047,7 +1049,7 @@ def comfy_install_node(git_url: str, confirm: bool = False,
     """DISRUPTIVE: clone a custom-node repo into custom_nodes/ and RESTART the
     ComfyUI service to load it. Requires confirm=True and host-side config
     (custom_nodes_dir + compose_file). Reports import success/failure honestly
-    â€” packs with extra python deps need those baked into the image."""
+    — packs with extra python deps need those baked into the image."""
     if not confirm:
         return "refused: pass confirm=True (this restarts ComfyUI)"
     if not (CFG["custom_nodes_dir"] and CFG["compose_file"]):
@@ -1129,19 +1131,19 @@ def comfy_library_collections() -> str:
 def comfy_library_upload(file_path: str, collection: str, tags: str = "",
                          name: str = "") -> str:
     """Upload a file to the vpt9 media library. The server embeds the tags
-    into the file itself (XMP dc:Subject) via the X-Media-Tags header â€” no
-    exiftool needed. Formats: mp4 (h264 yuv420p), gif, jpg ONLY â€” PNGs must
+    into the file itself (XMP dc:Subject) via the X-Media-Tags header — no
+    exiftool needed. Formats: mp4 (h264 yuv420p), gif, jpg ONLY — PNGs must
     go through comfy_master_still first. collection: 1-2 words (Title-Cased
     automatically, becomes a folder in the library UI); tags: 2-5 loose
     descriptors ("loop, calm, gold"); name: display name (default: a
-    descriptive form of the filename â€” never leave outputs called
+    descriptive form of the filename — never leave outputs called
     output_003). Reversible: comfy_library_delete removes by media id."""
     p = Path(file_path).expanduser()
     if not p.exists():
         return f"no such file: {p}"
     suffix = ".jpg" if p.suffix.lower() == ".jpeg" else p.suffix.lower()
     if suffix not in (".mp4", ".gif", ".jpg"):
-        return (f"unsupported format '{p.suffix}' â€” the library takes only "
+        return (f"unsupported format '{p.suffix}' — the library takes only "
                 "mp4/gif/jpg. Stills: comfy_master_still converts to jpg; "
                 "video: comfy_loop_video re-encodes to yuv420p mp4.")
     warnings = []
@@ -1154,9 +1156,9 @@ def comfy_library_upload(file_path: str, collection: str, tags: str = "",
             pix = probe.stdout.strip()
             if pix and pix != "yuv420p":
                 return (f"refused: {p.name} is {pix}; the library requires "
-                        "yuv420p â€” re-encode with comfy_loop_video first")
+                        "yuv420p — re-encode with comfy_loop_video first")
         except (subprocess.CalledProcessError, FileNotFoundError):
-            warnings.append("ffprobe unavailable â€” pix_fmt unverified")
+            warnings.append("ffprobe unavailable — pix_fmt unverified")
     coll = _lib_collection(collection)
     loose = [t.strip() for t in tags.split(",") if t.strip()]
     if not 2 <= len(loose) <= 5:
@@ -1175,7 +1177,7 @@ def comfy_library_upload(file_path: str, collection: str, tags: str = "",
     if r.status_code >= 300:
         return f"HTTP {r.status_code}: {r.text[:400]}"
     media_id = None
-    try:  # response shape undocumented â€” parse defensively
+    try:  # response shape undocumented — parse defensively
         j = r.json()
         media_id = (j.get("id") or j.get("media_id")
                     or (j.get("media") or {}).get("id"))
@@ -1240,7 +1242,7 @@ def comfy_interrupt(confirm: bool = False) -> str:
     if not confirm:
         return "refused: pass confirm=True to interrupt the running job"
     r = CLIENT.post("/interrupt")
-    return f"HTTP {r.status_code} â€” interrupt sent"
+    return f"HTTP {r.status_code} — interrupt sent"
 
 
 @mcp.tool()
@@ -1252,20 +1254,20 @@ def comfy_cancel(prompt_ids: list[str] | None = None, clear_all: bool = False,
         return "refused: pass confirm=True to cancel queue items"
     body = {"clear": True} if clear_all else {"delete": prompt_ids or []}
     r = CLIENT.post("/queue", json=body)
-    return f"HTTP {r.status_code} â€” {json.dumps(body)}"
+    return f"HTTP {r.status_code} — {json.dumps(body)}"
 
 
 @mcp.tool()
 def comfy_free(unload_models: bool = True, free_memory: bool = True,
                confirm: bool = False) -> str:
     """DISRUPTIVE: unload models / free VRAM (next run reloads from disk).
-    NOTE: does NOT release the container's cgroup page cache â€” if generations
+    NOTE: does NOT release the container's cgroup page cache — if generations
     OOM with free VRAM, restart the comfyui service instead."""
     if not confirm:
         return "refused: pass confirm=True to free model memory"
     r = CLIENT.post("/free", json={"unload_models": unload_models,
                                    "free_memory": free_memory})
-    return f"HTTP {r.status_code} â€” free sent"
+    return f"HTTP {r.status_code} — free sent"
 
 
 # ---------------------------------------------------------------- entrypoint
