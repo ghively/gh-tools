@@ -1,31 +1,32 @@
-﻿# Packaging the integration as a Claude Code plugin
+# Packaging the integration as a Claude Code plugin
 
 The structure that worked. Adapt names; keep the shape.
 
 ```
 my-integration/                     (plugin root = marketplace entry, or a subdir)
-â”œâ”€â”€ .claude-plugin/
-â”‚   â””â”€â”€ plugin.json                 name, description, version, author, skills, commands
-â”œâ”€â”€ .mcp.json                       launches the MCP server (flat {server:{...}} map)
-â”œâ”€â”€ config.example.json             template (committed)
-â”œâ”€â”€ config.local.json               real host + secrets (GIT-IGNORED)
-â”œâ”€â”€ .gitignore                      ignores config.local.json, __pycache__, .venv
-â”œâ”€â”€ README.md
-â”œâ”€â”€ mcp/
-â”‚   â””â”€â”€ server.py                   the MCP server (client + generic + curated tools)
-â”œâ”€â”€ skills/
-â”‚   â””â”€â”€ <name>-control/
-â”‚       â”œâ”€â”€ SKILL.md                how to drive the server; discovery-first; safety
-â”‚       â””â”€â”€ references/
-â”‚           â”œâ”€â”€ api-map.md          the FULL enumerated surface (from the system)
-â”‚           â”œâ”€â”€ common-tasks.md     verified call recipes for non-curated jobs
-â”‚           â””â”€â”€ conventions.md      auth model, error codes, param encoding, quirks
-â””â”€â”€ commands/
-    â”œâ”€â”€ health.md                   multi-step workflows as slash commands
-    â””â”€â”€ ...
+├── .claude-plugin/
+│   └── plugin.json                 name, description, version, author, skills, commands
+├── .mcp.json                       launches the MCP server (flat {server:{...}} map)
+├── config.example.json             template (committed)
+├── config.local.json               real host + secrets (GIT-IGNORED)
+├── .gitignore                      ignores config.local.json, __pycache__, .venv, *.pyc
+├── README.md
+├── mcp/
+│   ├── server.py                   the MCP server (client + generic + curated tools)
+│   └── _smoketest.py               rerunnable live check of every curated read tool
+├── skills/
+│   └── <name>-control/
+│       ├── SKILL.md                how to drive the server; discovery-first; safety
+│       └── references/
+│           ├── api-map.md          the FULL enumerated surface (from the system)
+│           ├── common-tasks.md     verified call recipes for non-curated jobs
+│           └── conventions.md      auth model, error codes, param encoding, quirks
+└── commands/
+    ├── health.md                   multi-step workflows as slash commands
+    └── ...
 ```
 
-## `.mcp.json` â€” reproducible, self-provisioning launch
+## `.mcp.json` — reproducible, self-provisioning launch
 
 Launch the server so it installs its own deps (no manual pip). With Python + `uv`, a
 PEP 723 inline-deps script + `uv run --script` is ideal; `${CLAUDE_PLUGIN_ROOT}` makes
@@ -49,7 +50,11 @@ paths portable:
 # ///
 ```
 
-Node/other runtimes work too â€” the point is one command that self-provisions and reads
+**Pin `mcp<2.0.0`.** The 2.0 release renamed `FastMCP` → `MCPServer`; an unpinned
+script self-provisions the new major on a fresh install and dies at import. Every
+plugin in this repo carries this exact pin — keep it until the code targets 2.x.
+
+Node/other runtimes work too — the point is one command that self-provisions and reads
 a git-ignored config.
 
 ## Client design checklist
@@ -61,7 +66,7 @@ a git-ignored config.
   some writes behind a re-confirmation token.
 - Param encoding matching the backend (e.g. JSON-encode arrays/objects).
 - **Version resolution**: default to the API's advertised version, but let callers
-  override â€” some methods only exist at a specific (often not the max) version.
+  override — some methods only exist at a specific (often not the max) version.
 - All logs to stderr for stdio MCP servers; stdout is the protocol.
 
 ## MCP server surface
@@ -70,21 +75,47 @@ a git-ignored config.
 - Curated: one tool per common job, correct params/version baked in.
 - Confirm-gate destructive tools (`confirm: bool`), and elevate the ones that need it.
 
+## `mcp/_smoketest.py` — keep verification rerunnable
+
+Capture Phase 2's live verification as a script so it survives the build session.
+Same uv-script header as the server; it imports `server.py` via
+`importlib.util.spec_from_file_location`, calls **every curated read tool** against
+the live system, and prints each result shape (truncated). It must **never call a
+confirm-gated write tool**. Run it after any server change:
+
+```
+cd my-integration && uv run --script mcp/_smoketest.py
+```
+
+## Control-skill frontmatter
+
+The bundled `SKILL.md` needs `name` and a `description` that says **when to trigger**
+— name the system, enumerate the jobs it covers, and end with "do not answer from
+memory; drive the live server through the tools." Plugins in this repo also carry a
+`metadata.hermes` block (`tags`, `category`, `requires_tools`, `config` prompts) so
+the same skill installs under Hermes Agent — copy the shape from any sibling.
+
 ## Adding a plugin to an existing marketplace
 
 A marketplace is a repo/dir with `.claude-plugin/marketplace.json` listing plugins.
-Add an entry pointing at the plugin's directory (`source`); the root plugin can use
-`"./"` and additional plugins live in subdirectories:
+Add an entry pointing at the plugin's subdirectory (`source`), with an honest
+description that says what was live-verified (version tested, tool counts, known
+limits) and a `version` matching `plugin.json`:
 
 ```json
 {
   "name": "my-marketplace",
   "plugins": [
-    { "name": "my-integration",       "source": "./" },
-    { "name": "deep-integration-builder", "source": "./deep-integration-builder" }
+    {
+      "name": "my-integration",
+      "source": "./my-integration",
+      "description": "Control of X (live-verified on X 1.2.3) — N-op passthrough + M curated tools. All writes confirm-gated.",
+      "category": "infrastructure",
+      "version": "0.1.0"
+    }
   ]
 }
 ```
 
-Install locally: `/plugin marketplace add <path>` â†’ `/plugin install <name>@<marketplace>`
-â†’ `/reload-plugins`.
+Install locally: `/plugin marketplace add <path>` → `/plugin install <name>@<marketplace>`
+→ `/reload-plugins`.

@@ -26,8 +26,9 @@ Follow the skill's phases in order — do not skip to coding:
 7. **Safety** — confirm-gate writes; never self-run live writes; verify writes reversibly
    with the user's go-ahead; report honestly (built vs. verified vs. hard limit).
 8. **Publish to gh-tools** — every finished integration ships to the
-   `ghively/gh-tools` repo (see the skill's "Publishing" section): plugin in its
-   own subdirectory, entry in `.claude-plugin/marketplace.json`, commit + push,
+   `ghively/gh-tools` repo (see the skill's Phase 7): plugin in its own
+   subdirectory, entry in `.claude-plugin/marketplace.json`, refresh the Hermes
+   `skills/` mirror (`scripts/sync_hermes_skills.py`), commit + push,
    refresh the local marketplace clone, and hand-place the git-ignored
    `config.local.json` into the installed plugin root. Do NOT scatter
    integrations into other repos or leave them unpublished.
