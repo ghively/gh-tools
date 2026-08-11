@@ -25,9 +25,10 @@ change and get the user's go-ahead before passing `confirm=True`.
    groups: inspect via `romm_permissions(scope="groups")` (built-ins
    include a "Viewer (legacy)" and "Editor (legacy)" group); check a user's
    effective grants with `romm_permissions(scope="user", user_id=N)` and
-   change them via `romm_call("PUT", "/api/permissions/users/{user_id}",
-   ..., confirm=True)` (see `romm_schema` for the body); manage groups via
-   `romm_call("POST"/"PUT", "/api/permissions/groups...", confirm=True)`.
+   change them via `romm_user_permissions_update(user_id, ..., confirm=True)`
+   (group assignment and/or per-entity overrides); create/update/delete
+   groups via `romm_permission_group(action=..., confirm=True)`; hide
+   specific entities from a user/group via `romm_permission_hidden`.
 4. **RetroAchievements** — link a user's RA account with
    `romm_user_update(id, fields_json='{"ra_username": "..."}')`; refresh their
    RA progress with `romm_call("POST", "/api/users/{id}/ra/refresh",
