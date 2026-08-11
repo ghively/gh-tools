@@ -2,7 +2,7 @@
   "name": "gh-tools",
   "description": "Local marketplace: the synology-nas control plugin plus the deep-integration-builder methodology used to create it.",
   "owner": {
-    "name": "poomonkey405"
+    "name": "Gene Hively"
   },
   "plugins": [
     {

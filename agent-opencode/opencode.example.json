@@ -16,6 +16,8 @@
       "dd * of=/dev/*": "deny",
       "mkfs*": "deny",
       ":*": "deny",
+      "*:(){*": "deny",
+      "*:|:*": "deny",
       "*": "ask"
     },
     "edit": {

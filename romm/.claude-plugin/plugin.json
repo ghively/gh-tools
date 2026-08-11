@@ -1,11 +1,19 @@
 {
   "name": "romm",
-  "description": "Full control of a RomM ROM-library server (5.x) from Claude Code. Bundles an MCP server that authenticates with a RomM API key and exposes both a generic passthrough reaching every one of the server's ~189 REST operations (self-discovered from its live OpenAPI spec) plus ~70 curated tools for status, platforms, ROM search & metadata editing, ROM manuals/soundtracks/patches, screenshots, collections (manual/smart/virtual), users & fine-grained permission groups & API keys, saves/states/firmware, tasks, config, device management & pairing approval, sync sessions, netplay rooms, activity & play sessions, game music, client feeds, gamelist/Pegasus exports, chunked ROM upload/download — and a pollable Socket.IO scan trigger (the one job RomM does not expose over REST). Includes a control skill and slash-command workflows. Tested against RomM 5.0.0.",
+  "description": "Full control of a RomM ROM-library server (5.x) from Claude Code. Bundles an MCP server that authenticates with a RomM API key and exposes both a generic passthrough reaching every one of the server's ~189 REST operations (self-discovered from its live OpenAPI spec) plus ~70 curated tools for status, platforms, ROM search & metadata editing, ROM manuals/soundtracks/patches, screenshots, collections (manual/smart/virtual), users & fine-grained permission groups & API keys, saves/states/firmware, tasks, config, device management & pairing approval, sync sessions, netplay rooms, activity & play sessions, game music, client feeds, gamelist/Pegasus exports, chunked ROM upload/download \u2014 and a pollable Socket.IO scan trigger (the one job RomM does not expose over REST). Includes a control skill and slash-command workflows. Tested against RomM 5.0.0.",
   "version": "0.2.0",
   "author": {
-    "name": "poomonkey405"
+    "name": "Gene Hively"
   },
-  "keywords": ["romm", "roms", "retro-gaming", "emulation", "game-library", "mcp", "homelab"],
+  "keywords": [
+    "romm",
+    "roms",
+    "retro-gaming",
+    "emulation",
+    "game-library",
+    "mcp",
+    "homelab"
+  ],
   "skills": "./skills/",
   "commands": "./commands/"
 }
