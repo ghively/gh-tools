@@ -43,9 +43,14 @@ API, from Claude Code. Built and tested against **GH-Nvidia**, running
       `unraid_fs_write` / `unraid_fs_mkdir` / `unraid_fs_move` /
       `unraid_fs_copy` / `unraid_fs_delete` (writes). System paths are
       hard-refused; recursive delete is double-gated.
-    - **Shares** — `unraid_share_create` (writes the share `.cfg` + directory
-      and applies it live via `emcmd`) and `unraid_share_delete` (data removal
-      double-gated).
+    - **Shares** — `unraid_share_create` / `unraid_share_delete` write the share
+      `.cfg` + directory (config-only by default) and `unraid_shfs_risk_check`.
+      **Live-applying** a share (`apply=True`) reloads Unraid's `/mnt/user` FUSE
+      layer, which can corrupt running containers whose appdata is mounted via
+      `/mnt/user` — so it is **off by default and guarded** (refused while any
+      such container runs). Migrate container appdata to `/mnt/cache/...` before
+      using live apply. (See the postmortem in
+      `docs/superpowers/specs/2026-08-11-shfs-reload-incident.md`.)
     - All deploy/create/write/delete tools are confirm-gated (vdisk/share-data
       deletion is double-gated); the whole layer stays disabled until you
       configure SSH credentials. `unraid_vm_*` refuse to touch protected VMs

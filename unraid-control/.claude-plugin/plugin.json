@@ -1,11 +1,21 @@
 {
   "name": "unraid-control",
-  "description": "Full control of an Unraid server (Unraid OS 7.x, live-verified on 7.3.2 / unraid-api 4.35.1) from Claude Code. Bundles an MCP server that authenticates to Unraid's official GraphQL API (api-key auth) and exposes both a generic GraphQL passthrough reaching the entire schema (Query/Mutation/Subscription, bundled offline since live introspection is disabled by default) and 99 curated tools for system health, the array & disks, Docker containers, VMs, shares, notifications, UPS, network, users/API keys, plugins and logs — plus a control skill and slash-command workflows. Also ships an opt-in SSH layer closing the gaps in Unraid's GraphQL API (which can operate but not create): editing a container's env vars, a full deployment layer (deploy custom containers and Community Applications apps as native dockerMan templates, compose stacks with auto-installed Compose Manager, and create VMs via vdisk + OVMF/q35 libvirt domain), plus file management (list/read/write/mkdir/move/copy/delete) and share management (create/delete via cfg + emcmd). All create/deploy/write/delete tools are confirm-gated (recursive/data deletes double-gated), system paths and protected VMs are refused.",
-  "version": "0.4.0",
+  "description": "Full control of an Unraid server (Unraid OS 7.x, live-verified on 7.3.2 / unraid-api 4.35.1) from Claude Code. Bundles an MCP server that authenticates to Unraid's official GraphQL API (api-key auth) and exposes both a generic GraphQL passthrough reaching the entire schema (Query/Mutation/Subscription, bundled offline since live introspection is disabled by default) and 99 curated tools for system health, the array & disks, Docker containers, VMs, shares, notifications, UPS, network, users/API keys, plugins and logs \u2014 plus a control skill and slash-command workflows. Also ships an opt-in SSH layer closing the gaps in Unraid's GraphQL API (which can operate but not create): editing a container's env vars, a full deployment layer (deploy custom containers and Community Applications apps as native dockerMan templates, compose stacks with auto-installed Compose Manager, and create VMs via vdisk + OVMF/q35 libvirt domain), plus file management (list/read/write/mkdir/move/copy/delete) and share management (create/delete via cfg + emcmd). All create/deploy/write/delete tools are confirm-gated (recursive/data deletes double-gated), system paths and protected VMs are refused.",
+  "version": "0.4.1",
   "author": {
     "name": "poomonkey405"
   },
-  "keywords": ["unraid", "nas", "graphql", "docker", "vm", "array", "mcp", "homelab", "storage"],
+  "keywords": [
+    "unraid",
+    "nas",
+    "graphql",
+    "docker",
+    "vm",
+    "array",
+    "mcp",
+    "homelab",
+    "storage"
+  ],
   "skills": "./skills/",
   "commands": "./commands/"
 }

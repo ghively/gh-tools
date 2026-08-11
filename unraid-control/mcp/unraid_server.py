@@ -2702,6 +2702,64 @@ def unraid_vm_delete(name: str, delete_vdisk: bool = False, confirm: bool = Fals
 # ============================================================================ #
 _SHARES_CFG_DIR = "/boot/config/shares"
 _EMCMD = "/usr/local/sbin/emcmd"
+
+# ---------------------------------------------------------------------------- #
+# shfs-reload safety guard.
+#
+# INCIDENT (2026-08-11): creating/deleting a share via `emcmd changeShare`
+# makes emhttpd "Restart services", which reloads the /mnt/user FUSE (shfs)
+# layer. Any container whose appdata is bind-mounted through a /mnt/user path
+# (instead of /mnt/cache/... or a direct disk) has its OPEN FILES severed by
+# that reload — which crashed and wiped a running PostgreSQL's data directory.
+# Root cause is two-sided: (a) our tool triggered the reload, and (b) those
+# containers violate Unraid best practice by mounting appdata via /mnt/user.
+#
+# Guarantee: any operation in this file that could reload shfs is DEFAULT-OFF
+# (writes config only, no service restart), and even the opt-in apply refuses
+# while a running container holds appdata open on a /mnt/user path.
+# ---------------------------------------------------------------------------- #
+def _containers_mounting_user_share(cfg: dict) -> list[str]:
+    """Return names of RUNNING containers with any bind mount whose host source
+    is under /mnt/user (the FUSE overlay). These are the containers a shfs
+    reload would corrupt. Best-effort; on any error returns [] with the caller
+    deciding how conservative to be (callers treat inspect failure as unsafe)."""
+    code, out, _e = _ssh_exec(
+        cfg,
+        "for c in $(docker ps -q); do "
+        "  docker inspect -f '{{.Name}} {{range .Mounts}}{{.Source}}|{{end}}' \"$c\"; "
+        "done",
+        timeout=30,
+    )
+    hits = []
+    for line in out.splitlines():
+        parts = line.strip().split(" ", 1)
+        if len(parts) != 2:
+            continue
+        cname, sources = parts[0].lstrip("/"), parts[1]
+        if any(s.startswith("/mnt/user/") for s in sources.split("|") if s):
+            hits.append(cname)
+    return hits
+
+
+def _assert_shfs_safe(cfg: dict) -> Optional[dict]:
+    """Return a refusal dict if reloading shfs right now is unsafe (running
+    containers hold appdata open on /mnt/user), else None."""
+    try:
+        at_risk = _containers_mounting_user_share(cfg)
+    except Exception:  # noqa: BLE001 — inspect failed: treat as unsafe
+        return refuse("could not verify container mounts over SSH; refusing to "
+                      "trigger an Unraid service/shfs reload while that is unknown.")
+    if at_risk:
+        return refuse(
+            "REFUSED to trigger an Unraid service/shfs reload: these RUNNING "
+            f"containers mount appdata via the /mnt/user FUSE path and would have "
+            f"their open files severed (this previously wiped a live database): "
+            f"{', '.join(at_risk)}. Either stop them first, or (better) migrate "
+            f"their appdata bind mounts to /mnt/cache/appdata/... which is immune "
+            f"to shfs reloads. The share config was NOT applied live.")
+    return None
+
+
 # Exact paths that must never be written to or deleted.
 _PROTECTED_PATHS = {
     "/", "/boot", "/boot/config", "/etc", "/usr", "/bin", "/sbin", "/lib",
@@ -2929,10 +2987,20 @@ def _build_share_cfg(spec: dict) -> str:
 def unraid_share_create(name: str, comment: str = "", use_cache: str = "no",
                          cache_pool: str = "", allocator: str = "highwater",
                          security: str = "public", export: str = "e",
-                         confirm: bool = False) -> dict:
-    """Create a new user share: writes /boot/config/shares/<name>.cfg, creates
-    /mnt/user/<name>, and applies it live via emcmd so it appears immediately.
-    Requires SSH and confirm=True.
+                         apply: bool = False, confirm: bool = False) -> dict:
+    """Create a new user share: writes /boot/config/shares/<name>.cfg and creates
+    /mnt/user/<name>. Requires SSH and confirm=True.
+
+    SAFETY: writing the config + directory does NOT disturb running containers.
+    Making the share LIVE immediately requires emcmd, which restarts Unraid
+    services and reloads the /mnt/user (shfs) FUSE layer — that reload can
+    CORRUPT any running container whose appdata is bind-mounted via /mnt/user
+    (it once wiped a live PostgreSQL). So live-apply is OFF by default:
+      - apply=False (default): config-only. The share activates on Unraid's next
+        share-settings refresh (e.g. array restart or a share edit in the UI).
+      - apply=True: also runs emcmd — but this REFUSES if any running container
+        holds appdata open on a /mnt/user path (stop them or move their appdata
+        to /mnt/cache first). See unraid_shfs_risk_check.
 
     Args:
         name: Share name (also the /mnt/user/<name> directory).
@@ -2942,6 +3010,7 @@ def unraid_share_create(name: str, comment: str = "", use_cache: str = "no",
         allocator: "highwater" | "most-free" | "fillup".
         security: "public" | "secure" | "private".
         export: "e" (export SMB) or "-" (do not export).
+        apply: also apply live via emcmd (guarded — see SAFETY above).
         confirm: must be True.
     """
     if not confirm:
@@ -2953,30 +3022,41 @@ def unraid_share_create(name: str, comment: str = "", use_cache: str = "no",
         cfg_path = f"{_SHARES_CFG_DIR}/{name}.cfg"
         if _ssh_exec(cfg, f"test -e {shlex.quote(cfg_path)} && echo y")[1].strip() == "y":
             return refuse(f"share '{name}' already exists.")
+        applied, apply_note = False, "config-only (apply=False); activates on next Unraid share refresh"
+        if apply:
+            risk = _assert_shfs_safe(cfg)
+            if risk:
+                return risk
         spec = {"comment": comment, "use_cache": use_cache, "cache_pool": cache_pool,
                 "allocator": allocator, "security": security, "export": export}
         _ssh_exec(cfg, f"mkdir -p {shlex.quote(_SHARES_CFG_DIR)} {shlex.quote('/mnt/user/' + name)}")
         _ssh_write_file(cfg, cfg_path, _build_share_cfg(spec))
-        # Apply live via emcmd (URL-encoded form fields), best-effort.
-        from urllib.parse import quote_plus
-        emcmd_args = (f"shareName={quote_plus(name)}&shareComment={quote_plus(comment)}"
-                      f"&shareUseCache={use_cache}&shareCachePool={quote_plus(cache_pool)}"
-                      f"&shareAllocator={allocator}&shareSecurity={security}"
-                      f"&shareExport={export}&changeShare=Apply")
-        code, out, e = _ssh_exec(cfg, f"{_EMCMD} {shlex.quote(emcmd_args)}")
+        if apply:
+            from urllib.parse import quote_plus
+            emcmd_args = (f"shareName={quote_plus(name)}&shareComment={quote_plus(comment)}"
+                          f"&shareUseCache={use_cache}&shareCachePool={quote_plus(cache_pool)}"
+                          f"&shareAllocator={allocator}&shareSecurity={security}"
+                          f"&shareExport={export}&changeShare=Apply")
+            code, out, e = _ssh_exec(cfg, f"{_EMCMD} {shlex.quote(emcmd_args)}")
+            applied, apply_note = code == 0, (out or e).strip()[:200]
         return ok({"name": name, "cfg": cfg_path, "dir": f"/mnt/user/{name}",
-                   "applied": code == 0, "emcmd": (out or e).strip()[:200]})
+                   "applied_live": applied, "apply_note": apply_note})
     except Exception as e:  # noqa: BLE001
         return err(e)
 
 
 @mcp.tool()
-def unraid_share_delete(name: str, delete_data: bool = False, confirm: bool = False,
-                         acknowledge: str = "") -> dict:
-    """Delete a user share. Removes /boot/config/shares/<name>.cfg (and applies
-    via emcmd). delete_data=True also removes /mnt/user/<name> and ALL its
-    contents — DOUBLE-gated: pass confirm=True AND acknowledge='<name>'.
-    Requires SSH."""
+def unraid_share_delete(name: str, delete_data: bool = False, apply: bool = False,
+                         confirm: bool = False, acknowledge: str = "") -> dict:
+    """Delete a user share by removing /boot/config/shares/<name>.cfg.
+    delete_data=True also removes /mnt/user/<name> and ALL its contents —
+    DOUBLE-gated: pass confirm=True AND acknowledge='<name>'. Requires SSH.
+
+    SAFETY: apply defaults to False. apply=True runs emcmd to drop the share
+    live, which restarts services / reloads shfs and can corrupt running
+    containers with /mnt/user appdata — so it REFUSES when any such container
+    is running (see unraid_share_create's SAFETY note and unraid_shfs_risk_check).
+    """
     if not confirm:
         return refuse(f"pass confirm=True to delete share '{name}'.")
     if not _valid_name(name):
@@ -2985,14 +3065,43 @@ def unraid_share_delete(name: str, delete_data: bool = False, confirm: bool = Fa
         return refuse(f"deleting share data is destructive — also pass acknowledge='{name}'.")
     cfg = load_config()
     try:
-        from urllib.parse import quote_plus
-        code, out, e = _ssh_exec(cfg, f"{_EMCMD} {shlex.quote(f'shareName={quote_plus(name)}&changeShare=Delete')}")
+        applied, apply_note = False, "config-only (apply=False)"
+        if apply:
+            risk = _assert_shfs_safe(cfg)
+            if risk:
+                return risk
+            from urllib.parse import quote_plus
+            code, out, e = _ssh_exec(cfg, f"{_EMCMD} {shlex.quote(f'shareName={quote_plus(name)}&changeShare=Delete')}")
+            applied, apply_note = code == 0, (out or e).strip()[:200]
         _ssh_exec(cfg, f"rm -f {shlex.quote(f'{_SHARES_CFG_DIR}/{name}.cfg')}")
-        result = {"name": name, "cfg_removed": True, "applied": code == 0}
+        result = {"name": name, "cfg_removed": True, "applied_live": applied, "apply_note": apply_note}
         if delete_data:
             dc, do, de = _ssh_exec(cfg, f"rm -rf {shlex.quote('/mnt/user/' + name)}", timeout=600)
             result["data_deleted"] = (dc == 0)
         return ok(result)
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+@mcp.tool()
+def unraid_shfs_risk_check() -> dict:
+    """Report which RUNNING containers bind-mount appdata through the /mnt/user
+    FUSE path — these are the containers that an Unraid service/shfs reload
+    (triggered by applying a share, and some array operations) can corrupt.
+    Read-only. If this lists anything, do NOT apply share changes live; migrate
+    those containers' appdata to /mnt/cache/appdata/... first. Requires SSH."""
+    cfg = load_config()
+    try:
+        at_risk = _containers_mounting_user_share(cfg)
+        return ok({
+            "at_risk_containers": at_risk,
+            "safe_to_reload_shfs": not at_risk,
+            "guidance": ("No running container mounts appdata via /mnt/user — a share "
+                         "apply is safe." if not at_risk else
+                         "These containers would lose open files on an shfs reload; move "
+                         "their appdata bind mounts from /mnt/user/... to /mnt/cache/... "
+                         "(or /mnt/<pool>/...) and recreate them before applying shares live."),
+        })
     except Exception as e:  # noqa: BLE001
         return err(e)
 
