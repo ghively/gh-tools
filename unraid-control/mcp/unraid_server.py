@@ -2690,6 +2690,313 @@ def unraid_vm_delete(name: str, delete_vdisk: bool = False, confirm: bool = Fals
         return err(e)
 
 
+# ============================================================================ #
+# FILES & SHARES (SSH-backed)                                                  #
+#                                                                              #
+# Unraid's GraphQL API can list shares but has no mutation to create/edit/     #
+# delete them, and no file access at all. Shares live as /mnt/user/<name>      #
+# dirs + a /boot/config/shares/<name>.cfg settings file; new share config is   #
+# applied live via `emcmd`. File ops run over SSH on absolute paths. Every     #
+# write/delete is confirm-gated; recursive deletes and data-destroying share   #
+# deletes are double-gated, and catastrophic paths are hard-refused.           #
+# ============================================================================ #
+_SHARES_CFG_DIR = "/boot/config/shares"
+_EMCMD = "/usr/local/sbin/emcmd"
+# Exact paths that must never be written to or deleted.
+_PROTECTED_PATHS = {
+    "/", "/boot", "/boot/config", "/etc", "/usr", "/bin", "/sbin", "/lib",
+    "/lib64", "/var", "/root", "/dev", "/proc", "/sys", "/mnt", "/mnt/user",
+    "/mnt/user0", "/mnt/cache", "/mnt/disk1", "/mnt/disk2", "/mnt/disks",
+}
+
+
+def _norm_path(path: str) -> str:
+    """Normalize an absolute POSIX path (collapse .. and //). Raises on
+    relative paths."""
+    if not path or not path.startswith("/"):
+        raise ValueError("path must be absolute (start with /).")
+    parts: list[str] = []
+    for seg in path.split("/"):
+        if seg in ("", "."):
+            continue
+        if seg == "..":
+            if parts:
+                parts.pop()
+            continue
+        parts.append(seg)
+    return "/" + "/".join(parts)
+
+
+def _guard_path(path: str, recursive: bool = False) -> Optional[str]:
+    """Return a refusal reason if the path is unsafe to modify, else None."""
+    try:
+        norm = _norm_path(path)
+    except ValueError as e:
+        return str(e)
+    if norm in _PROTECTED_PATHS:
+        return f"'{norm}' is a protected system path and cannot be modified."
+    # A recursive delete must be at least 3 levels deep (e.g. /mnt/user/share/x)
+    # so it can't wipe a whole share root or disk/pool by accident — use
+    # unraid_share_delete for share roots.
+    if recursive and len([p for p in norm.split("/") if p]) < 3:
+        return (f"refusing recursive delete of '{norm}' — too shallow (could wipe a "
+                f"share/disk root). Use unraid_share_delete for share roots, or target "
+                f"a deeper path.")
+    return None
+
+
+@mcp.tool()
+def unraid_fs_list(path: str, show_hidden: bool = False) -> dict:
+    """List a directory on the server over SSH (name, type, size, mtime, perms).
+    Absolute paths only, e.g. "/mnt/user/Movies". Read-only. Requires SSH."""
+    cfg = load_config()
+    try:
+        p = _norm_path(path)
+        flag = "-la" if show_hidden else "-l"
+        code, out, e = _ssh_exec(cfg, f"ls {flag} --time-style=long-iso {shlex.quote(p)}")
+        if code != 0:
+            return err(RuntimeError(e.strip() or out.strip() or f"cannot list {p}"))
+        entries = []
+        for line in out.splitlines():
+            cols = line.split(maxsplit=7)
+            if len(cols) < 8 or cols[0].startswith("total"):
+                continue
+            perms, _links, owner, group, size, date, tm, name = cols
+            entries.append({"name": name, "type": "dir" if perms[0] == "d" else
+                            ("link" if perms[0] == "l" else "file"),
+                            "perms": perms, "owner": owner, "group": group,
+                            "size": int(size) if size.isdigit() else size,
+                            "modified": f"{date} {tm}"})
+        return ok({"path": p, "count": len(entries), "entries": entries})
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+@mcp.tool()
+def unraid_fs_read(path: str, max_bytes: int = 65536) -> dict:
+    """Read a text file on the server over SSH (up to max_bytes, default 64 KiB).
+    Absolute path. Read-only. Requires SSH."""
+    cfg = load_config()
+    try:
+        p = _norm_path(path)
+        code, out, e = _ssh_exec(cfg, f"head -c {int(max_bytes)} {shlex.quote(p)}")
+        if code != 0:
+            return err(RuntimeError(e.strip() or f"cannot read {p}"))
+        _c, sz, _e = _ssh_exec(cfg, f"stat -c %s {shlex.quote(p)}")
+        return ok({"path": p, "size": int(sz.strip()) if sz.strip().isdigit() else None,
+                   "truncated": sz.strip().isdigit() and int(sz.strip()) > max_bytes,
+                   "content": out})
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+@mcp.tool()
+def unraid_fs_write(path: str, content: str, append: bool = False,
+                     confirm: bool = False) -> dict:
+    """Write (or append to) a text file on the server over SSH. Creates parent
+    dirs as needed. Absolute path. WRITES: confirm-gated. Requires SSH."""
+    if not confirm:
+        return refuse(f"pass confirm=True to write '{path}'.")
+    cfg = load_config()
+    try:
+        p = _norm_path(path)
+        guard = _guard_path(p)
+        if guard:
+            return refuse(guard)
+        parent = p.rsplit("/", 1)[0] or "/"
+        _ssh_exec(cfg, f"mkdir -p {shlex.quote(parent)}")
+        if append:
+            existing = _ssh_read_file(cfg, p) if _ssh_exec(cfg, f"test -f {shlex.quote(p)} && echo y")[1].strip() == "y" else ""
+            _ssh_write_file(cfg, p, existing + content)
+        else:
+            _ssh_write_file(cfg, p, content)
+        _c, sz, _e = _ssh_exec(cfg, f"stat -c %s {shlex.quote(p)}")
+        return ok({"path": p, "bytes": int(sz.strip()) if sz.strip().isdigit() else None,
+                   "mode": "append" if append else "overwrite"})
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+@mcp.tool()
+def unraid_fs_mkdir(path: str, confirm: bool = False) -> dict:
+    """Create a directory (and parents) on the server over SSH. Absolute path.
+    WRITES: confirm-gated. Requires SSH."""
+    if not confirm:
+        return refuse(f"pass confirm=True to create directory '{path}'.")
+    cfg = load_config()
+    try:
+        p = _norm_path(path)
+        code, out, e = _ssh_exec(cfg, f"mkdir -p {shlex.quote(p)}")
+        if code != 0:
+            return err(RuntimeError(e.strip() or out.strip()))
+        return ok({"path": p, "created": True})
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+@mcp.tool()
+def unraid_fs_move(source: str, dest: str, confirm: bool = False) -> dict:
+    """Move/rename a file or directory on the server over SSH. WRITES:
+    confirm-gated. Requires SSH."""
+    if not confirm:
+        return refuse(f"pass confirm=True to move '{source}' -> '{dest}'.")
+    cfg = load_config()
+    try:
+        s, d = _norm_path(source), _norm_path(dest)
+        guard = _guard_path(s)
+        if guard:
+            return refuse(guard)
+        code, out, e = _ssh_exec(cfg, f"mv {shlex.quote(s)} {shlex.quote(d)}")
+        if code != 0:
+            return err(RuntimeError(e.strip() or out.strip()))
+        return ok({"source": s, "dest": d, "moved": True})
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+@mcp.tool()
+def unraid_fs_copy(source: str, dest: str, confirm: bool = False) -> dict:
+    """Copy a file or directory (recursively) on the server over SSH. WRITES:
+    confirm-gated. Requires SSH."""
+    if not confirm:
+        return refuse(f"pass confirm=True to copy '{source}' -> '{dest}'.")
+    cfg = load_config()
+    try:
+        s, d = _norm_path(source), _norm_path(dest)
+        code, out, e = _ssh_exec(cfg, f"cp -a {shlex.quote(s)} {shlex.quote(d)}", timeout=1800)
+        if code != 0:
+            return err(RuntimeError(e.strip() or out.strip()))
+        return ok({"source": s, "dest": d, "copied": True})
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+@mcp.tool()
+def unraid_fs_delete(path: str, recursive: bool = False, confirm: bool = False,
+                      acknowledge: str = "") -> dict:
+    """Delete a file or directory on the server over SSH. recursive=True removes
+    a directory tree and is DOUBLE-gated: pass confirm=True AND
+    acknowledge='<path>'. Catastrophic/system paths are refused. Requires SSH."""
+    if not confirm:
+        return refuse(f"pass confirm=True to delete '{path}'.")
+    cfg = load_config()
+    try:
+        p = _norm_path(path)
+        guard = _guard_path(p, recursive=recursive)
+        if guard:
+            return refuse(guard)
+        if recursive and acknowledge != p:
+            return refuse(f"recursive delete is destructive — also pass acknowledge='{p}'.")
+        flag = "-rf" if recursive else "-f"
+        code, out, e = _ssh_exec(cfg, f"rm {flag} {shlex.quote(p)}")
+        if code != 0:
+            return err(RuntimeError(e.strip() or out.strip()))
+        return ok({"path": p, "deleted": True, "recursive": recursive})
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+def _build_share_cfg(spec: dict) -> str:
+    """Build an Unraid /boot/config/shares/<name>.cfg from a spec with defaults
+    matching the webGUI's own generated files."""
+    g = spec.get
+    return (
+        "# Generated settings:\n"
+        f'shareComment="{g("comment", "")}"\n'
+        f'shareInclude="{g("include", "")}"\n'
+        f'shareExclude="{g("exclude", "")}"\n'
+        f'shareUseCache="{g("use_cache", "no")}"\n'
+        f'shareCachePool="{g("cache_pool", "")}"\n'
+        f'shareCachePool2=""\n'
+        f'shareCOW="{g("cow", "auto")}"\n'
+        f'shareAllocator="{g("allocator", "highwater")}"\n'
+        f'shareSplitLevel="{g("split_level", "")}"\n'
+        f'shareFloor="{g("floor", "0")}"\n'
+        f'shareExport="{g("export", "e")}"\n'
+        f'shareCaseSensitive="auto"\n'
+        f'shareSecurity="{g("security", "public")}"\n'
+        f'shareReadList="{g("read_list", "")}"\n'
+        f'shareWriteList="{g("write_list", "")}"\n'
+        f'shareVolsizelimit=""\n'
+        f'shareExportNFS="{g("export_nfs", "-")}"\n'
+        f'shareExportNFSFsid="0"\n'
+        f'shareSecurityNFS="public"\n'
+        f'shareHostListNFS=""\n'
+    )
+
+
+@mcp.tool()
+def unraid_share_create(name: str, comment: str = "", use_cache: str = "no",
+                         cache_pool: str = "", allocator: str = "highwater",
+                         security: str = "public", export: str = "e",
+                         confirm: bool = False) -> dict:
+    """Create a new user share: writes /boot/config/shares/<name>.cfg, creates
+    /mnt/user/<name>, and applies it live via emcmd so it appears immediately.
+    Requires SSH and confirm=True.
+
+    Args:
+        name: Share name (also the /mnt/user/<name> directory).
+        comment: Optional description.
+        use_cache: "no" | "yes" | "prefer" | "only" (cache/pool policy).
+        cache_pool: pool name when use_cache != "no" (e.g. "cache").
+        allocator: "highwater" | "most-free" | "fillup".
+        security: "public" | "secure" | "private".
+        export: "e" (export SMB) or "-" (do not export).
+        confirm: must be True.
+    """
+    if not confirm:
+        return refuse(f"pass confirm=True to create share '{name}'.")
+    if not _valid_name(name):
+        return refuse(f"invalid share name '{name}'.")
+    cfg = load_config()
+    try:
+        cfg_path = f"{_SHARES_CFG_DIR}/{name}.cfg"
+        if _ssh_exec(cfg, f"test -e {shlex.quote(cfg_path)} && echo y")[1].strip() == "y":
+            return refuse(f"share '{name}' already exists.")
+        spec = {"comment": comment, "use_cache": use_cache, "cache_pool": cache_pool,
+                "allocator": allocator, "security": security, "export": export}
+        _ssh_exec(cfg, f"mkdir -p {shlex.quote(_SHARES_CFG_DIR)} {shlex.quote('/mnt/user/' + name)}")
+        _ssh_write_file(cfg, cfg_path, _build_share_cfg(spec))
+        # Apply live via emcmd (URL-encoded form fields), best-effort.
+        from urllib.parse import quote_plus
+        emcmd_args = (f"shareName={quote_plus(name)}&shareComment={quote_plus(comment)}"
+                      f"&shareUseCache={use_cache}&shareCachePool={quote_plus(cache_pool)}"
+                      f"&shareAllocator={allocator}&shareSecurity={security}"
+                      f"&shareExport={export}&changeShare=Apply")
+        code, out, e = _ssh_exec(cfg, f"{_EMCMD} {shlex.quote(emcmd_args)}")
+        return ok({"name": name, "cfg": cfg_path, "dir": f"/mnt/user/{name}",
+                   "applied": code == 0, "emcmd": (out or e).strip()[:200]})
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+@mcp.tool()
+def unraid_share_delete(name: str, delete_data: bool = False, confirm: bool = False,
+                         acknowledge: str = "") -> dict:
+    """Delete a user share. Removes /boot/config/shares/<name>.cfg (and applies
+    via emcmd). delete_data=True also removes /mnt/user/<name> and ALL its
+    contents — DOUBLE-gated: pass confirm=True AND acknowledge='<name>'.
+    Requires SSH."""
+    if not confirm:
+        return refuse(f"pass confirm=True to delete share '{name}'.")
+    if not _valid_name(name):
+        return refuse(f"invalid share name '{name}'.")
+    if delete_data and acknowledge != name:
+        return refuse(f"deleting share data is destructive — also pass acknowledge='{name}'.")
+    cfg = load_config()
+    try:
+        from urllib.parse import quote_plus
+        code, out, e = _ssh_exec(cfg, f"{_EMCMD} {shlex.quote(f'shareName={quote_plus(name)}&changeShare=Delete')}")
+        _ssh_exec(cfg, f"rm -f {shlex.quote(f'{_SHARES_CFG_DIR}/{name}.cfg')}")
+        result = {"name": name, "cfg_removed": True, "applied": code == 0}
+        if delete_data:
+            dc, do, de = _ssh_exec(cfg, f"rm -rf {shlex.quote('/mnt/user/' + name)}", timeout=600)
+            result["data_deleted"] = (dc == 0)
+        return ok(result)
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
 if __name__ == "__main__":
     cfg = load_config()
     log(f"starting; config target = {cfg.get('host') or '(unset)'}:{cfg.get('port')}")

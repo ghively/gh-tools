@@ -15,7 +15,7 @@ API, from Claude Code. Built and tested against **GH-Nvidia**, running
     (`skills/unraid-control/references/schema.graphql`, pulled from
     github.com/unraid/api at the exact tag matching this server's API
     version) and searchable via `unraid_schema_search`/`unraid_schema_type`.
-  - **90 curated tools** (97 total with the generic passthrough and SSH
+  - **99 curated tools** (106 total with the generic passthrough and SSH
     layers) across system health, the array & disks & parity,
     Docker (including live per-container stats over WebSocket), VMs, shares,
     notifications, UPS, network, users/API keys, settings, plugins (both
@@ -39,9 +39,17 @@ API, from Claude Code. Built and tested against **GH-Nvidia**, running
       - `unraid_vm_isos` / `unraid_vm_create` / `unraid_vm_delete` — create a
         VM (vdisk + OVMF/q35 libvirt domain + `virsh define`) so it appears in
         the VM Manager; Linux + Windows.
-    - All deploy/create/delete tools are confirm-gated (vdisk deletion is
-      double-gated); the whole layer stays disabled until you configure SSH
-      credentials. `unraid_vm_*` refuse to touch protected VMs (e.g. `GH-Dev`).
+    - **Files** — `unraid_fs_list` / `unraid_fs_read` (reads), plus
+      `unraid_fs_write` / `unraid_fs_mkdir` / `unraid_fs_move` /
+      `unraid_fs_copy` / `unraid_fs_delete` (writes). System paths are
+      hard-refused; recursive delete is double-gated.
+    - **Shares** — `unraid_share_create` (writes the share `.cfg` + directory
+      and applies it live via `emcmd`) and `unraid_share_delete` (data removal
+      double-gated).
+    - All deploy/create/write/delete tools are confirm-gated (vdisk/share-data
+      deletion is double-gated); the whole layer stays disabled until you
+      configure SSH credentials. `unraid_vm_*` refuse to touch protected VMs
+      (e.g. `GH-Dev`).
 - **Skill** (`skills/unraid-control/`) — teaches Claude how to drive the
   server, with a categorized **API map + honest gap audit**
   (Works/Fixable/Hard-limit), verified **task recipes**, and an
