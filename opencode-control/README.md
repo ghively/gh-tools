@@ -53,6 +53,9 @@ The ACP tools and `*_write` authoring tools work without a server.
 If the server was started with `OPENCODE_SERVER_PASSWORD`, set `password` (and `username`
 if not the default `opencode`) in `config.local.json` — auth is HTTP Basic.
 
+To verify against a live server: `cd opencode-control && uv run --script mcp/_smoketest.py`
+(read-only; exits cleanly with a note if no server is reachable).
+
 ## Skill & commands
 
 - Skill **opencode-control** — how to drive the server, plus references on the full API

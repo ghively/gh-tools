@@ -39,6 +39,8 @@ class ACPSession:
         self._id = 0
         self._pending: dict[int, asyncio.Future] = {}
         self._reader_task: Optional[asyncio.Task] = None
+        self._stderr_task: Optional[asyncio.Task] = None
+        self._stderr_tail: list[bytes] = []  # last few stderr lines, for diagnostics
         # transcript captured from session/update notifications
         self.updates: list[dict] = []
         self.text_chunks: list[str] = []
@@ -58,8 +60,27 @@ class ACPSession:
             self.bin, "acp", "--cwd", self.cwd,
             stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
+            limit=8 * 1024 * 1024,  # big message chunks arrive as ONE json line
         )
         self._reader_task = asyncio.create_task(self._read_loop())
+        # stderr MUST be drained: opencode logs there, and an un-read PIPE
+        # backs up at ~64KB and deadlocks the child. Keep a small tail.
+        self._stderr_task = asyncio.create_task(self._drain_stderr())
+
+    async def _drain_stderr(self):
+        assert self.proc and self.proc.stderr
+        try:
+            while True:
+                line = await self.proc.stderr.readline()
+                if not line:
+                    break
+                self._stderr_tail.append(line[:500])
+                del self._stderr_tail[:-20]
+        except Exception:  # noqa: BLE001  (ValueError on over-long line, etc.)
+            pass
+
+    def _stderr_text(self) -> str:
+        return b"".join(self._stderr_tail).decode(errors="replace").strip()
 
     async def _send(self, obj: dict):
         line = json.dumps(obj, separators=(",", ":")) + "\n"
@@ -90,22 +111,30 @@ class ACPSession:
 
     async def _read_loop(self):
         assert self.proc and self.proc.stdout
-        while True:
-            line = await self.proc.stdout.readline()
-            if not line:
-                break
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                msg = json.loads(line)
-            except Exception:  # noqa: BLE001
-                continue
-            await self._dispatch(msg)
-        # process ended: fail any pending futures
-        for fut in self._pending.values():
-            if not fut.done():
-                fut.set_exception(ACPError("opencode acp process exited"))
+        try:
+            while True:
+                line = await self.proc.stdout.readline()
+                if not line:
+                    break
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    msg = json.loads(line)
+                except Exception:  # noqa: BLE001
+                    continue
+                try:
+                    await self._dispatch(msg)
+                except Exception as e:  # noqa: BLE001  keep reading; one bad handler must not kill the loop
+                    self._log(f"acp dispatch error: {e}")
+        finally:
+            # process ended (or the loop died): fail any pending futures so
+            # callers don't hang until their wait_for timeout
+            err = self._stderr_text()
+            detail = f" — stderr tail: {err[:400]}" if err else ""
+            for fut in self._pending.values():
+                if not fut.done():
+                    fut.set_exception(ACPError(f"opencode acp process exited{detail}"))
 
     async def _dispatch(self, msg: dict):
         # response to one of our requests
@@ -259,10 +288,16 @@ class ACPSession:
                     await asyncio.wait_for(self.proc.wait(), timeout=5)
                 except asyncio.TimeoutError:
                     self.proc.kill()
+                    await self.proc.wait()  # reap the killed child
         except Exception:  # noqa: BLE001
             pass
-        if self._reader_task:
-            self._reader_task.cancel()
+        for task in (self._reader_task, self._stderr_task):
+            if task and not task.done():
+                task.cancel()
+                try:
+                    await task
+                except (asyncio.CancelledError, Exception):  # noqa: BLE001
+                    pass
 
     def transcript(self) -> dict:
         return {
@@ -308,7 +343,20 @@ async def run_prompt(prompt: str, *, opencode_bin: str = "opencode", cwd: str = 
             await sess.set_mode(mode)
         if model:
             model_note = await sess.set_model(model)
-        result = await sess.prompt(prompt, files=files, timeout=timeout)
+        try:
+            result = await sess.prompt(prompt, files=files, timeout=timeout)
+        except asyncio.TimeoutError:
+            # tell the agent to stop, then return what streamed so far
+            try:
+                await sess.cancel()
+                await asyncio.sleep(0.5)
+            except Exception:  # noqa: BLE001
+                pass
+            out = sess.transcript()
+            out["stop_reason"] = f"timeout ({timeout}s) — turn cancelled; partial transcript above"
+            out["init"] = {"protocolVersion": init.get("protocolVersion"),
+                           "authMethods": [m.get("id") for m in init.get("authMethods", [])]}
+            return out
         out = sess.transcript()
         out["stop_reason"] = result.get("stopReason")
         if model:
