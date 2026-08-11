@@ -9,7 +9,7 @@ following the deep-integration-builder methodology.
 - **MCP server** (`mcp/gitlab_server.py`, self-provisioning via `uv run --script`):
   - Generic layer: `gitlab_rest` (any of 177 REST resource groups), `gitlab_graphql`
     (160 queries / 622 mutations), `gitlab_status`, `gitlab_api_search`.
-  - **79 curated tools**: projects, repo tree/files/commits/branches/tags/extras,
+  - **75 curated tools** (79 total with the generic layer): projects, repo tree/files/commits/branches/tags/extras,
     protected refs+environments, merge requests + approvals + review discussions + draft notes
     + suggestions, issues/boards/labels/milestones/links/time tracking, pipelines/jobs/artifacts/
     triggers/schedules/variables/runners/lint/resource groups/secure files, feature flags,

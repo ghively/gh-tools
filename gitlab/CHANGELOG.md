@@ -3,6 +3,38 @@
 All notable changes to the **gitlab** gh-tools plugin.
 Versioning follows the plugin's own line (independent of the gh-tools marketplace).
 
+## [0.5.1] — 2026-08-11
+
+Maintenance release: offline review fixes, no new tools or endpoints.
+
+### Fixed
+
+- **`mcp/gitlab_server.py`** — removed a UTF-8 BOM that preceded the `#!` shebang
+  (broke direct `./gitlab_server.py` execution; `uv run --script` was unaffected).
+- **`mcp/gitlab_server.py`** — repaired cp1252 mojibake (double-encoded em dashes,
+  arrows, etc.) in 38 docstring/comment lines.
+- **`mcp/gitlab_server.py`** — deduplicated `API_CATALOG` keys (`draft notes` and
+  `error tracking` were each defined twice; the first definitions were dead code).
+- **`mcp/gitlab_server.py`** — network-level failures (DNS, refused connection,
+  TLS, timeout) in `rest()`, `gql()`, job-log and secure-file downloads now return
+  a structured `{error, kind, message, hint}` dict instead of raising through the
+  tool, so timeouts and unreachable instances are reported honestly.
+- **Docs** — corrected the curated-tool count: 75 curated + 4 generic = 79 total
+  (plugin.json, README.md, SKILL.md previously called all 79 "curated").
+
+### Added
+
+- **`mcp/_smoketest.py`** — read-only smoke test (modeled on radarr-control's):
+  verifies confirm-gating offline with zero network calls, then runs 11 read-only
+  curated-tool probes against the configured instance; exits 0 with a SKIP notice
+  when no config.local.json / GITLAB_URL+GITLAB_TOKEN is present.
+
+### Verification (this release; offline environment — no live instance, no uv/mcp)
+
+- `python3 -m py_compile` clean on both .py files; `python3 -m json.tool` clean on
+  all 12 JSON files; AST audit confirms 79 `@mcp.tool` functions and no remaining
+  duplicate catalog keys. Live selftest/smoke test NOT re-run (needs the instance).
+
 ## [0.5.0] — 2026-07-19
 
 The "deepen everything" release. Tool count 69 → 79, references 14 → 19, workflow commands
