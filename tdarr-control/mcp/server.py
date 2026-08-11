@@ -11,14 +11,25 @@
 Exposes a Tdarr distributed transcoding server (v2 API) to Claude through the
 Model Context Protocol.
 
-**STATUS: DOC-VERIFIED — NOT YET LIVE-VERIFIED.**
+**STATUS: LIVE-VERIFIED on Tdarr 2.84.01 (2026-07-20) — MIXED.** Not every
+tool is equally verified. Read each tool's docstring tag:
 
-This server was built from the official Tdarr API documentation at
-https://tdarr.readme.io/reference (v2.25.01+). Tdarr is not deployed on this
-homelab yet, so every call shape, param name, and response structure is taken
-from the docs and has NOT been exercised against a live instance. When Tdarr
-deploys, run `mcp/_smoketest.py` to verify, and close the gap with reversible
-write proofs (add+remove a plugin, etc.).
+* **LIVE-VERIFIED** — actually exercised against the live 2.84.01 server
+  during the audit (the smoke-test reads + the reversible backup write proof)
+  or its exact param shape was corrected against the live API.
+* **DOC-VERIFIED** — call/param shape taken from the official docs
+  (https://tdarr.readme.io/reference, v2.25.01+) and NOT yet exercised live.
+  Where the docs are vague (e.g. `scan-files` scanConfig, `toggle-schedule`
+  type, `transcode-user-verdict` verdict, `/cruddb` write-mode obj shapes),
+  the docstring says the shape is ASSUMED — probe with a read first.
+* **added-post-verification** — written after the 2026-07-20 live run; present
+  in `mcp/_smoketest.py` but not yet re-run against live Tdarr. These are
+  `tdarr_libraries`, `tdarr_staged_files`, `tdarr_create_plugin`,
+  `tdarr_remove_video_codec_exclude`, `tdarr_remove_audio_codec_exclude`.
+
+The canonical per-tool taxonomy lives in the skill's Honesty section and the
+README's "Honest gap taxonomy". Re-run `mcp/_smoketest.py` / `mcp/_writeproof.py`
+to close the remaining gaps.
 
 Two-layer design, mirroring the radarr/sonarr/sabnzbd plugins:
 
@@ -520,7 +531,8 @@ def tdarr_scan_files(scan_config: str, confirm: bool = False) -> Any:
 
     Args:
         scan_config: JSON object string — the scanConfig (library ID, array of
-            paths, etc.). Exact shape TDB on first live use.
+            paths, etc.). The exact shape is ASSUMED from the docs and NOT
+            live-verified; inspect a live scan payload before relying on it.
         confirm: Must be true.
     """
     try:
@@ -751,8 +763,12 @@ def tdarr_update_plugins(confirm: bool = False) -> Any:
 @mcp.tool()
 def tdarr_create_plugin(definition: str, confirm: bool = False) -> Any:
     """Create a new local plugin. WRITES: confirm-gated.
-    **DOC-VERIFIED** — POST /api/v2/create-plugin. Exact body shape TBD on
-    first live use — see references/workflows.md "Building a custom plugin".
+    **added-post-verification** — POST /api/v2/create-plugin. The endpoint is in
+    the documented catalog, but its exact body shape is ASSUMED, not live-
+    verified: your `definition` object is sent as-is (Tdarr wraps it in the
+    outer {"data": ...}). Inspect an existing plugin via tdarr_read_plugin and
+    see references/workflows.md "Building a custom plugin" for the JS structure
+    before relying on this.
 
     Args:
         definition: JSON object string — the plugin definition (id, source, etc.).
@@ -964,7 +980,14 @@ def tdarr_db(mode: str, collection: str, doc_id: str = "",
     """Direct DB CRUD via Tdarr's /cruddb endpoint — access any of the 8
     internal collections. READS (getById/getAll) are NOT gated; every write
     mode is DOUBLY GATED — confirm=true AND acknowledge='<mode>' (typed,
-    e.g. acknowledge='removeAll'). **DOC-VERIFIED** — POST /api/v2/cruddb.
+    e.g. acknowledge='removeAll'). POST /api/v2/cruddb.
+
+    **Verification status is mixed:** the READ modes (getAll/getById) were
+    LIVE-VERIFIED on Tdarr 2.84.01 against StatisticsJSONDB, NodeJSONDB,
+    SettingsGlobalJSONDB, LibrarySettingsJSONDB, and FlowsJSONDB (their row
+    shapes are known). The WRITE modes (insert/update) are DOC-VERIFIED only:
+    the per-collection `obj` shape is NOT live-verified and varies by
+    collection — always run getAll/getById first to learn the shape.
 
     This is the escape hatch for everything not covered by a curated tool —
     you can read or mutate any internal state. Use with care: a `removeAll`
@@ -1024,7 +1047,10 @@ def tdarr_collections() -> Any:
 def tdarr_libraries() -> Any:
     """List all libraries with their full settings (plugin stacks, codec
     excludes, transcode cache, schedules, folder-watch, etc.). READ-ONLY.
-    **LIVE-VERIFIED** — /cruddb getAll on LibrarySettingsJSONDB (Tdarr 2.84.01)."""
+    **added-post-verification** — thin wrapper over /cruddb getAll on
+    LibrarySettingsJSONDB. The underlying getAll call pattern was live-observed
+    during the 2.84.01 audit, but this wrapper tool was added afterward and has
+    not itself been re-run against live Tdarr."""
     try:
         return _finish(CLIENT.request(
             "POST", "/api/v2/cruddb",
@@ -1037,7 +1063,9 @@ def tdarr_libraries() -> Any:
 def tdarr_staged_files(limit: int = 50) -> Any:
     """List the staging/review queue — transcodes awaiting accept/reject
     (when autoAcceptTranscodes=false) plus staged work items. READ-ONLY.
-    **DOC-VERIFIED** — /cruddb getAll on StagedJSONDB.
+    **added-post-verification** — /cruddb getAll on StagedJSONDB. Written after
+    the 2026-07-20 live run; in the smoke test but not yet re-run against live
+    Tdarr (StagedJSONDB row shape not yet live-observed).
 
     Args:
         limit: Cap results returned (client-side).
@@ -1079,7 +1107,9 @@ def tdarr_toggle_schedule(library_id: str, schedule_type: str = "",
 
     Args:
         library_id: Library id.
-        schedule_type: Optional type filter (exact values TBD on first live use).
+        schedule_type: Optional type filter. The accepted values are ASSUMED
+            (docs are vague) and NOT live-verified — omit unless you have
+            confirmed the value against a live library's schedule config.
         confirm: Must be true.
     """
     try:
@@ -1130,7 +1160,9 @@ def tdarr_add_audio_codec_exclude(library_id: str, codec: str,
 def tdarr_remove_video_codec_exclude(library_id: str, codec: str,
                                       confirm: bool = False) -> Any:
     """Remove a video codec exclude from a library. WRITES: confirm-gated.
-    **DOC-VERIFIED** — POST /api/v2/remove-video-codec-exclude."""
+    **added-post-verification** — POST /api/v2/remove-video-codec-exclude
+    (endpoint in the documented catalog; param shape mirrors the add- variant
+    but not yet exercised live)."""
     try:
         if not library_id or not codec:
             raise TdarrError("library_id and codec are required")
@@ -1146,7 +1178,9 @@ def tdarr_remove_video_codec_exclude(library_id: str, codec: str,
 def tdarr_remove_audio_codec_exclude(library_id: str, codec: str,
                                       confirm: bool = False) -> Any:
     """Remove an audio codec exclude from a library. WRITES: confirm-gated.
-    **DOC-VERIFIED** — POST /api/v2/remove-audio-codec-exclude."""
+    **added-post-verification** — POST /api/v2/remove-audio-codec-exclude
+    (endpoint in the documented catalog; param shape mirrors the add- variant
+    but not yet exercised live)."""
     try:
         if not library_id or not codec:
             raise TdarrError("library_id and codec are required")
@@ -1204,8 +1238,10 @@ def tdarr_transcode_user_verdict(file_path: str, db_id: str = "",
     Args:
         file_path: The file path.
         db_id: Optional DB id.
-        verdict: Verdict string (exact values TBD on first live use; 'transcode'
-            and 'ignore' are typical).
+        verdict: Verdict string. The accepted values are ASSUMED, NOT live-
+            verified — 'transcode'/'ignore' are guesses from the docs. Confirm
+            the exact strings from a live file's record (tdarr_db getById on
+            FileJSONDB) before sending.
         confirm: Must be true.
     """
     try:

@@ -40,6 +40,8 @@ gate_checks = [
     ("gitlab_rest non-GET",         lambda: server.gitlab_rest("DELETE", "/projects/1")),
     ("gitlab_graphql mutation",     lambda: server.gitlab_graphql("mutation { x }")),
     ("users delete",                lambda: server.users(action="delete", user_id=1)),
+    ("commit_status set",           lambda: server.commit_status(project="x", sha="deadbeef",
+                                                                  action="set", state="success")),
 ]
 gate_fail = 0
 for name, fn in gate_checks:

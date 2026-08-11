@@ -10,10 +10,10 @@ running **DSM 7.3.1**.
   CSRF token, auto re-login) and exposes:
   - **Generic passthrough** (`synology_call`, `synology_batch`, `synology_list_apis`,
     `synology_describe_api`) reaching **all ~870 SYNO.\* APIs** on the box.
-  - **64 curated tools** for system health, logs, storage, snapshots, File Station,
+  - **69 curated tools** for system health, logs, storage, snapshots, File Station,
     Download Station, Container Manager (containers/images/Compose projects),
-    packages, services, users, groups, shares & permissions, firewall, DSM updates,
-    Hyper Backup / Active Backup, and power.
+    packages, services, users, groups, shares & permissions, firewall (status + rules)
+    & auto-block, certificates, UPS, DSM updates, Hyper Backup / Active Backup, and power.
 - **Skill** (`skills/synology-control/`) — teaches Claude how to drive the server,
   with a full categorized **API map** of this NAS, verified **task recipes**, and the
   **auth/conventions** reference.

@@ -26,7 +26,7 @@ required_environment_variables:
   - name: EMBY_API_KEY
     prompt: Emby API key (Dashboard > Advanced > API Keys)
     required_for: authenticating emby_* calls (server-admin access)
-version: 0.1.0
+version: 0.1.1
 author: ghively
 ---
 
@@ -36,7 +36,11 @@ This skill drives a real Emby media server through the **`emby` MCP server**
 (tools are named `mcp__emby__*`, shown to you as `emby_*`). The target server,
 auth, and behavior are already wired up — your job is to pick the right
 tool/endpoint and interpret results. Verified against **Emby Server 4.7.14.0**
-on Linux (server "gh-media", Emby Premiere active).
+on Linux (server "gh-media", Emby Premiere active). The live server is now
+**4.9.5.0** but was not re-verified (no API key available) — the tools use
+long-stable endpoints and self-discover the API from the live OpenAPI spec, so
+they remain accurate; see the version-delta note in README before relying on
+any 4.7-specific "hard limit" claim.
 
 ## Mental model
 
@@ -86,6 +90,9 @@ pending restart, item counts, connected sessions, and who's playing what
 | Message a screen | `emby_send_message`; volume/home/etc `emby_send_command` |
 | Why does X transcode? | `emby_playback_info` (+ `emby_sessions` live) |
 | Browse/report on library | `emby_items` (filters, sort, paging), `emby_search` |
+| Browse facets (genres/studios/artists/people/years) | `emby_categories` |
+| "More like this" recommendations | `emby_similar` |
+| Recently added ("Latest" row) | `emby_latest` |
 | Item deep-dive (codecs, path, streams) | `emby_item` |
 | Continue watching / next up | `emby_next_up` |
 | Edit metadata | `emby_update_item` (round-trip merge; lock fields you edit!) |

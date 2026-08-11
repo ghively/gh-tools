@@ -8,9 +8,9 @@
     {
       "name": "synology-nas",
       "source": "./synology-nas",
-      "description": "Full control of a Synology DiskStation (DSM 7.x) — MCP server reaching all ~870 DSM Web APIs plus curated tools, a control skill, and workflow commands.",
+      "description": "Full control of a Synology DiskStation (DSM 7.x) — MCP server reaching all ~870 DSM Web APIs plus 69 curated tools, a control skill, and workflow commands.",
       "category": "infrastructure",
-      "version": "0.2.0"
+      "version": "0.2.1"
     },
     {
       "name": "deep-integration-builder",
@@ -22,16 +22,16 @@
     {
       "name": "gitlab",
       "source": "./gitlab",
-      "description": "Deep control of a self-hosted GitLab CE instance (live-verified on 19.0.0) — REST+GraphQL passthrough over all 177 API resource groups + 75 curated tools (incl. Pages, ML model registry+MLflow, CI catalog, protected refs, feature flags, project/group access tokens, badges, import/export), an 11-reference control skill (CI/CD, admin & self-hosting hard limits, CE-vs-EE gating, GraphQL, templates, workflows, AI/model-registry), 20 bulletproof templates (10 .gitlab-ci.yml live-validated valid:true on 19.0.0 via the CI Lint API + project scaffolding + config presets), and 13 workflow commands.",
+      "description": "Deep control of a self-hosted GitLab CE instance (live-verified on 19.0.0) — REST+GraphQL passthrough over all 177 API resource groups + 78 curated tools (incl. Pages, ML model registry+MLflow, CI catalog, protected refs, feature flags, project/group access tokens, badges, import/export), an 11-reference control skill (CI/CD, admin & self-hosting hard limits, CE-vs-EE gating, GraphQL, templates, workflows, AI/model-registry), 20 bulletproof templates (10 .gitlab-ci.yml live-validated valid:true on 19.0.0 via the CI Lint API + project scaffolding + config presets), and 13 workflow commands.",
       "category": "development",
-      "version": "0.5.1"
+      "version": "0.5.2"
     },
     {
       "name": "emby",
       "source": "./emby",
-      "description": "Full control of an Emby media server (verified on 4.7.14.0) — MCP server with a generic passthrough reaching all ~484 REST operations (self-discovered from the live OpenAPI spec), 54 curated tools (status, library & metadata, users & policies, sessions & remote playback control, transcoding analysis, scheduled tasks, plugins & catalog, collections, playlists, configuration), a control skill with official-docs references (configuration, troubleshooting, optimization, plugin management & development), and workflow commands.",
+      "description": "Full control of an Emby media server (verified on 4.7.14.0) — MCP server with a generic passthrough reaching all ~484 REST operations (self-discovered from the live OpenAPI spec), 57 curated tools (status, library & metadata, users & policies, sessions & remote playback control, transcoding analysis, scheduled tasks, plugins & catalog, collections, playlists, configuration), a control skill with official-docs references (configuration, troubleshooting, optimization, plugin management & development), and workflow commands.",
       "category": "media",
-      "version": "0.1.0"
+      "version": "0.1.1"
     },
     {
       "name": "romm",
@@ -50,9 +50,9 @@
     {
       "name": "unifi-network",
       "source": "./unifi",
-      "description": "Full control of a Ubiquiti UniFi console (UniFi OS) — MCP server reaching every Network endpoint across the classic v1, modern v2, and UniFi OS host APIs, plus ~35 curated tools for health, devices, clients, wireless, firewall, port-forwarding, traffic rules, events and statistics, a control skill, and workflow commands. Tested against a UniFi Dream Router 7.",
+      "description": "Full control of a Ubiquiti UniFi console (UniFi OS) — MCP server reaching every Network endpoint across the classic v1, modern v2, and UniFi OS host APIs, plus ~40 curated tools for health, devices, clients, wireless, firewall, port-forwarding, traffic rules, events and statistics, a control skill, and workflow commands. Tested against a UniFi Dream Router 7.",
       "category": "infrastructure",
-      "version": "0.1.0"
+      "version": "0.1.1"
     },
     {
       "name": "comfyui-control",

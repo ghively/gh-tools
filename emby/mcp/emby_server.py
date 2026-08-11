@@ -1040,6 +1040,166 @@ def emby_next_up(limit: int = 15, user: str = "") -> Any:
 
 
 # --------------------------------------------------------------------------- #
+# Library facets: genres, studios, artists, people, years; similar; latest    #
+# --------------------------------------------------------------------------- #
+_CATEGORY_ENDPOINTS = {
+    "genres": "/Genres",
+    "musicgenres": "/MusicGenres",
+    "studios": "/Studios",
+    "artists": "/Artists",
+    "albumartists": "/Artists/AlbumArtists",
+    "persons": "/Persons",
+    "people": "/Persons",
+    "years": "/Years",
+}
+
+
+@mcp.tool()
+def emby_categories(category: str, search_term: str = "", include_types: str = "",
+                    parent_id: str = "", person_types: str = "",
+                    sort_by: str = "SortName", sort_order: str = "Ascending",
+                    fields: str = "", limit: int = 50, start_index: int = 0,
+                    user: str = "") -> Any:
+    """Browse the library's metadata FACETS — the values items are filed under.
+    Read-only; the companion to emby_items (which lists the items themselves).
+
+    Args:
+        category: One of "genres", "musicgenres", "studios", "artists",
+            "albumartists", "persons" (aka "people"), "years". Maps to
+            /Genres, /MusicGenres, /Studios, /Artists, /Artists/AlbumArtists,
+            /Persons, /Years respectively.
+        search_term: Optional name filter, e.g. "horror".
+        include_types: CSV of item types the facet must appear in, e.g.
+            "Movie" to list only genres used by movies.
+        parent_id: Restrict to a library/folder id.
+        person_types: category="persons" only — CSV of roles to restrict to,
+            e.g. "Actor,Director,Writer,Producer,GuestStar".
+        sort_by / sort_order: e.g. "SortName" (default) / "Ascending". Facets
+            also accept "SortName","Random". (Genres/Years ignore most sorts.)
+        fields: Extra CSV fields to surface, e.g. "ChildCount,ItemCounts".
+        limit / start_index: Paging.
+        user: User (name/id) whose view/counts apply.
+
+    Returns {category, TotalRecordCount, Items:[{Id, Name, Type, ...}]}. Use a
+    row's Name as the genres/studios/person value in emby_items, or its Id as
+    a parent_id.
+    """
+    try:
+        key = "".join(ch for ch in category.lower() if ch.isalnum())
+        endpoint = _CATEGORY_ENDPOINTS.get(key)
+        if not endpoint:
+            raise EmbyError("category must be one of: "
+                            + ", ".join(sorted(set(_CATEGORY_ENDPOINTS))))
+        uid = CLIENT.resolve_user(user)["Id"]
+        params: dict[str, Any] = {
+            "UserId": uid, "Recursive": True, "Limit": limit,
+            "StartIndex": start_index, "SortBy": sort_by, "SortOrder": sort_order,
+        }
+        if search_term:
+            params["SearchTerm"] = search_term
+        if include_types:
+            params["IncludeItemTypes"] = include_types
+        if parent_id:
+            params["ParentId"] = parent_id
+        if person_types and endpoint == "/Persons":
+            params["PersonTypes"] = person_types
+        if fields:
+            params["Fields"] = fields
+        data = CLIENT.request("GET", endpoint, params=params)
+        rows = data.get("Items", []) if isinstance(data, dict) else (data or [])
+        items = [compact_item(i) for i in rows]
+        extra = _csv(fields)
+        if extra:
+            for row, raw in zip(items, rows):
+                for f in extra:
+                    if f in raw and f not in row:
+                        row[f] = raw[f]
+        return _finish({"category": category,
+                        "TotalRecordCount": data.get("TotalRecordCount")
+                        if isinstance(data, dict) else len(items),
+                        "Items": items})
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def emby_similar(item_id: str, limit: int = 15, fields: str = "",
+                 user: str = "") -> Any:
+    """Items similar to a given movie, series, album or other item — Emby's
+    'More Like This' recommendation (GET /Items/{id}/Similar).
+
+    Args:
+        item_id: The seed item.
+        limit: Max results.
+        fields: Extra CSV fields, e.g. "Genres,Overview,CommunityRating".
+        user: User (name/id) whose watch state applies.
+    """
+    try:
+        uid = CLIENT.resolve_user(user)["Id"]
+        params: dict[str, Any] = {"UserId": uid, "Limit": limit}
+        if fields:
+            params["Fields"] = fields
+        data = CLIENT.request("GET", f"/Items/{item_id}/Similar", params=params)
+        rows = data.get("Items", []) if isinstance(data, dict) else (data or [])
+        items = [compact_item(i) for i in rows]
+        extra = _csv(fields)
+        if extra:
+            for row, raw in zip(items, rows):
+                for f in extra:
+                    if f in raw and f not in row:
+                        row[f] = raw[f]
+        return _finish({"TotalRecordCount": data.get("TotalRecordCount")
+                        if isinstance(data, dict) else len(items),
+                        "Items": items})
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def emby_latest(include_types: str = "", parent_id: str = "", limit: int = 20,
+                group_items: bool = True, is_played: str = "", fields: str = "",
+                user: str = "") -> Any:
+    """Recently ADDED items — the 'Latest' home-screen row
+    (GET /Users/{uid}/Items/Latest). The server returns these newest-first as a
+    flat list (NOT the {Items, TotalRecordCount} envelope); this tool normalizes
+    that into {count, Items}.
+
+    Args:
+        include_types: CSV, e.g. "Movie", "Episode", "Audio", "Series".
+        parent_id: Restrict to one library/folder id.
+        limit: Max items.
+        group_items: True groups new episodes under their series (as the web UI
+            does); False lists individual episodes.
+        is_played: "true"/"false"/"" to filter by watched state.
+        fields: Extra CSV fields, e.g. "Path,DateCreated,Overview".
+        user: User (name/id) whose view/watch state applies.
+    """
+    try:
+        uid = CLIENT.resolve_user(user)["Id"]
+        params: dict[str, Any] = {"Limit": limit, "GroupItems": group_items}
+        if include_types:
+            params["IncludeItemTypes"] = include_types
+        if parent_id:
+            params["ParentId"] = parent_id
+        if is_played:
+            params["IsPlayed"] = _truthy(is_played)
+        if fields:
+            params["Fields"] = fields
+        data = CLIENT.request("GET", f"/Users/{uid}/Items/Latest", params=params)
+        rows = data if isinstance(data, list) else data.get("Items", [])
+        items = [compact_item(i) for i in rows]
+        extra = _csv(fields)
+        if extra:
+            for row, raw in zip(items, rows):
+                for f in extra:
+                    if f in raw and f not in row:
+                        row[f] = raw[f]
+        return _finish({"count": len(items), "Items": items})
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+# --------------------------------------------------------------------------- #
 # Sessions & playback                                                         #
 # --------------------------------------------------------------------------- #
 def _compact_session(s: dict) -> dict:

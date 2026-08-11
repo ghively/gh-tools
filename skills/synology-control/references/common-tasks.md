@@ -21,13 +21,21 @@ Call shape: `synology_call(api=..., method=..., version=<optional>, params={...}
 - Firewall on/off + active profile: `SYNO.Core.Security.Firewall` · `get`
 - Firewall profiles: `SYNO.Core.Security.Firewall.Profile` · `list`
 - Toggle firewall: `SYNO.Core.Security.Firewall` · `set` · `params={"enable_firewall":true,"profile_name":"..."}` *(can lock you out — confirm first)*
-- Auto-block config: `SYNO.Core.Security.AutoBlock` · `get`; block list: `SYNO.Core.Security.AutoBlock.Rules` · `list`
+- Auto-block: curated `synology_autoblock_list(list_type="deny"|"allow")` and
+  `synology_autoblock_manage(action, ips, list_type, confirm=True)` (add/remove).
+  Under the hood: config `SYNO.Core.Security.AutoBlock` · `get`; IP list
+  `SYNO.Core.Security.AutoBlock.Rules` · `list` · v1 · `params={"type":"deny","offset":0,"limit":200}`
+  (**`type` is required** — `deny` = block list, `allow` = allow list; omitting it returns error 5100).
+- Firewall rules (read): curated `synology_firewall_rules` (per-profile default policy
+  + rule list via `SYNO.Core.Security.Firewall.Profile` · `get` · `params={"name":"<profile>"}`,
+  rules under `global.rules`).
 - Security scan status: `SYNO.Core.SecurityScan.Status` · `system_get`
 - Security Advisor settings: `SYNO.SecurityAdvisor.Conf` · `get`
 - DoS protection: `SYNO.Core.Security.DoS` · `get`
 
 ## Certificates
-- List certificates: `SYNO.Core.Certificate.CRT` · `list`
+- List certificates: curated `synology_certificates_list`
+  (= `SYNO.Core.Certificate.CRT` · `list` · v1)
 - Let's Encrypt account: `SYNO.Core.Certificate.LetsEncrypt.Account` · `get`
 
 ## SSH / Terminal
@@ -46,7 +54,8 @@ Call shape: `synology_call(api=..., method=..., version=<optional>, params={...}
 - S.M.A.R.T. / disk health is included in `synology_storage`'s `disks[]`.
 
 ## External devices
-- UPS status/settings: `SYNO.Core.ExternalDevice.UPS` · `get`
+- UPS status/settings: curated `synology_ups_status`
+  (= `SYNO.Core.ExternalDevice.UPS` · `get` · v1)
 - USB storage/printers: filter `synology_list_apis("ExternalDevice")`.
 
 ## Logs
@@ -84,8 +93,12 @@ Note the **version**: these list methods live at **v1**, not the API's max versi
 - Active Backup activity log: `synology_backup_active_logs` →
   `SYNO.ActiveBackup.Log` · `list_log` · v1 · `params={"offset":0,"limit":50,"filter":{}}`.
 - ActiveBackup server info: `SYNO.ActiveBackup.AEM` · `get_info` · v1.
-- To trigger a backup run: capture the exact method the same way (open the app,
-  intercept XHR); backup runs are writes — confirm with the user first.
+- To trigger a Hyper Backup run: **not wired as a curated tool.** `SYNO.Backup.Task`
+  exists and `list` (v1) works, but this box has **0 Hyper Backup tasks** configured,
+  and the run method (`backup_now`/`backup`) could not be confirmed without issuing a
+  write against production (prohibited). If a task exists, capture the exact method from
+  the app's XHR, then `synology_call(api="SYNO.Backup.Task", method=..., params={"task_id":<id>})`
+  — backup runs are writes, confirm with the user first.
 
 ## Sensitive settings need password-confirm elevation
 Some write operations (create/modify/delete **shared folders**, set **share
@@ -101,13 +114,18 @@ curated share/user/group/network write tools already do it for you.
   needs a **VMM Pro license**, which is not being purchased → treat VMM as **unavailable**.
 - **Snapshots** — readable (`SYNO.Core.Share.Snapshot list`) but **create/delete are not**
   exposed here (needs the Snapshot Replication package / different API).
-- **Firewall individual rules** — read/write via `SYNO.Core.Security.Firewall.Rules`
-  `load`/`save` (needs the right `profile` id param), not `list`/`get`/`set`. Firewall
-  on/off + profiles work.
+- **Firewall individual rules** — **reading** works via curated `synology_firewall_rules`
+  (`SYNO.Core.Security.Firewall.Profile` · `get`, rules under `global.rules`). Note:
+  `SYNO.Core.Security.Firewall.Rules` · `list`/`get` return 103 on this box; the `load`
+  method exists (returns 120 without the right param). **Writing** rules is intentionally
+  left to `synology_call` (lock-out risk) — read first, then act with the user's go-ahead.
 - **Task Scheduler** — listing works via curated `synology_scheduler_list`
   (`SYNO.Core.TaskScheduler` · `list` · **v3**, not max version); create/edit is partial.
-- **Send a notification** — notification *config* is readable; a one-off send method
-  isn't wired.
+- **Send a notification** — notification *config* is readable
+  (`SYNO.Core.Notification.Mail.Conf`/`Push.Conf` · `get`; on this box mail and mobile
+  push are both **disabled/unconfigured**). A one-off *send* method is not wired: it can't
+  be executed to confirm on a production box, and `SYNO.DSM.PushNotification` has no `get`
+  (103), so no curated send tool was added.
 - **Container Manager `SYNO.Docker.*`** — only while the package runs (start it first).
 
 When a recipe isn't here: `synology_list_apis("<keyword>")` → pick the API →

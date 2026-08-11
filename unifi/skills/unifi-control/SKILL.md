@@ -31,7 +31,7 @@ required_environment_variables:
     prompt: UniFi Integration API key (only for official Integration API endpoints)
     required_for: official Integration API calls
     optional: true
-version: 0.1.0
+version: 0.1.1
 author: ghively
 ---
 
@@ -92,9 +92,10 @@ Troubleshooting), not the task.
 | Traffic control | `unifi_traffic_rules` (block apps/domains) |
 | Diagnostics | `unifi_wifi_connectivity` (assoc/auth/DHCP/DNS success + failures), `unifi_dashboard` (rich overview) |
 | Events / alerts | `unifi_events`, `unifi_alarms` |
+| Guest hotspot | `unifi_vouchers` (list voucher codes) |
 | Settings / RF | `unifi_settings`, `unifi_rogue_aps` |
 | Speedtest | `unifi_run_speedtest`, `unifi_speedtest_status` |
-| **Writes (confirm-gated)** | `unifi_client_block`/`_unblock`/`_reconnect`, `unifi_device_restart`/`_locate`/`_port_cycle`, `unifi_wlan_set_enabled`, `unifi_port_forward_set_enabled`, `unifi_traffic_rule_set_enabled`, `unifi_firewall_policy_set_enabled` |
+| **Writes (confirm-gated)** | `unifi_client_block`/`_unblock`/`_reconnect`, `unifi_device_restart`/`_locate`/`_port_cycle`, `unifi_wlan_set_enabled`, `unifi_port_forward_set_enabled`, `unifi_traffic_rule_set_enabled`, `unifi_firewall_policy_set_enabled`, `unifi_voucher_create`, `unifi_alarm_archive` |
 | Anything else | `unifi_call`, `unifi_list_endpoints`, `unifi_sites` |
 
 ## This console uses the ZONE-BASED firewall
@@ -126,7 +127,8 @@ plugin covers WAN speed via `unifi_run_speedtest` and path health via
 ## Discovery-first workflow (for anything not curated)
 
 Many capabilities (DPI, dynamic DNS, RADIUS, schedules, port profiles, VPN,
-vouchers, guest auth, WLAN/network create) have no curated tool. Do this:
+guest auth, WLAN/network **create**) have no curated tool. (Voucher list/create
+and alarm archive now *are* curated — see the table above.) Do this:
 
 1. **Find the endpoint.** `unifi_list_endpoints(filter="dpi")` →
    `rest/dpiapp`, etc.
