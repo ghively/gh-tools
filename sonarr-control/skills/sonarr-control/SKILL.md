@@ -42,8 +42,8 @@ Auth = `X-Api-Key` header (admin API key in 1Password "Gregory" vault).
 
 ## Mental model
 
-Sonarr is one REST surface under `/api/v3/<resource>` (~55 endpoints). Key
-conventions:
+Sonarr is one REST surface under `/api/v3/<resource>` (~470 operations on
+4.x, discovered live via `/system/routes`). Key conventions:
 
 - All writes need the FULL object (PUT /series/{id} resets omitted fields).
   Write tools GET-merge-PUT internally; use `sonarr_update_series(patch=)`,
@@ -58,8 +58,8 @@ conventions:
   explicitly approved.
 
 Two layers: curated tools (prefer), generic passthrough
-(`sonarr_call` / `sonarr_list_endpoints` — Sonarr has no OpenAPI; catalog
-is hand-enumerated).
+(`sonarr_call` / `sonarr_list_endpoints` — Sonarr has no OpenAPI; the index
+comes live from `/system/routes`, with a hand-enumerated fallback catalog).
 
 **Golden rule:** if a curated tool exists, use it. Otherwise find it with
 `sonarr_list_endpoints` then call it with `sonarr_call`. Never guess.
@@ -76,22 +76,36 @@ monitoredSeries, queue summary, health warnings, disks.
 | Health snapshot | `sonarr_status` |
 | Browse library | `sonarr_list_series(monitored=, page=, page_size=)` |
 | One series (with episodes) | `sonarr_get_series(series_id, include_episodes=)` |
-| Episodes of a series/season | `sonarr_episodes(series_id, season_number=)` |
+| Episodes of a series/season | `sonarr_episodes(series_id, season_number=)` or `sonarr_episodes(episode_ids=[...])` |
 | Episode files | `sonarr_episode_files(series_id)` |
 | Search for new shows | `sonarr_lookup_series(term="breaking bad")` |
 | Add a series (write) | `sonarr_add_series(tvdb_id, quality_profile_id, root_folder_path, ...)` |
 | Edit a series (write) | `sonarr_update_series(series_id, patch=)` |
+| Bulk-edit series (write) | `sonarr_series_bulk_edit(series_ids, monitored=, quality_profile_id=, ...)` |
 | Toggle season monitoring (write) | `sonarr_toggle_season_monitored(series_id, season_number, monitored, confirm=)` |
+| Bulk season monitoring (write) | `sonarr_season_pass(series_ids, monitored, confirm=)` |
+| Toggle episode monitoring (write) | `sonarr_episode_monitor(episode_ids, monitored, confirm=)` |
 | Delete a series (write) | `sonarr_delete_series(series_id, delete_files=, confirm=)` |
+| Bulk-delete series (write) | `sonarr_series_bulk_delete(series_ids, delete_files=, confirm=)` |
+| Delete an episode file (write) | `sonarr_episode_file_delete(episode_file_id, confirm=)` |
+| Preview renames | `sonarr_rename_preview(series_ids)` |
 | What's missing (per ep) | `sonarr_wanted_missing()` |
 | What's upgradeable | `sonarr_wanted_cutoff()` |
-| Upcoming episodes | `sonarr_calendar(start=, end=)` |
-| Active downloads | `sonarr_queue()` |
-| Recent activity | `sonarr_history(series_id=, event_type=)` |
-| Auto-rejected releases | `sonarr_blocklist()` |
-| Logs | `sonarr_logs(level="warn")` |
+| Upcoming episodes | `sonarr_calendar(start=, end=)` (`.ics` feed: `sonarr_calendar_ics`) |
+| Active downloads | `sonarr_queue(page=, page_size=)` |
+| Remove / retry queue items (write) | `sonarr_queue_delete`, `sonarr_queue_grab`, `sonarr_queue_bulk_delete` |
+| Interactive release search | `sonarr_release_search(episode_id=)` or `(series_id=, season_number=)` |
+| Grab a specific release (write) | `sonarr_release_grab(guid, indexer_id, confirm=)` |
+| Recent activity | `sonarr_history(series_id=, event_type=)`, `sonarr_history_since(since=)` |
+| Auto-rejected releases | `sonarr_blocklist()` (remove: `sonarr_blocklist_delete`, `sonarr_blocklist_bulk_delete`) |
+| Parse a release title | `sonarr_parse(title=)` |
+| Manual import (write) | `sonarr_manual_import(folder, import_mode=, confirm=)` |
+| Logs | `sonarr_logs(level="warn")`, `sonarr_log_files()` |
 | Scheduled tasks | `sonarr_system_tasks()` |
 | DB backups | `sonarr_system_backups()` |
+| Browse server filesystem | `sonarr_filesystem(path=)` |
+| Live API route table | `sonarr_system_routes()` |
+| Restart / shutdown (write, double-gated) | `sonarr_system_restart`, `sonarr_system_shutdown` |
 
 ## Commands (trigger async jobs)
 
@@ -99,6 +113,7 @@ monitoredSeries, queue summary, health warnings, disks.
 plus conveniences:
 
 - `RefreshSeries` — re-scan disk + refresh metadata.
+- `RescanSeries` — disk rescan only (no metadata refresh).
 - `SeriesSearch` — search indexers for monitored missing episodes of a series.
 - `SeasonSearch` — search for ALL episodes in a series+season (requires
   `series_ids=[X]` and `season_number=N`).
@@ -112,13 +127,30 @@ plus conveniences:
 Convenience wrappers: `sonarr_search_episode`, `sonarr_search_season`,
 `sonarr_refresh_series`.
 
-## Configuration tools (read-only)
+## Configuration tools
+
+Read-only:
 
 - `sonarr_quality_profiles()` — needed before `add_series`.
 - `sonarr_language_profiles()` — Sonarr-specific; pass `language_profile_id`
-  to `add_series`.
-- `sonarr_root_folders()`, `sonarr_tags()`, `sonarr_notifications()`.
-- `sonarr_download_clients()`, `sonarr_indexers()`, `sonarr_import_lists()`.
+  to `add_series`. Also `sonarr_languages()` for the raw language list.
+- `sonarr_root_folders()`, `sonarr_tags()`, `sonarr_tag_details()`,
+  `sonarr_notifications()`.
+- `sonarr_download_clients()`, `sonarr_indexers()`, `sonarr_import_lists()`,
+  `sonarr_import_exclusions()`.
+- `sonarr_quality_definitions()`, `sonarr_delay_profiles()`,
+  `sonarr_release_profiles()`, `sonarr_remote_path_mappings()`,
+  `sonarr_auto_tagging()`, `sonarr_config_section(section=)`.
+
+Writes (confirm-gated):
+
+- `sonarr_update_config_section(section, patch=)` — GET-merge-PUT.
+- `sonarr_tag_create(label)`, `sonarr_tag_delete(tag_id)`.
+- `sonarr_crud(resource, action, id=, data=)` — unified CRUD for the long
+  tail of config entities (notifications, download clients, indexers, import
+  lists, metadata, profiles, root folders, remote path mappings, ...).
+- `sonarr_provider_test(provider_type, definition)` — test a provider config
+  without saving; `sonarr_provider_action` for provider-specific actions.
 
 ## Adding a series — workflow
 
