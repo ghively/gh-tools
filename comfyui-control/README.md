@@ -23,10 +23,14 @@ Deep Claude Code integration for ComfyUI (built against 0.26.0 on gh-nvidia).
 ## Setup
 1. `cp config.example.json config.local.json` and set `base_url`
    (git-ignored). Optional: `library_url` for the vpt9 media library,
-   `models_dir`/`custom_nodes_dir`/`compose_file` for host-side management.
+   `models_dir`/`custom_nodes_dir`/`compose_file` for host-side management,
+   `civitai_token` for gated Civitai downloads.
 2. Install the plugin from this marketplace, `/reload-plugins`.
 3. `uv` must be on PATH (the server installs its own deps on first launch).
    `ffmpeg`/`ffprobe` needed for the loop/motion/mastering tools.
+
+Smoke test against the live system (read-only, no generation jobs, skips
+cleanly when `config.local.json` is absent): `uv run --script mcp/_smoketest.py`
 
 Selftest without MCP: `COMFYUI_CONFIG=./config.local.json uv run --script mcp/server.py selftest`
 (25 checks; the graph-wiring, motion-math, and gate checks are offline-safe —
