@@ -39,8 +39,11 @@ with TV-specific resources (series/seasons/episodes) and language profiles.
 - `POST /api/v3/series` — add (full object incl. seasons, addOptions)
 - `PUT /api/v3/series` (bulk) / `PUT /api/v3/series/{id}`
 - `DELETE /api/v3/series/{id}?deleteFiles=&addImportExclusion=`
-- `GET /api/v3/episode?seriesId=&seasonNumber=` (+ `/{id}`, `PUT /{id}`)
-- `GET /api/v3/episodeFile?seriesId=` (+ `/{id}`, `DELETE /{id}`)
+- `GET /api/v3/episode?seriesId=&seasonNumber=` (+ `/{id}`, `PUT /{id}`);
+  `episodeIds` must be repeated query params, not comma-joined
+- `PUT /api/v3/episode/monitor` — bulk episode monitoring (`sonarr_episode_monitor`)
+- `GET /api/v3/episodeFile?seriesId=` (+ `/{id}`, `DELETE /{id}` via
+  `sonarr_episode_file_delete`)
 - `GET /api/v3/seasonPass` — monitoring map
 - `GET /api/v3/extraFile`, `/api/v3/alternativeRelease`, `/api/v3/importlist`
 
@@ -49,14 +52,17 @@ with TV-specific resources (series/seasons/episodes) and language profiles.
 - `GET /api/v3/calendar?start=&end=&includeUnmonitored=`
 - `GET /api/v3/queue` (+ `/details`)
 - `GET /api/v3/history` (+ `/history/series?seriesId=`)
-- `GET /api/v3/blocklist`, `/api/v3/release`, `/api/v3/manualimport`
+- `GET /api/v3/blocklist`, `/api/v3/manualimport`
+- `GET /api/v3/release?episodeId=` (or `seriesId=&seasonNumber=`) — interactive
+  search (`sonarr_release_search`); `POST /api/v3/release` grabs one
+  (`sonarr_release_grab`)
 
 ### Commands
 - `POST /api/v3/command` — `{"name": "...", "seriesIds": [...], "episodeIds": [...], "seasonNumber": N}`
 - `GET /api/v3/command` / `GET /{id}` / `DELETE /{id}`
 
-Command names: `RefreshSeries`, `SeriesSearch`, `SeasonSearch`,
-`EpisodeSearch`, `EpisodesSearch`, `MissingEpisodesSearch`,
+Command names: `RefreshSeries`, `RescanSeries`, `SeriesSearch`,
+`SeasonSearch`, `EpisodeSearch`, `EpisodesSearch`, `MissingEpisodesSearch`,
 `DownloadedEpisodesScan`, `RenameSeries`, `Backup`, `ApplicationUpdate`,
 `RefreshMonitoredDownloads`, `RssSync`.
 
@@ -78,10 +84,11 @@ Command names: `RefreshSeries`, `SeriesSearch`, `SeasonSearch`,
   via `sonarr_toggle_season_monitored` (which does GET-modify-PUT).
 - `/series?tvdbId=X` returns the matching library series if it exists.
 
-## Not covered here (out of MVP scope)
+## Long-tail CRUD
 
-- `POST`ing new notifications / download clients / indexers (use UI;
-  reachable via `sonarr_call`).
-- Quality / language profile CRUD (UI; `sonarr_call` reachable).
-
-Reachable via `sonarr_call` if needed.
+Notifications / download clients / indexers / import lists / metadata /
+quality + language profiles / custom formats / delay + release profiles /
+root folders / remote path mappings / auto-tagging / custom filters /
+import-list exclusions are all reachable through the unified
+`sonarr_crud(resource, action, ...)` tool (plus `sonarr_provider_test` and
+`sonarr_provider_action`). Anything else: `sonarr_call`.

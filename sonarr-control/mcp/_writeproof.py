@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env -S uv run --script
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
@@ -48,11 +48,11 @@ series = server.sonarr_list_series(page=1, page_size=400, compact=True)
 title_lc = "paw patrol"
 matches = [s for s in series["series"] if title_lc in (s.get("title") or "").lower()]
 print(f"matches in library for '{title_lc}': {len(matches)}")
-assert not matches, "throwaway already in library â€” pick another"
+assert not matches, "throwaway already in library — pick another"
 
 added_id = None
 try:
-    step("2. sonarr_add_series(confirm=True) â€” monitored=False, search_for_missing=False")
+    step("2. sonarr_add_series(confirm=True) — monitored=False, search_for_missing=False")
     result = server.sonarr_add_series(
         tvdb_id=THROWAWAY_TVDB,
         quality_profile_id=qp_id,
@@ -78,13 +78,13 @@ try:
         f"title mismatch: expected ~{title_lc}, got {got.get('title')!r}"
     assert got.get("tvdbId") == THROWAWAY_TVDB
 
-    step("4. sonarr_delete_series(confirm=True) â€” delete_files=False")
+    step("4. sonarr_delete_series(confirm=True) — delete_files=False")
     deleted = server.sonarr_delete_series(series_id=added_id, delete_files=False, confirm=True)
     print(f"delete result: {deleted}")
     assert deleted.get("deleted")
     added_id = None  # cleaned up; don't retry in finally
 
-    step("5. verify via sonarr_get_series â€” should 404")
+    step("5. verify via sonarr_get_series — should 404")
     got_after = server.sonarr_get_series(added_id or -1, include_episodes=False) if added_id else server.sonarr_get_series(result["series"]["id"], include_episodes=False)
     print(f"  after-delete get: {got_after}")
     assert "error" in got_after and "404" in got_after["error"], "expected 404 after delete"
@@ -95,7 +95,7 @@ try:
     print(f"matches in library after delete: {len(matches_after)}")
     assert not matches_after, "throwaway still in library"
 
-    print("\n=== SONARR write-path proof: ADD âœ“ / VERIFY âœ“ / DELETE âœ“ / VERIFY-GONE âœ“ ===")
+    print("\n=== SONARR write-path proof: ADD ✓ / VERIFY ✓ / DELETE ✓ / VERIFY-GONE ✓ ===")
 finally:
     # Safety net: if anything above failed AFTER the add succeeded, still delete.
     if added_id is not None:

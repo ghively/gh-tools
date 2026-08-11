@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env -S uv run --script
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
@@ -151,13 +151,21 @@ class SonarrClient:
                 body: Any = None, raw: bool = False) -> Any:
         if not path.startswith("/"):
             path = "/" + path
-        if not path.startswith("/api/v"):
-            path = "/api/v3" + ("" if path.startswith("/") else "/") + path
-        resp = self._client.request(method.upper(), path, params=params, json=body)
+        # /feed/* (iCal) is a sibling of /api/* — don't force the /api/v3 prefix on it.
+        if not path.startswith("/api/v") and not path.startswith("/feed/"):
+            path = "/api/v3" + path
+        try:
+            resp = self._client.request(method.upper(), path, params=params, json=body)
+        except httpx.TimeoutException as e:
+            raise SonarrError(
+                f"Timeout after {self.cfg['timeout']}s on {method} {path} — is Sonarr "
+                f"reachable at {self.base}? (SONARR_TIMEOUT raises the limit)") from e
+        except httpx.HTTPError as e:
+            raise SonarrError(f"Connection error on {method} {path} to {self.base}: {e}") from e
         if resp.status_code == 401:
-            raise SonarrError("401 Unauthorized â€” the API key was rejected.")
+            raise SonarrError("401 Unauthorized — the API key was rejected.")
         if resp.status_code == 403:
-            raise SonarrError(f"403 Forbidden on {method} {path} â€” operation not allowed for this key.")
+            raise SonarrError(f"403 Forbidden on {method} {path} — operation not allowed for this key.")
         if resp.status_code >= 400:
             detail = resp.text[:400]
             raise SonarrError(f"HTTP {resp.status_code} on {method} {path}: {detail}")
@@ -254,6 +262,9 @@ def compact_series(s: dict) -> dict:
     """Trim a series object to the fields that matter for browsing."""
     if not isinstance(s, dict):
         return s
+    # On v3/v4 the counts live under `statistics`; fall back to top level for
+    # older payloads that carried them there.
+    stats = s.get("statistics") or {}
     out = {
         "id": s.get("id"),
         "title": s.get("title"),
@@ -264,10 +275,10 @@ def compact_series(s: dict) -> dict:
         "seriesType": s.get("seriesType"),
         "monitored": s.get("monitored"),
         "seasonCount": len(s.get("seasons") or []),
-        "episodeFileCount": s.get("episodeFileCount"),
-        "episodeCount": s.get("episodeCount"),
-        "episodeDownloadedCount": s.get("episodeCount") and s.get("episodeFileCount"),
-        "percentEpisodes": s.get("percentOfEpisodes"),
+        "episodeFileCount": stats.get("episodeFileCount", s.get("episodeFileCount")),
+        "episodeCount": stats.get("episodeCount", s.get("episodeCount")),
+        "sizeOnDisk": stats.get("sizeOnDisk"),
+        "percentEpisodes": stats.get("percentOfEpisodes", s.get("percentOfEpisodes")),
         "year": s.get("year"),
         "path": s.get("path"),
         "qualityProfileId": s.get("qualityProfileId"),
@@ -325,7 +336,7 @@ ENDPOINT_CATALOG: list[dict] = [
     {"method": "GET",    "path": "/api/v3/series",                   "summary": "All series (filterable)"},
     {"method": "GET",    "path": "/api/v3/series/{id}",              "summary": "Single series by id"},
     {"method": "GET",    "path": "/api/v3/series/lookup",            "summary": "Search TVDB for a series (term=... OR term=tvdb:<id>)"},
-    {"method": "GET",    "path": "/api/v3/series/lookup/tvdb",       "summary": "DEPRECATED â€” 404s on 4.x; use ?term=tvdb:<id> instead"},
+    {"method": "GET",    "path": "/api/v3/series/lookup/tvdb",       "summary": "DEPRECATED — 404s on 4.x; use ?term=tvdb:<id> instead"},
     {"method": "GET",    "path": "/api/v3/series/lookup/imdb",       "summary": "IMDB lookup by imdbId=..."},
     {"method": "PUT",    "path": "/api/v3/series",                   "summary": "Bulk update series (provide full array)"},
     {"method": "POST",   "path": "/api/v3/series",                   "summary": "Add a series (full object required)"},
@@ -334,6 +345,7 @@ ENDPOINT_CATALOG: list[dict] = [
     {"method": "GET",    "path": "/api/v3/episode",                  "summary": "Episodes (requires seriesId or episodeIds)"},
     {"method": "GET",    "path": "/api/v3/episode/{id}",             "summary": "Single episode by id"},
     {"method": "PUT",    "path": "/api/v3/episode/{id}",             "summary": "Update an episode (e.g. monitored)"},
+    {"method": "PUT",    "path": "/api/v3/episode/monitor",          "summary": "Bulk-set monitored on episodeIds"},
     {"method": "GET",    "path": "/api/v3/episodeFile",              "summary": "Episode files (requires seriesId)"},
     {"method": "GET",    "path": "/api/v3/episodeFile/{id}",         "summary": "Single episode file by id"},
     {"method": "DELETE", "path": "/api/v3/episodeFile/{id}",         "summary": "Delete an episode file"},
@@ -379,7 +391,7 @@ ENDPOINT_CATALOG: list[dict] = [
 
 @mcp.tool()
 def sonarr_call(method: str, path: str, params: str = "", body: str = "") -> Any:
-    """Call ANY Sonarr REST operation â€” the generic passthrough that reaches
+    """Call ANY Sonarr REST operation — the generic passthrough that reaches
     the server's entire API surface (~55 endpoints). Use sonarr_list_endpoints
     to find an endpoint first.
 
@@ -406,7 +418,7 @@ def sonarr_call(method: str, path: str, params: str = "", body: str = "") -> Any
 @mcp.tool()
 def sonarr_list_endpoints(search: str = "", method: str = "", limit: int = 100,
                           curated_only: bool = False) -> Any:
-    """Search the FULL endpoint catalog â€” pulled live from /api/v3/system/routes
+    """Search the FULL endpoint catalog — pulled live from /api/v3/system/routes
     so it's always accurate for the deployed Sonarr version (~470 operations on
     4.0). The master index for sonarr_call.
 
@@ -627,7 +639,7 @@ def sonarr_add_series(tvdb_id: int, quality_profile_id: int, root_folder_path: s
         search_for_missing: Trigger an initial search for missing episodes.
         language_profile_id: Language profile id (Sonarr-specific).
         tags: Optional list of tag ids.
-        confirm: Must be true â€” adds to the live library.
+        confirm: Must be true — adds to the live library.
     """
     try:
         if not confirm:
@@ -648,11 +660,13 @@ def sonarr_add_series(tvdb_id: int, quality_profile_id: int, root_folder_path: s
         if lookup.get("id"):
             return {"already_in_library": True, "series": compact_series(lookup)}
         body = dict(lookup)
-        # Per-season monitoring: mark all monitored=False except the first N
+        # Per-season monitoring: monitor seasons 1..N by seasonNumber (specials
+        # / season 0 stay unmonitored — indexing the list would count them).
         seasons = body.get("seasons") or []
         if season_count is not None:
-            for i, se in enumerate(seasons):
-                se["monitored"] = i < season_count
+            for se in seasons:
+                sn = se.get("seasonNumber") or 0
+                se["monitored"] = 0 < sn <= season_count
         else:
             for se in seasons:
                 se["monitored"] = monitored
@@ -687,7 +701,7 @@ def sonarr_update_series(series_id: int, patch: str, confirm: bool = False) -> A
         series_id: Sonarr series id.
         patch: JSON object string with just the keys to change,
             e.g. '{"monitored": false}' or '{"seasons": [...modified...]}'
-        confirm: Must be true â€” mutates the live library.
+        confirm: Must be true — mutates the live library.
     """
     try:
         change = _parse_json_arg("patch", patch)
@@ -716,7 +730,7 @@ def sonarr_delete_series(series_id: int, delete_files: bool = False,
         series_id: Sonarr series id.
         delete_files: Also delete episode files from disk (irreversible).
         add_import_exclusion: Add to import exclusion list.
-        confirm: Must be true â€” irreversible (especially with delete_files).
+        confirm: Must be true — irreversible (especially with delete_files).
     """
     try:
         current = CLIENT.request("GET", f"/api/v3/series/{series_id}")
@@ -738,15 +752,22 @@ def sonarr_delete_series(series_id: int, delete_files: bool = False,
 
 
 @mcp.tool()
-def sonarr_episodes(series_id: int, season_number: Optional[int] = None,
+def sonarr_episodes(series_id: Optional[int] = None, season_number: Optional[int] = None,
                     episode_ids: Optional[list] = None) -> Any:
-    """List episodes of a series (optionally one season)."""
+    """List episodes of a series (optionally one season), or fetch specific
+    episodes by id. Requires series_id OR episode_ids."""
     try:
-        params = {"seriesId": series_id}
+        if series_id is None and not episode_ids:
+            raise SonarrError("provide series_id or episode_ids")
+        params: dict = {}
+        if series_id is not None:
+            params["seriesId"] = series_id
         if season_number is not None:
             params["seasonNumber"] = season_number
         if episode_ids:
-            params["episodeIds"] = ",".join(str(x) for x in episode_ids)
+            # httpx repeats the key for list values (episodeIds=1&episodeIds=2),
+            # which is how Sonarr binds List<int> — a comma-joined string 400s.
+            params["episodeIds"] = [int(x) for x in episode_ids]
         data = CLIENT.request("GET", "/api/v3/episode", params=params) or []
         return [compact_episode(e) for e in data]
     except Exception as e:  # noqa: BLE001
@@ -803,13 +824,61 @@ def sonarr_toggle_season_monitored(series_id: int, season_number: int,
         return _err(e)
 
 
+@mcp.tool()
+def sonarr_episode_monitor(episode_ids: list, monitored: bool,
+                           confirm: bool = False) -> Any:
+    """Bulk-set the monitored flag on specific episodes. WRITES: confirm-gated.
+
+    Args:
+        episode_ids: List of episode ids (from sonarr_episodes).
+        monitored: True = monitor; False = stop monitoring.
+        confirm: Must be true.
+    """
+    try:
+        if not episode_ids:
+            raise SonarrError("episode_ids must be non-empty")
+        if not confirm:
+            return _need_confirm(
+                f"set monitored={monitored} on {len(episode_ids)} episode(s) {episode_ids}"
+            )
+        body = {"episodeIds": [int(x) for x in episode_ids], "monitored": bool(monitored)}
+        data = CLIENT.request("PUT", "/api/v3/episode/monitor", body=body) or []
+        return {"updated": len(data) if isinstance(data, list) else True,
+                "episodes": [compact_episode(e) for e in data] if isinstance(data, list) else data}
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_episode_file_delete(episode_file_id: int, confirm: bool = False) -> Any:
+    """Delete one episode file from disk (the episode stays in the library and
+    becomes 'missing'). WRITES: confirm-gated, IRREVERSIBLE.
+
+    Args:
+        episode_file_id: Episode file id (from sonarr_episode_files).
+        confirm: Must be true — removes the media file from disk.
+    """
+    try:
+        current = CLIENT.request("GET", f"/api/v3/episodeFile/{episode_file_id}")
+        if not confirm:
+            return _need_confirm(
+                f"DELETE episode file {episode_file_id} "
+                f"({(current or {}).get('path')}) from disk — irreversible"
+            )
+        CLIENT.request("DELETE", f"/api/v3/episodeFile/{episode_file_id}")
+        return {"deleted": True, "episode_file_id": episode_file_id,
+                "path": (current or {}).get("path")}
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
 # --------------------------------------------------------------------------- #
 # Activity / wanted / calendar                                                #
 # --------------------------------------------------------------------------- #
 @mcp.tool()
 def sonarr_calendar(start: str = "", end: str = "", tags: str = "",
                     include_unmonitored: bool = False) -> Any:
-    """Episodes airing in a date range (default: today â†’ +14 days).
+    """Episodes airing in a date range (default: today → +14 days).
 
     Args:
         start: ISO date (YYYY-MM-DD). Defaults to today.
@@ -835,15 +904,24 @@ def sonarr_calendar(start: str = "", end: str = "", tags: str = "",
 
 
 @mcp.tool()
-def sonarr_queue(include_unknown: bool = True) -> Any:
-    """Current download queue: grabbed, importing, downloading, failed, delayed."""
+def sonarr_queue(include_unknown: bool = True, page: int = 1,
+                 page_size: int = 50) -> Any:
+    """Current download queue: grabbed, importing, downloading, failed, delayed.
+
+    Args:
+        include_unknown: Include items Sonarr can't map to an episode.
+        page: 1-based page (the endpoint is paged server-side).
+        page_size: Records per page (Sonarr's default is only 10).
+    """
     try:
-        params = {}
+        params: dict = {"page": page, "pageSize": page_size}
         if include_unknown:
             params["includeUnknown"] = "true"
         data = CLIENT.request("GET", "/api/v3/queue", params=params) or {}
         records = data.get("records") or []
         return {
+            "page": data.get("page", page),
+            "pageSize": data.get("pageSize", page_size),
             "totalRecords": data.get("totalRecords", len(records)),
             "queue": [{
                 "id": r.get("id"),
@@ -961,11 +1039,79 @@ def sonarr_blocklist(page: int = 1, page_size: int = 25) -> Any:
         return _err(e)
 
 
+@mcp.tool()
+def sonarr_release_search(episode_id: Optional[int] = None,
+                          series_id: Optional[int] = None,
+                          season_number: Optional[int] = None,
+                          limit: int = 25) -> Any:
+    """Interactive search: list candidate releases from the indexers for one
+    episode (episode_id) or a whole season (series_id + season_number).
+    READ-ONLY — queries the indexers but grabs nothing. Use sonarr_release_grab
+    to send one to the download client.
+
+    Args:
+        episode_id: Episode id (from sonarr_episodes).
+        series_id: Series id — pair with season_number for a season-pack search.
+        season_number: Season number (with series_id).
+        limit: Cap results.
+    """
+    try:
+        params: dict = {}
+        if episode_id is not None:
+            params["episodeId"] = int(episode_id)
+        elif series_id is not None and season_number is not None:
+            params["seriesId"] = int(series_id)
+            params["seasonNumber"] = int(season_number)
+        else:
+            raise SonarrError("provide episode_id OR series_id + season_number")
+        data = CLIENT.request("GET", "/api/v3/release", params=params) or []
+        return _finish([{
+            "guid": r.get("guid"),
+            "indexerId": r.get("indexerId"),
+            "indexer": r.get("indexer"),
+            "title": r.get("title"),
+            "size": r.get("size"),
+            "age": r.get("age"),
+            "seeders": r.get("seeders"),
+            "leechers": r.get("leechers"),
+            "protocol": r.get("protocol"),
+            "quality": (r.get("quality") or {}).get("quality", {}).get("name"),
+            "languages": [l.get("name") for l in (r.get("languages") or [])],
+            "rejected": r.get("rejected"),
+            "rejections": r.get("rejections"),
+            "seasonPack": r.get("fullSeason"),
+        } for r in data[:limit]])
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_release_grab(guid: str, indexer_id: int, confirm: bool = False) -> Any:
+    """Send a specific release (from sonarr_release_search) to the download
+    client. WRITES: confirm-gated.
+
+    Args:
+        guid: Release guid from sonarr_release_search.
+        indexer_id: indexerId from the same result row.
+        confirm: Must be true — starts a real download.
+    """
+    try:
+        if not guid:
+            raise SonarrError("guid is required")
+        if not confirm:
+            return _need_confirm(f"grab release {guid!r} from indexer {indexer_id}")
+        return CLIENT.request("POST", "/api/v3/release",
+                              body={"guid": guid, "indexerId": int(indexer_id)})
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
 # --------------------------------------------------------------------------- #
 # Commands (trigger async jobs)                                               #
 # --------------------------------------------------------------------------- #
 SONARR_COMMANDS = {
     "RefreshSeries": "Refresh metadata + disk scan for seriesIds (or all if absent)",
+    "RescanSeries": "Disk rescan only (no metadata refresh) for seriesIds (or all)",
     "SeriesSearch": "Search indexers for missing episodes of seriesIds",
     "SeasonSearch": "Search for all episodes in a series+season (seriesId, seasonNumber)",
     "EpisodeSearch": "Search for specific episodeIds",
@@ -983,7 +1129,7 @@ SONARR_COMMANDS = {
 @mcp.tool()
 def sonarr_command(name: str, series_ids: Optional[list] = None,
                    episode_ids: Optional[list] = None, season_number: Optional[int] = None,
-                   confirm: bool = False, **extra: Any) -> Any:
+                   confirm: bool = False, extra: str = "") -> Any:
     """Trigger a Sonarr async command (POST /command). Returns the created job.
     WRITES: confirm-gated.
 
@@ -996,8 +1142,8 @@ def sonarr_command(name: str, series_ids: Optional[list] = None,
         series_ids: Optional list of series ids.
         episode_ids: Optional list of episode ids (EpisodeSearch/EpisodesSearch).
         season_number: Required for SeasonSearch (with series_ids).
-        confirm: Must be true â€” triggers active work.
-        extra: Pass-through extra params.
+        confirm: Must be true — triggers active work.
+        extra: Optional JSON object string of pass-through command params.
     """
     try:
         if name not in SONARR_COMMANDS:
@@ -1018,7 +1164,11 @@ def sonarr_command(name: str, series_ids: Optional[list] = None,
             body["episodeIds"] = list(episode_ids)
         if season_number is not None:
             body["seasonNumber"] = season_number
-        body.update(extra)
+        extra_params = _parse_json_arg("extra", extra)
+        if extra_params is not None:
+            if not isinstance(extra_params, dict):
+                raise SonarrError("extra must be a JSON object")
+            body.update(extra_params)
         return CLIENT.request("POST", "/api/v3/command", body=body)
     except Exception as e:  # noqa: BLE001
         return _err(e)
@@ -1070,7 +1220,7 @@ def sonarr_quality_profiles() -> Any:
 
 @mcp.tool()
 def sonarr_language_profiles() -> Any:
-    """Language profiles (Sonarr-specific â€” for series add)."""
+    """Language profiles (Sonarr-specific — for series add)."""
     try:
         data = CLIENT.request("GET", "/api/v3/languageProfile") or []
         return [{"id": p.get("id"), "name": p.get("name"),
@@ -1078,6 +1228,17 @@ def sonarr_language_profiles() -> Any:
                  "languages": [(l.get("language") or {}).get("name")
                                for l in p.get("languages", []) if l.get("allowed")]}
                 for p in data]
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sonarr_languages() -> Any:
+    """Languages known to Sonarr (id + name)."""
+    try:
+        data = CLIENT.request("GET", "/api/v3/language") or []
+        return [{"id": l.get("id"), "name": l.get("name"),
+                 "nameLower": l.get("nameLower")} for l in data]
     except Exception as e:  # noqa: BLE001
         return _err(e)
 
@@ -1496,7 +1657,7 @@ def sonarr_provider_test(provider_type: str, definition: str) -> Any:
 
 @mcp.tool()
 def sonarr_system_routes() -> Any:
-    """Return the LIVE route table (~470 operations) â€” Sonarr's own introspection
+    """Return the LIVE route table (~470 operations) — Sonarr's own introspection
     of its full API surface."""
     try:
         return _finish(CLIENT.live_routes())
@@ -1552,7 +1713,7 @@ def sonarr_crud(resource: str, action: str, id: Optional[int] = None,
                 data: str = "", confirm: bool = False) -> Any:
     """Generic CRUD wrapper for Sonarr resources that follow the standard
     list/get/create/update/delete/bulk pattern. Use this for the long tail of
-    config entities â€” notifications, download clients, indexers, import lists,
+    config entities — notifications, download clients, indexers, import lists,
     metadata, quality profiles, language profiles, custom formats, delay/release
     profiles, root folders, remote path mappings, auto-tagging, custom filters,
     importlistexclusions.
@@ -1690,8 +1851,12 @@ def sonarr_queue_bulk_delete(queue_ids: list, blacklist: bool = False,
 
 @mcp.tool()
 def sonarr_provider_action(provider_type: str, id: int, action_name: str,
-                            confirm: bool = False, **extra: Any) -> Any:
-    """Invoke a provider-specific action. WRITE: confirm-gated."""
+                            confirm: bool = False, extra: str = "") -> Any:
+    """Invoke a provider-specific action. WRITE: confirm-gated.
+
+    Args:
+        extra: Optional JSON object string of extra action params.
+    """
     try:
         pt = (provider_type or "").lower().strip()
         if pt not in ("notification", "downloadclient", "indexer",
@@ -1702,7 +1867,12 @@ def sonarr_provider_action(provider_type: str, id: int, action_name: str,
             raise SonarrError("action_name is required")
         if not confirm:
             return _need_confirm(f"action '{action_name}' on {pt}/{id}")
-        body = {"name": action_name, **extra}
+        body = {"name": action_name}
+        extra_params = _parse_json_arg("extra", extra)
+        if extra_params is not None:
+            if not isinstance(extra_params, dict):
+                raise SonarrError("extra must be a JSON object")
+            body.update(extra_params)
         return CLIENT.request("POST", f"/api/v3/{pt}/action/{int(id)}", body=body)
     except Exception as e:  # noqa: BLE001
         return _err(e)
@@ -1711,7 +1881,7 @@ def sonarr_provider_action(provider_type: str, id: int, action_name: str,
 @mcp.tool()
 def sonarr_season_pass(series_ids: list, monitored: bool,
                         confirm: bool = False) -> Any:
-    """Update the season-pass monitoring map â€” bulk-toggle season monitoring
+    """Update the season-pass monitoring map — bulk-toggle season monitoring
     across multiple series at once. WRITES: confirm-gated.
 
     Args:
@@ -1755,7 +1925,7 @@ def sonarr_calendar_ics(start: str = "", end: str = "", tags: str = "",
 
 
 # --------------------------------------------------------------------------- #
-# Curated-tool registry â€” drives the `curated: True/False` annotation in      #
+# Curated-tool registry — drives the `curated: True/False` annotation in      #
 # sonarr_list_endpoints so the user sees at-a-glance what's ergonomic vs       #
 # generic-only.                                                                #
 # --------------------------------------------------------------------------- #
@@ -1782,8 +1952,10 @@ CURATED_TOOLS: dict[tuple[str, str], str] = {
     ("DELETE", "/api/v3/series/{id}"):                "sonarr_delete_series",
     ("GET", "/api/v3/episode"):                       "sonarr_episodes",
     ("GET", "/api/v3/episode/{id}"):                  "sonarr_episodes",
+    ("PUT", "/api/v3/episode/monitor"):               "sonarr_episode_monitor",
     ("GET", "/api/v3/episodeFile"):                   "sonarr_episode_files",
     ("GET", "/api/v3/episodeFile/{id}"):              "sonarr_episode_files",
+    ("DELETE", "/api/v3/episodeFile/{id}"):           "sonarr_episode_file_delete",
     ("GET", "/api/v3/rename"):                        "sonarr_rename_preview",
     # Activity
     ("GET", "/api/v3/calendar"):                      "sonarr_calendar",
@@ -1796,6 +1968,8 @@ CURATED_TOOLS: dict[tuple[str, str], str] = {
     ("GET", "/api/v3/wanted/cutoff"):                 "sonarr_wanted_cutoff",
     ("GET", "/api/v3/blocklist"):                     "sonarr_blocklist",
     ("DELETE", "/api/v3/blocklist/{id}"):             "sonarr_blocklist_delete",
+    ("GET", "/api/v3/release"):                       "sonarr_release_search",
+    ("POST", "/api/v3/release"):                      "sonarr_release_grab",
     ("POST", "/api/v3/manualimport"):                 "sonarr_manual_import",
     ("GET", "/api/v3/manualimport"):                  "sonarr_manual_import",
     ("GET", "/api/v3/parse"):                         "sonarr_parse",
@@ -1920,7 +2094,7 @@ CURATED_TOOLS: dict[tuple[str, str], str] = {
 # --------------------------------------------------------------------------- #
 def main() -> None:
     if not CONFIG.get("api_key"):
-        log("WARNING: no api_key configured â€” every call will 401. "
+        log("WARNING: no api_key configured — every call will 401. "
             "Fill config.local.json or set SONARR_API_KEY.")
     mcp.run()
 
