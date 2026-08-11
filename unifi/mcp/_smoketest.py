@@ -51,6 +51,7 @@ show("unifi_traffic_rules", U.unifi_traffic_rules())
 show("unifi_traffic_routes", U.unifi_traffic_routes())
 show("unifi_events", U.unifi_events(limit=5))
 show("unifi_alarms", U.unifi_alarms())
+show("unifi_vouchers", U.unifi_vouchers())
 show("unifi_settings", U.unifi_settings())
 show("unifi_rogue_aps", U.unifi_rogue_aps())
 show("unifi_wifi_connectivity", U.unifi_wifi_connectivity())
@@ -72,3 +73,9 @@ print(f"{'PASS' if not r.get('success') else 'FAIL'}  "
 r = U.unifi_device_port_cycle("00:11:22:33:44:55", 1)
 print(f"{'PASS' if not r.get('success') else 'FAIL'}  "
       f"{'unifi_device_port_cycle gate':34} refused-without-confirm={not r.get('success')}")
+r = U.unifi_voucher_create(minutes=60)
+print(f"{'PASS' if not r.get('success') else 'FAIL'}  "
+      f"{'unifi_voucher_create gate':34} refused-without-confirm={not r.get('success')}")
+r = U.unifi_alarm_archive("000000000000000000000000")
+print(f"{'PASS' if not r.get('success') else 'FAIL'}  "
+      f"{'unifi_alarm_archive gate':34} refused-without-confirm={not r.get('success')}")

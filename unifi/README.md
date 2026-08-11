@@ -12,14 +12,15 @@ UniFi console over the Network API. Built and tested against a **UniFi Dream Rou
     reaching **every endpoint** across all three surfaces — the classic v1 API,
     the modern v2 API (zone firewall, traffic rules, events), and the UniFi OS host
     API (`/api/*`).
-  - **~35 curated tools** for health, devices, clients, wireless, networks/VLANs,
+  - **~40 curated tools** for health, devices, clients, wireless, networks/VLANs,
     firewall (classic + zone-based + zones), port forwarding, static & policy
     routing, traffic rules, Wi-Fi connectivity diagnostics, an aggregated
-    dashboard, events, alarms, settings, statistics, and speedtests.
+    dashboard, events, alarms, guest hotspot vouchers, settings, statistics, and
+    speedtests.
   - **Confirm-gated write tools** — block/unblock/reconnect a client, restart/locate
     a device, power-cycle a PoE port, enable/disable a WLAN, port-forward, traffic
-    rule, or zone firewall policy, and run a speedtest. Every mutating tool refuses
-    unless called with `confirm=True`.
+    rule, or zone firewall policy, run a speedtest, create guest vouchers, and
+    archive alarms. Every mutating tool refuses unless called with `confirm=True`.
 - **Skill** (`skills/unifi-control/`) — teaches Claude how to drive the server, with
   a categorized **API map** of this console, verified **task recipes**, and the
   **auth/conventions** reference (CSRF, error vocabulary, the zone-firewall quirk,
@@ -72,5 +73,17 @@ UniFi console over the Network API. Built and tested against a **UniFi Dream Rou
 - **Official Integration API** (`/proxy/network/integration/v1/`) is reachable but
   needs an API key (not cookie auth). It's optional — the classic + v2 surfaces
   already cover everything. Set `api_key` in config to enable it.
+- **Vouchers & alarms are empty on this console.** The read tools (`unifi_vouchers`
+  → `stat/voucher`, `unifi_alarms` → `list/alarm`) were verified live and return
+  `count=0` here (no vouchers generated, no open alarms). The paired writes
+  (`unifi_voucher_create` → `cmd/hotspot create-voucher`, `unifi_alarm_archive` →
+  `cmd/evtmgr archive-alarm`) follow the classic `cmd/*` action pattern used by the
+  other write tools; per the production-safety rule they were **verified only by
+  the confirm-gate** (they refuse without `confirm=True`) and not executed live.
+- **No curated network/VLAN create tool.** `unifi_networks` lists them (read,
+  verified live: 4 networks), but creating a network is a large `rest/networkconf`
+  object (40+ fields incl. `firewall_zone_id`, routing/DHCP config) whose payload
+  couldn't be safely grounded on a production box — use the documented `unifi_call`
+  recipe in `skills/unifi-control/references/common-tasks.md` instead.
 
 See `skills/unifi-control/references/` for the full API map and details.

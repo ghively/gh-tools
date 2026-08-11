@@ -9,9 +9,9 @@ following the deep-integration-builder methodology.
 - **MCP server** (`mcp/gitlab_server.py`, self-provisioning via `uv run --script`):
   - Generic layer: `gitlab_rest` (any of 177 REST resource groups), `gitlab_graphql`
     (160 queries / 622 mutations), `gitlab_status`, `gitlab_api_search`.
-  - **75 curated tools** (79 total with the generic layer): projects, repo tree/files/commits/branches/tags/extras,
-    protected refs+environments, merge requests + approvals + review discussions + draft notes
-    + suggestions, issues/boards/labels/milestones/links/time tracking, pipelines/jobs/artifacts/
+  - **78 curated tools** (82 total with the generic layer): projects, repo tree/files/commits/branches/tags/extras,
+    commit statuses, protected refs+environments, merge requests + approvals + review discussions + draft notes
+    + suggestions + file-level diffs, issues/boards/labels/milestones/links/time tracking, pipelines/jobs/artifact download/
     triggers/schedules/variables/runners/lint/resource groups/secure files, feature flags,
     environments/deployments/freeze periods, releases, Pages + custom domains, users/tokens,
     project&group access tokens, groups/members/invitations, badges, packages/registry,
@@ -43,7 +43,9 @@ following the deep-integration-builder methodology.
 ## Setup
 
 1. `cp config.example.json config.local.json` and fill in `base_url` + a PAT with
-   `api` scope (admin user for instance-level control). The file is git-ignored.
+   the **`api`** scope (admin user for instance-level control). The file is git-ignored.
+   The token must carry `api`, not just `read_api` — an expired/missing/wrong-scoped
+   token shows up as HTTP **401** on `gitlab_status`; rotate the PAT if you hit that.
 2. Install via the marketplace at the repo root, then `/reload-plugins`.
 
 ## Safety model
@@ -53,6 +55,13 @@ after your explicit approval. EE-only endpoints 404 on CE; the tools' error hint
 and the skill's api-map keep that honest instead of calling it a bug.
 
 ## Verified state (2026-07-19)
+
+> **v0.5.2 note (2026-08-11):** the three tools added in v0.5.2 — `job_artifacts`,
+> `commit_status`, `mr_changes` — are **DOC/CODE-verified only** (py_compile, JSON lint,
+> MCP handshake registering 82 tools, offline confirm-gate check on `commit_status set`).
+> They are **NOT live-verified**: the configured token currently returns 401, so no live
+> call could run. Endpoints used are documented GitLab v4 REST paths.
+
 
 - **Reads:** 103/103 selftest checks (94 CE-applicable domains + 10 new v0.4.0
   tool probes verified live), plus all 69 curated-tool call paths.

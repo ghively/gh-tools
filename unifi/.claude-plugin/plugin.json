@@ -1,7 +1,7 @@
 {
   "name": "unifi-network",
   "description": "Full control of a Ubiquiti UniFi console (UniFi OS) from Claude Code. Bundles an MCP server that authenticates to the UniFi Network API and exposes both a generic passthrough reaching every endpoint across the classic v1, modern v2, and UniFi OS host API surfaces, plus curated tools for health, devices, clients, networks, WLANs, firewall, port-forwarding, traffic rules, events and statistics \u2014 along with a control skill and slash-command workflows. Tested against a UniFi Dream Router 7.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": {
     "name": "Gene Hively"
   },

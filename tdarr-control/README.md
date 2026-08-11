@@ -81,18 +81,23 @@ override the file.
   run_help_command (`mode`+`text`).
 - **LIVE-VERIFIED (writes):** create_backup + delete_backup (reversible write
   proof PASSED — `Backup-version-*.zip` created, verified, deleted, state restored).
-- **DOC-VERIFIED only** (param shapes not yet exercised live):
-  - `scan_files(scan_config)` — exact `scanConfig` shape.
-  - `alter_worker_limit(worker_type)` — worker_type enum CONFIRMED live
-    (`transcodecpu` / `transcodegpu` / `healthcheckcpu` / `healthcheckgpu`).
-  - `toggle_schedule(type)` — exact type values.
-  - `transcode_user_verdict(verdict)` — exact verdict strings.
+- **DOC-VERIFIED only** (endpoint documented; call/param shape NOT exercised
+  live — treat the payload as assumed):
+  - `scan_files(scan_config)` — assumed `scanConfig` shape.
+  - `toggle_schedule(type)` — assumed type values (probe a live record first).
+  - `transcode_user_verdict(verdict)` — assumed verdict strings.
   - `tdarr_db(obj)` for write modes (insert/update) — shape varies per
-    collection; always `getAll` first.
-  - `tdarr_staged_files` (StagedJSONDB getAll), `tdarr_create_plugin`
-    (definition shape), `tdarr_remove_video_codec_exclude` /
-    `tdarr_remove_audio_codec_exclude` — added after the 2026-07-20
-    verification; not yet exercised live.
+    collection; always `getAll` first. (The READ modes are LIVE-VERIFIED.)
+  - Note: `alter_worker_limit(worker_type)` is doc-built, but its worker_type
+    enum is CONFIRMED live (`transcodecpu` / `transcodegpu` / `healthcheckcpu`
+    / `healthcheckgpu`, from live NodeJSONDB.workerLimits).
+- **added-post-verification** (written after the 2026-07-20 live run; in
+  `mcp/_smoketest.py` but not yet re-run against live Tdarr):
+  - `tdarr_libraries` (getAll LibrarySettingsJSONDB — underlying call
+    live-observed, wrapper not re-run).
+  - `tdarr_staged_files` (getAll StagedJSONDB — row shape not yet live-observed).
+  - `tdarr_create_plugin` (assumed definition shape).
+  - `tdarr_remove_video_codec_exclude` / `tdarr_remove_audio_codec_exclude`.
 - **Not implemented (out of MVP scope):** WebSocket live updates (the Tdarr web
   UI uses Socket.IO — out of scope for MCP), `download-plugins` binary download,
   `client/{clientType}` (internal node↔server).

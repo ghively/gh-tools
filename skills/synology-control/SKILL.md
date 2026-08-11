@@ -29,7 +29,7 @@ required_environment_variables:
     prompt: DSM 2-step verification OTP code (only if 2FA is enabled)
     required_for: completing 2FA login
     optional: true
-version: 0.2.0
+version: 0.2.1
 author: poomonkey405
 ---
 
@@ -79,7 +79,8 @@ If it fails, the problem is connectivity/auth (see Troubleshooting), not the tas
 | DSM updates | `synology_dsm_update_check`, `synology_dsm_update_apply` (reboots) |
 | Users / groups | read: `synology_users_list`, `synology_groups_list`; write: `synology_user_create`/`_modify`/`_set_password`/`_delete`, `synology_group_create`/`_delete`/`_add_members` |
 | Shares | read: `synology_shares_list`; write: `synology_share_create`/`_delete`/`_set_permissions` |
-| Security / network | `synology_firewall_status`, `synology_firewall_set_enabled`, `synology_network_set_dns`, `synology_scheduler_list` |
+| Security / network | `synology_firewall_status`, `synology_firewall_rules`, `synology_firewall_set_enabled`, `synology_autoblock_list`, `synology_autoblock_manage` (add/remove, gated), `synology_network_set_dns`, `synology_scheduler_list` |
+| Certificates / power | `synology_certificates_list`, `synology_ups_status` |
 | Backups | `synology_backup_hyper_tasks`, `synology_backup_active_devices`, `synology_backup_active_logs` |
 | Power | `synology_reboot`, `synology_shutdown` |
 | Anything else | `synology_call`, `synology_batch`, `synology_list_apis`, `synology_describe_api` |
@@ -113,8 +114,11 @@ sensitive write, retry the generic call with `elevate=True`.
 
 ## Discovery-first workflow (for anything not curated)
 
-Many requests (certificates, VPN, notifications, UPS, DDNS, auto-block, general
-network config) have no curated tool. Do this:
+Certificates (`synology_certificates_list`), UPS (`synology_ups_status`), auto-block
+(`synology_autoblock_list` / `synology_autoblock_manage`) and firewall rules
+(`synology_firewall_rules`) now have curated tools — prefer them. Other requests
+(VPN, notifications, DDNS, general network config, triggering a Hyper Backup run)
+have no curated tool. Do this:
 
 1. **Find the API.** `synology_list_apis(filter="Firewall")` →
    `SYNO.Core.Security.Firewall.Rules`, etc. Filter by a domain keyword.
@@ -157,8 +161,9 @@ This box holds real data (tens of TB across two volumes). Be deliberate:
 - **Destructive curated tools are gated.** Every destructive or disruptive curated
   tool — `synology_reboot`/`_shutdown`, `synology_fs_delete`, download-task delete,
   container/image/project stop & delete, package stop & uninstall,
-  `synology_dsm_update_apply`, share/user/group writes, and the firewall toggle —
-  requires `confirm=True`. That gate is a backstop, not a substitute for asking.
+  `synology_dsm_update_apply`, share/user/group writes, the firewall toggle, and
+  `synology_autoblock_manage` (block/allow-list add/remove) — requires `confirm=True`.
+  That gate is a backstop, not a substitute for asking.
 - **Prefer reversible steps** and read-back after a change (e.g. re-list after a
   `set`) to verify it took effect. Report what actually happened, including
   failures — don't claim success you didn't observe.

@@ -1,7 +1,7 @@
 {
   "name": "synology-nas",
-  "description": "Full control of a Synology DiskStation (DSM 7.x) from Claude Code. Bundles an MCP server that authenticates to the DSM Web API and exposes both a generic passthrough reaching every SYNO.* API (~870 on a DS1817+) and 64 curated tools for system health, logs, storage, snapshots, files, downloads, containers (Container Manager), packages, users, shares, firewall, DSM updates and backups \u2014 destructive tools confirm-gated \u2014 plus a control skill and slash-command workflows.",
-  "version": "0.2.0",
+  "description": "Full control of a Synology DiskStation (DSM 7.x) from Claude Code. Bundles an MCP server that authenticates to the DSM Web API and exposes both a generic passthrough reaching every SYNO.* API (~870 on a DS1817+) and 69 curated tools for system health, logs, storage, snapshots, files, downloads, containers (Container Manager), packages, users, shares, firewall & auto-block, certificates, UPS, DSM updates and backups \u2014 destructive tools confirm-gated \u2014 plus a control skill and slash-command workflows.",
+  "version": "0.2.1",
   "author": {
     "name": "Gene Hively"
   },

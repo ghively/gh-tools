@@ -3,9 +3,10 @@
 A Claude Code plugin that gives Claude deep, honest control of an **Emby media
 server**: an MCP server with a generic passthrough reaching the server's entire
 REST surface (~484 operations, discovered live from its own OpenAPI spec) plus
-54 curated tools, a control skill with official-docs references, and
+57 curated tools, a control skill with official-docs references, and
 slash-command workflows. Built and live-verified against **Emby Server 4.7.14.0**
-on Linux following the deep-integration-builder methodology in this repo.
+on Linux following the deep-integration-builder methodology in this repo. (The
+current live server is now **4.9.5.0** — see the version-delta note below.)
 
 ## What's inside
 
@@ -57,12 +58,14 @@ emby/
 
 ## Two layers
 
-- **Curated tools** (54: `emby_status`, `emby_items`, `emby_sessions`,
+- **Curated tools** (57: `emby_status`, `emby_items`, `emby_sessions`,
   `emby_playback_control`, `emby_set_config`, `emby_plugin_config`,
   `emby_identify`, `emby_images`, `emby_subtitles`, `emby_library_manage`,
   `emby_bulk_update`, `emby_versions`, `emby_sync_jobs`, deep
   `emby_collection` (query-create/smart-sync/franchise-finder/reverse-lookup),
-  6 Live TV tools, ...) encode the correct params and Emby's gotchas —
+  facet browsing (`emby_categories` for genres/studios/artists/people/years,
+  `emby_similar`, `emby_latest`), 6 Live TV tools, ...) encode the correct
+  params and Emby's gotchas —
   notably **round-trip writes** (Emby resets omitted fields on partial POSTs)
   and **named config stores** (the working plugin-settings mechanism on 4.x;
   the legacy per-plugin route 500s).
@@ -88,3 +91,29 @@ proves all 44 gate checks hold.
 - **Hard limits on 4.7.14**: legacy `/Plugins/{id}/Configuration` (all modern
   plugins 500 — named stores used instead), `/Items/{id}/DeleteInfo` (500 NRE),
   newer 4.8+ routes (`/System/Configuration/Partial`, `/System/Logs/Query`).
+
+## Version delta: verified on 4.7.14, live box now 4.9.5.0
+
+Everything above was **live-verified against Emby Server 4.7.14.0**. The live
+server (`gh-media`) has since been upgraded to **4.9.5.0**, and there is **no
+API key available**, so the 4.9 box was **not** re-tested — this release is
+code + docs only, validated **offline** (`py_compile`, `json.tool`, and an MCP
+handshake booted with `config.example.json` that lists all tools with valid
+schemas). What that means, without inventing behavior:
+
+- **Self-correcting facts.** The operation catalog and tag counts are read from
+  the server's own live OpenAPI document at runtime, so `emby_list_endpoints`
+  and `emby_call` stay accurate on 4.9 even though the "~484 operations / ~66
+  tags" figures quoted here are 4.7 snapshots.
+- **New facet tools** (`emby_categories`, `emby_similar`, `emby_latest`) use
+  long-stable, documented endpoints (`/Genres`, `/MusicGenres`, `/Studios`,
+  `/Artists`, `/Artists/AlbumArtists`, `/Persons`, `/Years`,
+  `/Items/{id}/Similar`, `/Users/{uid}/Items/Latest`) present in both 4.7 and
+  4.9 — but they have **not** been exercised against a live 4.9 server.
+- **May have changed on 4.9 (unverified, do not assume):** the 4.7 "hard
+  limits" above may no longer hold — `/System/Configuration/Partial` and
+  `/System/Logs/Query` likely now exist (4.8+ additions), and the
+  `/Items/{id}/DeleteInfo` NRE and legacy per-plugin config 500s may be fixed.
+  The curated tools deliberately avoid those routes (round-trip full-object
+  writes, named config stores), so they remain correct regardless; only re-run
+  `mcp/_smoketest.py` with a real 4.9 key to reconfirm the full matrix.

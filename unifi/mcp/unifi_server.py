@@ -361,6 +361,8 @@ ENDPOINT_CATALOG = [
     ("rest/setting", "v1", "GET", "All site settings (grouped by key)"),
     ("set/setting/{key}", "v1", "POST", "Write a settings section by key"),
     ("list/alarm", "v1", "GET/POST", "Alarms (unarchived by default)"),
+    ("cmd/evtmgr", "v1", "POST",
+     "Alarm/event actions: archive-alarm (with _id archives one, without archives all)"),
     ("cmd/stamgr", "v1", "POST",
      "Client actions: block-sta, unblock-sta, kick-sta, authorize-guest, unauthorize-guest, forget-sta"),
     ("cmd/devmgr", "v1", "POST",
@@ -812,6 +814,31 @@ def unifi_alarms(include_archived: bool = False) -> dict:
 
 
 @mcp.tool()
+def unifi_vouchers() -> dict:
+    """List guest hotspot vouchers (GET stat/voucher): the access codes used to grant
+    guests time-limited Wi-Fi via the captive portal. Each shows the code, note,
+    validity (duration/expiry), how many times it may be used vs. used, any
+    bandwidth/data quota, and the _id. Empty if no vouchers have been generated.
+    Read-only; create with unifi_voucher_create."""
+    try:
+        data = _aslist(client().v1("stat/voucher"))
+        slim = [{
+            "_id": v.get("_id"), "code": v.get("code"), "note": v.get("note"),
+            "duration_minutes": v.get("duration"),
+            "quota": v.get("quota"), "used": v.get("used"),
+            "for_hotspot": v.get("for_hotspot"),
+            "create_time": v.get("create_time"),
+            "qos_rate_max_up": v.get("qos_rate_max_up"),
+            "qos_rate_max_down": v.get("qos_rate_max_down"),
+            "qos_usage_quota": v.get("qos_usage_quota"),
+            "status": v.get("status"),
+        } for v in data if isinstance(v, dict)]
+        return ok({"count": len(slim), "vouchers": slim or data})
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+@mcp.tool()
 def unifi_settings(key: str = "") -> dict:
     """Read site settings. With no `key`, returns every settings section (grouped by
     key: mgmt, guest_access, ntp, dhcp, usg, etc.). With a `key`, returns just that
@@ -1125,6 +1152,58 @@ def unifi_speedtest_status() -> dict:
     speedtest-status): download/upload Mbps, latency, and run state. Read-only."""
     try:
         return ok(client().cmd("devmgr", {"cmd": "speedtest-status"}))
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+@mcp.tool()
+def unifi_voucher_create(minutes: int, count: int = 1, quota: int = 1,
+                         note: str = "", up_kbps: int = 0, down_kbps: int = 0,
+                         quota_mbytes: int = 0, confirm: bool = False) -> dict:
+    """Create guest hotspot voucher(s) (POST cmd/hotspot create-voucher). `minutes`
+    is each voucher's validity window. `count` = how many vouchers to generate.
+    `quota` = how many times EACH voucher may be used (0 = unlimited/multi-use,
+    1 = single-use). Optional caps: `up_kbps`/`down_kbps` bandwidth, `quota_mbytes`
+    total data. `note` labels them. After creating, call unifi_vouchers to read the
+    generated codes. Confirm-gated (grants network access to guests)."""
+    guard = _require_confirm(
+        confirm,
+        f"CREATE {count} guest voucher(s) valid {minutes} min "
+        f"(quota={quota} use{'s' if quota != 1 else ''})")
+    if guard:
+        return guard
+    try:
+        payload: dict = {"cmd": "create-voucher", "expire": int(minutes),
+                         "n": int(count), "quota": int(quota)}
+        if note:
+            payload["note"] = note
+        if up_kbps:
+            payload["up"] = int(up_kbps)
+        if down_kbps:
+            payload["down"] = int(down_kbps)
+        if quota_mbytes:
+            payload["bytes"] = int(quota_mbytes)
+        return ok(client().cmd("hotspot", payload))
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+@mcp.tool()
+def unifi_alarm_archive(alarm_id: str = "", confirm: bool = False) -> dict:
+    """Archive alarms (POST cmd/evtmgr archive-alarm). With an `alarm_id` (the _id
+    from unifi_alarms) archives that ONE alarm; with no id, archives ALL currently
+    open alarms. Archiving clears them from the open/unarchived list — it does not
+    delete history. Confirm-gated."""
+    what = (f"ARCHIVE alarm {alarm_id}" if alarm_id
+            else "ARCHIVE ALL open alarms")
+    guard = _require_confirm(confirm, what)
+    if guard:
+        return guard
+    try:
+        payload: dict = {"cmd": "archive-alarm"}
+        if alarm_id:
+            payload["_id"] = alarm_id
+        return ok(client().cmd("evtmgr", payload))
     except Exception as e:  # noqa: BLE001
         return err(e)
 

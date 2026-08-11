@@ -28,18 +28,23 @@ with an **admin** token — instance administration works, not just project acce
 
 ## Layered approach — pick the right tool
 
-1. **Curated tools first** (75; 79 total with the generic layer): `list_projects`, `get_project`, `manage_project`,
+1. **Curated tools first** (78; 82 total with the generic layer): `list_projects`, `get_project`, `manage_project`,
    `repo_tree`, `read_file`, `write_files`, `repo_extras`, `branches`, `tags`, `commits`,
-   `compare_refs`, `protected`, `list_merge_requests`, `get_merge_request`,
-   `manage_merge_request`, `mr_discussions`, `list_issues`, `get_issue`, `manage_issue`,
-   `labels`, `milestones`, `boards`, `pipelines`, `jobs`, `ci_variables`,
+   `compare_refs`, `commit_status`, `protected`, `list_merge_requests`, `get_merge_request`,
+   `mr_changes`, `manage_merge_request`, `mr_discussions`, `list_issues`, `get_issue`, `manage_issue`,
+   `labels`, `milestones`, `boards`, `pipelines`, `jobs`, `job_artifacts`, `ci_variables`,
    `pipeline_schedules`, `pipeline_triggers`, `feature_flags`, `runners`, `ci_lint`,
    `environments`, `releases`, `deploy_credentials`, `pages`, `users`, `user_tokens`,
    `access_tokens`, `groups`, `members`, `membership_requests`, `badges`, `admin_settings`,
    `admin_ops`, `search_gitlab`, `webhooks`, `integrations`, `snippets`, `wikis`,
    `packages`, `container_registry`, `project_import_export`, `model_registry`,
    `ci_catalog`, `templates`, `todos_and_events`.
-   Most take an `action` parameter — read the tool description. New in v0.5.0:
+   Most take an `action` parameter — read the tool description. New in v0.5.2:
+   `job_artifacts` (download a job's artifacts zip or a single artifact file, binary-aware),
+   `commit_status` (list a commit's CI/build statuses, or set one via POST /statuses/:sha —
+   confirm-gated), `mr_changes` (an MR's file-level diff via /diffs or the legacy /changes).
+   These three were added offline and are DOC/CODE-verified only, NOT live-verified (the
+   available token 401s). New in v0.5.0:
    `time_tracking` (estimates/spent on issues & MRs), `issue_links` (blocks/relates),
    `draft_notes` (MR draft review notes), `cluster_agents` (Kubernetes agents),
    `dependency_proxy` (group Docker cache), `suggestions` (apply MR code-review suggestions),
@@ -164,3 +169,10 @@ service desk (needs incoming-email config), direct-transfer imports
 (6 active), signup disabled, KAS enabled, registry API reachable, direct-transfer
 imports enabled (`bulk_import_enabled: true` since 2026-07-15). Token:
 `hermes-agent-20260625-v2` (admin, `api` scope, expires 2027-06-25).
+
+**Token scope requirement:** the PAT in `config.local.json` (or `GITLAB_TOKEN`) MUST
+carry the **`api`** scope — `read_api` alone cannot drive the write paths, and a
+missing/expired/wrong-scoped token surfaces as HTTP **401** on `gitlab_status`. If you
+see 401s, rotate the PAT and confirm it has `api` (admin recommended for instance-level
+control). As of this writing the configured token 401s, so v0.5.2's new tools are
+DOC/CODE-verified only, not live-verified.

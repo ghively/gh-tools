@@ -1398,6 +1398,128 @@ def synology_firewall_set_enabled(enable: bool, confirm: bool = False) -> dict:
         return err(e)
 
 
+@mcp.tool()
+def synology_firewall_rules() -> dict:
+    """List firewall rules for every firewall profile (read-only). For each profile it
+    returns the global default policy and the ordered rule list (per-rule action, ports,
+    protocol, source IP). Editing rules is high-risk (a wrong rule can lock you out of
+    the NAS) and is intentionally NOT a curated tool — after reading this, make edits
+    deliberately via synology_call on SYNO.Core.Security.Firewall / .Profile with the
+    user's explicit go-ahead. Rules are read via SYNO.Core.Security.Firewall.Profile.get
+    (v1), which embeds the rule list under `global.rules`."""
+    try:
+        c = client()
+        prof = c.call("SYNO.Core.Security.Firewall.Profile", "list", 1)
+        names = [p.get("name") if isinstance(p, dict) else p
+                 for p in prof.get("profile_names", [])]
+        profiles = []
+        for nm in names:
+            if not nm:
+                continue
+            d = c.call("SYNO.Core.Security.Firewall.Profile", "get", 1, {"name": nm})
+            g = d.get("global") or {}
+            profiles.append({
+                "name": d.get("name") or nm,
+                "default_policy": g.get("policy"),
+                "rules": g.get("rules", []),
+            })
+        return ok({"count": len(profiles), "profiles": profiles})
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+@mcp.tool()
+def synology_autoblock_list(list_type: str = "deny", limit: int = 200) -> dict:
+    """Auto-block (Control Panel > Security > Protection) state: the config (enabled,
+    failed-login `attempts` threshold, `within_mins` window, `expire_day` block
+    duration) plus the IP list. list_type="deny" returns the blocked IPs (default);
+    "allow" returns the allow-list. Read-only. Reads
+    SYNO.Core.Security.AutoBlock.get (config) and
+    SYNO.Core.Security.AutoBlock.Rules.list with type=deny|allow (v1)."""
+    if list_type not in ("deny", "allow"):
+        return {"success": False, "error": 'list_type must be "deny" or "allow"'}
+    try:
+        c = client()
+        cfg = c.call("SYNO.Core.Security.AutoBlock", "get", 1)
+        rules = c.call("SYNO.Core.Security.AutoBlock.Rules", "list", 1,
+                       {"offset": 0, "limit": limit, "type": list_type})
+        return ok({"config": cfg, "list_type": list_type,
+                   "total": rules.get("total"), "ip_info": rules.get("ip_info", [])})
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+@mcp.tool()
+def synology_autoblock_manage(action: str, ips: list[str], list_type: str = "deny",
+                              confirm: bool = False) -> dict:
+    """Add or remove IP addresses in the auto-block block/allow list. action="add" or
+    "remove"; list_type="deny" (block list) or "allow" (allow list); ips is a list of
+    IP strings (e.g. ["203.0.113.5"]). Security-affecting write — a stray allow entry
+    weakens protection and a wrong block entry can cut off a host: requires confirm=True.
+    Verify the current list first with synology_autoblock_list. (The read side of
+    SYNO.Core.Security.Firewall/AutoBlock is verified live; the add/remove methods on
+    SYNO.Core.Security.AutoBlock.Rules follow DSM's own UI convention and are gated —
+    read back with synology_autoblock_list after applying to confirm the change.)"""
+    if action not in ("add", "remove"):
+        return {"success": False, "error": 'action must be "add" or "remove"'}
+    if list_type not in ("deny", "allow"):
+        return {"success": False, "error": 'list_type must be "deny" or "allow"'}
+    if not confirm:
+        return {"success": False,
+                "error": f"Refused: pass confirm=True to {action} {ips} in the auto-block "
+                         f"{list_type} list."}
+    try:
+        return ok(client().call("SYNO.Core.Security.AutoBlock.Rules", action, 1,
+                                {"type": list_type, "ip_list": ips}))
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+# ---- Certificates & power hardware (read) --------------------------------- #
+@mcp.tool()
+def synology_certificates_list() -> dict:
+    """List DSM certificates (Control Panel > Security > Certificate): each cert's id,
+    description, subject/issuer common name, validity window (valid_from/valid_till),
+    signature algorithm, and whether it's the default, broken, renewable, or
+    user-deletable, plus which services use it. Read-only
+    (SYNO.Core.Certificate.CRT.list, v1)."""
+    try:
+        data = client().call("SYNO.Core.Certificate.CRT", "list", 1)
+        certs = [
+            {
+                "id": x.get("id"),
+                "desc": x.get("desc"),
+                "is_default": x.get("is_default"),
+                "is_broken": x.get("is_broken"),
+                "renewable": x.get("renewable"),
+                "user_deletable": x.get("user_deletable"),
+                "signature_algorithm": x.get("signature_algorithm"),
+                "subject_cn": (x.get("subject") or {}).get("common_name"),
+                "issuer_cn": (x.get("issuer") or {}).get("common_name"),
+                "valid_from": x.get("valid_from"),
+                "valid_till": x.get("valid_till"),
+                "services": [s.get("display_name") for s in (x.get("services") or [])],
+            }
+            for x in data.get("certificates", [])
+        ]
+        return ok({"count": len(certs), "certificates": certs})
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+@mcp.tool()
+def synology_ups_status() -> dict:
+    """UPS (uninterruptible power supply) status & settings: whether UPS support is
+    enabled, mode (master/slave/network), battery charge %, estimated runtime, the
+    low-battery safe-shutdown behavior, and any network-UPS server IP. Read-only
+    (SYNO.Core.ExternalDevice.UPS.get, v1). `enable=false` means no UPS is attached
+    or configured on this NAS."""
+    try:
+        return ok(client().call("SYNO.Core.ExternalDevice.UPS", "get", 1))
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
 # ---- Backups (Hyper Backup + Active Backup for Business) ------------------- #
 # API method/param shapes reverse-engineered from the DSM web UI's own traffic.
 # Note the version: these list methods live at v1, not the API's max version.

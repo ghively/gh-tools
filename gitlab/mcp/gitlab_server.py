@@ -247,6 +247,51 @@ def _clean(d: dict) -> dict:
     return {k: v for k, v in d.items() if v is not None}
 
 
+def _raw_get(path: str, params: Optional[dict] = None, max_bytes: int = 20000) -> dict:
+    """GET a possibly-binary endpoint and return a structured, size-bounded result.
+
+    Text bodies come back decoded (truncated to max_bytes); binary bodies (e.g. an
+    artifacts zip) are reported with content-type/length plus a base64 head so nothing
+    dumps megabytes into the model. Network-level failures return the same structured
+    {error, kind, ...} dict as rest()/gql().
+    """
+    if not path.startswith("/"):
+        path = "/" + path
+    if not path.startswith("/api/"):
+        path = "/api/v4" + path
+    try:
+        r = _client.get(path, params=params)
+    except httpx.HTTPError as e:
+        return _transport_err(e)
+    if r.status_code >= 400:
+        return _err(r)
+    content = r.content or b""
+    ctype = r.headers.get("content-type", "")
+    clen = r.headers.get("content-length")
+    out: dict = {
+        "ok": True,
+        "status": r.status_code,
+        "content_type": ctype,
+        "content_length": int(clen) if (clen and clen.isdigit()) else len(content),
+        "bytes": len(content),
+    }
+    is_text = any(t in ctype for t in ("text", "json", "xml", "javascript", "csv"))
+    if is_text:
+        text = content.decode("utf-8", errors="replace")
+        out["encoding"] = "text"
+        out["truncated"] = len(text) > max_bytes
+        out["text"] = text[:max_bytes]
+    else:
+        out["encoding"] = "base64"
+        out["truncated"] = len(content) > max_bytes
+        out["data_base64"] = base64.b64encode(content[:max_bytes]).decode("ascii")
+        out["note"] = (
+            f"binary payload; base64 is capped at {max_bytes} bytes — for a large "
+            "artifacts zip, pull one file with action='file'+artifact_path, or raise max_bytes."
+        )
+    return out
+
+
 # --------------------------------------------------------------------------- #
 # Compact endpoint catalog (for gitlab_api_search)                            #
 # --------------------------------------------------------------------------- #
@@ -277,7 +322,8 @@ API_CATALOG: dict[str, list[str]] = {
     "merge requests": ["GET /merge_requests?scope=all", "GET /projects/:id/merge_requests",
                        "GET /projects/:id/merge_requests/:iid", "POST /projects/:id/merge_requests",
                        "PUT .../:iid", "PUT .../:iid/merge", "PUT .../:iid/rebase", "DELETE .../:iid",
-                       "GET .../:iid/diffs", "GET .../:iid/commits", "GET .../:iid/pipelines",
+                       "GET .../:iid/diffs", "GET .../:iid/changes (deprecated)", "GET .../:iid/commits",
+                       "GET .../:iid/pipelines",
                        "POST .../:iid/approve", "POST .../:iid/unapprove", "GET .../:iid/approvals",
                        "GET .../:iid/closes_issues", "GET .../:iid/related_issues"],
     "mr discussions/notes": ["GET/POST /projects/:id/merge_requests/:iid/discussions",
@@ -304,6 +350,8 @@ API_CATALOG: dict[str, list[str]] = {
     "jobs": ["GET /projects/:id/jobs", "GET /projects/:id/pipelines/:pid/jobs", "GET /projects/:id/jobs/:jid",
              "GET .../jobs/:jid/trace", "POST .../jobs/:jid/retry", "POST .../jobs/:jid/cancel",
              "POST .../jobs/:jid/play", "POST .../jobs/:jid/erase", "GET .../jobs/:jid/artifacts",
+             "GET .../jobs/:jid/artifacts/*artifact_path", "GET .../jobs/artifacts/:ref/download?job=",
+             "GET .../jobs/artifacts/:ref/raw/*artifact_path?job=",
              "POST .../jobs/:jid/artifacts/keep", "DELETE .../jobs/:jid/artifacts", "GET /job (current CI job)"],
     "ci variables": ["GET/POST/PUT/DELETE /projects/:id/variables", "GET/POST/PUT/DELETE /groups/:id/variables",
                      "GET/POST/PUT/DELETE /admin/ci/variables (instance)"],
@@ -751,6 +799,41 @@ def compare_refs(project: str, from_ref: str, to_ref: str, straight: bool = Fals
                 params={"from": from_ref, "to": to_ref, "straight": straight})
 
 
+@mcp.tool()
+def commit_status(project: str, sha: str, action: str = "list",
+                  state: Optional[str] = None, name: Optional[str] = None,
+                  ref: Optional[str] = None, target_url: Optional[str] = None,
+                  description: Optional[str] = None, coverage: Optional[float] = None,
+                  pipeline_id: Optional[int] = None, params: Optional[dict] = None,
+                  confirm: bool = False) -> Any:
+    """Commit CI/build statuses — the checks shown on a commit/MR: list | set.
+
+    list: GET /projects/:id/repository/commits/:sha/statuses — each external/CI check
+          and its state. Optional filters: ref, name.
+    set:  POST /projects/:id/statuses/:sha — report a status onto :sha. state is
+          required, one of pending|running|success|failed|canceled. Optional: name
+          (the context/check label, default 'default'), ref, target_url, description,
+          coverage, pipeline_id (extra keys via params). This is how external systems
+          post build/check results back to GitLab. Write → requires confirm=true.
+    """
+    p = _proj(project)
+    if action == "list":
+        return rest("GET", f"/projects/{p}/repository/commits/{sha}/statuses",
+                    params=_clean({"ref": ref, "name": name, "per_page": 100}))
+    if action == "set":
+        if not state:
+            return {"error": True,
+                    "message": "set needs state (pending|running|success|failed|canceled)"}
+        g = _gate(confirm, f"set commit status '{state}' on {str(sha)[:8]} in {project}")
+        if g:
+            return g
+        body = _clean({"state": state, "name": name, "ref": ref, "target_url": target_url,
+                       "description": description, "coverage": coverage,
+                       "pipeline_id": pipeline_id, **(params or {})})
+        return rest("POST", f"/projects/{p}/statuses/{sha}", body=body)
+    return {"error": True, "message": f"unknown action '{action}' (use list|set)"}
+
+
 # --------------------------------------------------------------------------- #
 # Curated: merge requests & issues                                            #
 # --------------------------------------------------------------------------- #
@@ -800,6 +883,32 @@ def get_merge_request(project: str, iid: int, include: str = "basic") -> Any:
         out[w] = rest("GET", f"/projects/{p}/merge_requests/{iid}/{w}",
                       params={"per_page": 50})
     return out
+
+
+@mcp.tool()
+def mr_changes(project: str, iid: int, mode: str = "diffs",
+               access_raw_diffs: bool = False, unidiff: bool = False,
+               limit: int = 100) -> Any:
+    """The file-level diff of a merge request (what actually changed): diffs | changes.
+
+    diffs:   GET /projects/:id/merge_requests/:iid/diffs — the modern, paginated diff
+             list (recommended); auto-follows pages to cover `limit` entries.
+    changes: GET /projects/:id/merge_requests/:iid/changes — the older single-call
+             endpoint returning the MR object plus its `changes[]` array. GitLab has
+             deprecated it in favour of diffs but it is still present on v4;
+             access_raw_diffs / unidiff pass through as query params.
+    Read-only, no confirm.
+    """
+    p = _proj(project)
+    if mode == "diffs":
+        params = _clean({"unidiff": unidiff or None, "per_page": min(limit, 100)})
+        return rest("GET", f"/projects/{p}/merge_requests/{iid}/diffs", params=params,
+                    paginate=limit > 100, max_pages=(limit // 100) + 1)
+    if mode == "changes":
+        params = _clean({"access_raw_diffs": access_raw_diffs or None,
+                         "unidiff": unidiff or None})
+        return rest("GET", f"/projects/{p}/merge_requests/{iid}/changes", params=params)
+    return {"error": True, "message": f"unknown mode '{mode}' (use diffs|changes)"}
 
 
 @mcp.tool()
@@ -1078,6 +1187,45 @@ def jobs(project: str, action: str = "list", pipeline_id: Optional[int] = None,
     if action == "artifacts_delete":
         return rest("DELETE", f"/projects/{p}/jobs/{job_id}/artifacts")
     return {"error": True, "message": f"unknown action '{action}'"}
+
+
+@mcp.tool()
+def job_artifacts(project: str, action: str = "archive", job_id: Optional[int] = None,
+                  artifact_path: Optional[str] = None, ref: Optional[str] = None,
+                  job_name: Optional[str] = None, max_bytes: int = 20000) -> Any:
+    """Download CI job artifacts (read-only, binary-aware): archive | file.
+
+    archive: the whole artifacts zip for a job
+             (GET /projects/:id/jobs/:job_id/artifacts).
+    file:    a single file out of the artifacts, needs artifact_path
+             e.g. 'coverage/index.html' or 'build/report.xml'
+             (GET /projects/:id/jobs/:job_id/artifacts/*artifact_path).
+
+    Address the job two ways: by job_id, OR by ref (branch/tag) + job_name — the latter
+    resolves the latest successful job of that name on that ref via the
+    /projects/:id/jobs/artifacts/:ref/(download|raw/*path) endpoints. Text files return
+    decoded; binary (including the zip) returns a size-capped base64 head so nothing
+    dumps megabytes into the model — raise max_bytes to pull more. Read-only, no confirm.
+    """
+    p = _proj(project)
+    if action == "archive":
+        if job_id is not None:
+            return _raw_get(f"/projects/{p}/jobs/{job_id}/artifacts", max_bytes=max_bytes)
+        if ref and job_name:
+            return _raw_get(f"/projects/{p}/jobs/artifacts/{quote(ref, safe='')}/download",
+                            params={"job": job_name}, max_bytes=max_bytes)
+        return {"error": True, "message": "archive needs job_id, or ref + job_name"}
+    if action == "file":
+        if not artifact_path:
+            return {"error": True, "message": "file needs artifact_path"}
+        ap = quote(artifact_path, safe="/")
+        if job_id is not None:
+            return _raw_get(f"/projects/{p}/jobs/{job_id}/artifacts/{ap}", max_bytes=max_bytes)
+        if ref and job_name:
+            return _raw_get(f"/projects/{p}/jobs/artifacts/{quote(ref, safe='')}/raw/{ap}",
+                            params={"job": job_name}, max_bytes=max_bytes)
+        return {"error": True, "message": "file needs job_id (or ref + job_name) plus artifact_path"}
+    return {"error": True, "message": f"unknown action '{action}' (use archive|file)"}
 
 
 @mcp.tool()

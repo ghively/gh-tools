@@ -64,10 +64,12 @@ relative to the site unless marked. Reach any of them with
 | `cmd/firewall` | firewall manager ops |
 | `cmd/backup` | `list-backups`, `delete-backup`, … |
 | `cmd/sitemgr` | `add-site`, `update-site`, `delete-site` |
-| `cmd/hotspot` | voucher/guest ops |
+| `cmd/hotspot` | voucher/guest ops — `create-voucher` (`expire` min, `n` count, `quota` uses, `note`/`up`/`down`/`bytes`); curated `unifi_voucher_create` |
+| `cmd/evtmgr` | `archive-alarm` (with `_id` archives one, without archives all); curated `unifi_alarm_archive` |
 | `cmd/system`, `cmd/cfgmgr` | system / config-manager ops |
 
-`list/alarm` (GET or POST `{archived:false}`) — alarms.
+`list/alarm` (GET or POST `{archived:false}`) — alarms (curated `unifi_alarms`).
+`stat/voucher` (GET) — hotspot vouchers (curated `unifi_vouchers`).
 
 ## v2 — modern features
 

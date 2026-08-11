@@ -3,6 +3,58 @@
 All notable changes to the **gitlab** gh-tools plugin.
 Versioning follows the plugin's own line (independent of the gh-tools marketplace).
 
+## [0.5.2] — 2026-08-11
+
+Adds the three curated tools an earlier review had deferred. Tool count 79 → 82
+(75 → 78 curated + 4 generic).
+
+### Added
+
+- **`job_artifacts`** — download CI job artifacts (read-only, binary-aware):
+  `archive` pulls the whole artifacts zip (`GET /projects/:id/jobs/:job_id/artifacts`);
+  `file` pulls one file (`GET /projects/:id/jobs/:job_id/artifacts/*artifact_path`).
+  Also addressable by ref + job_name via the
+  `/projects/:id/jobs/artifacts/:ref/(download|raw/*path)` endpoints. Text bodies are
+  returned decoded; binary (incl. the zip) returns a size-capped base64 head via the new
+  `_raw_get()` helper so nothing dumps megabytes into the model.
+- **`commit_status`** — commit CI/build statuses (the checks on a commit):
+  `list` (`GET /projects/:id/repository/commits/:sha/statuses`) and `set`
+  (`POST /projects/:id/statuses/:sha`, confirm-gated write — state one of
+  pending|running|success|failed|canceled, plus name/ref/target_url/description/
+  coverage/pipeline_id).
+- **`mr_changes`** — a merge request's file-level diff: `diffs`
+  (`GET /projects/:id/merge_requests/:iid/diffs`, modern + paginated) and `changes`
+  (`GET /projects/:id/merge_requests/:iid/changes`, the legacy single-call form GitLab
+  has deprecated but v4 still serves).
+- **`mcp/gitlab_server.py`** — `_raw_get()` helper for size-bounded, binary-aware GETs,
+  reusing the existing structured transport/HTTP error dicts.
+- **`mcp/_smoketest.py`** — offline confirm-gate check for `commit_status set` (zero
+  network). The three new *read* tools were not added to the live probe list: they
+  require instance-specific project/job/MR/sha IDs, which would make the probe brittle.
+- **`API_CATALOG`** — extended the `jobs` entry with the single-file and ref-based
+  artifact paths, and the `merge requests` entry with `/changes`. (The `commits` entry
+  already listed `/statuses` + `POST /statuses/:sha`.)
+
+### Docs
+
+- README, SKILL.md, plugin.json tool counts updated to 78 curated / 82 total.
+- README + SKILL.md setup notes now state the PAT must carry the **`api`** scope
+  (not just `read_api`) and that a missing/expired/wrong-scoped token surfaces as
+  HTTP **401** on `gitlab_status`.
+
+### Verification (offline only — token invalid, no live verification possible)
+
+- `python3 -m py_compile` clean on both `.py` files; `python3 -m json.tool` clean on
+  all 13 JSON files.
+- MCP handshake (`GITLAB_CONFIG=config.example.json`, `uv run --script`) succeeds:
+  **82 tools** register, zero schema warnings, all three of `job_artifacts`,
+  `commit_status`, `mr_changes` present.
+- `_smoketest.py` offline gate section: 8/8 confirm-gate checks pass (incl.
+  `commit_status set`).
+- **NOT live-verified:** the configured token returns 401, so no live REST/GraphQL
+  call could run. Endpoints used are documented GitLab v4 REST paths; correctness of
+  live responses is unverified.
+
 ## [0.5.1] — 2026-08-11
 
 Maintenance release: offline review fixes, no new tools or endpoints.

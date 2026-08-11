@@ -1,9 +1,13 @@
 # Tdarr API map
 
 **SOURCE:** Built from the official Tdarr API docs at <https://tdarr.readme.io/reference>
-(v2.25.01+). Frozen 2026-07-19. **NOT YET LIVE-VERIFIED** — Tdarr is not deployed
-on this homelab; when it is, run `_smoketest.py` and update this file with any
-discrepancies.
+(v2.25.01+), then **LIVE-VERIFIED against Tdarr 2.84.01 on 2026-07-20** at
+`gh-nvidia:8265` (smoke-test reads + reversible backup write proof PASSED).
+The catalog itself is doc-sourced and complete for the v2 API; individual
+param shapes are tagged below as live-verified vs assumed. Several doc param
+shapes were WRONG and were corrected against the live API — see
+"Param-shape corrections caught live" at the end. Endpoints not yet exercised
+live are still labelled (exact shape assumed).
 
 ## 1Password
 
@@ -60,12 +64,15 @@ Catalog also exposed via `tdarr_list_endpoints`.
 - `POST /api/v2/get-backup-status`
 - `POST /api/v2/get-backups`
 - `POST /api/v2/create-backup` (W)
-- `POST /api/v2/delete-backup` (W) — `{fileName}`
+- `POST /api/v2/delete-backup` (W) — `{name}` (LIVE-VERIFIED — docs say
+  `fileName`, but the server wants `name`)
 - `POST /api/v2/reset-backup-status` (W)
 
 ### Library / files
 - `POST /api/v2/search-db` — `{string, lessThanGB, greaterThanGB}`
-- `POST /api/v2/scan-files` (W) — `{scanConfig}` (exact shape TBD)
+  (LIVE-VERIFIED — all three fields are required by the server)
+- `POST /api/v2/scan-files` (W) — `{scanConfig}` (scanConfig shape ASSUMED,
+  not live-verified)
 - `POST /api/v2/scan-individual-file` (W) — `{filePath, dbID?}`
 - `POST /api/v2/delete-file` (W, IRREVERSIBLE) — `{filePath, dbID?}`
 - `POST /api/v2/delete-unhealthy-files` (W) — `{table}`
@@ -96,16 +103,19 @@ Reads (getById / getAll) are not confirm-gated. Every other mode IS.
 - `POST /api/v2/restart-node` (W) — `{nodeID}`
 - `POST /api/v2/disconnect-node` (W, doubly-gated) — `{nodeID}`
 - `POST /api/v2/alter-worker-limit` (W) — `{nodeID, workerType, limit}`
-  (workerType enum TBD — likely cpu/gpu/transcode)
+  (workerType enum LIVE-CONFIRMED from NodeJSONDB.workerLimits on 2.84.01:
+  `transcodecpu` / `transcodegpu` / `healthcheckcpu` / `healthcheckgpu`)
 - `POST /api/v2/poll-worker-limits` — `{nodeID}`
 - `POST /api/v2/cancel-worker-item` (W) — `{nodeID, workerType}`
 - `POST /api/v2/kill-worker` (W, doubly-gated) — `{nodeID, workerType}`
 - `POST /api/v2/client/{clientType}` — get client data by type
 
 ### Plugins
-- `POST /api/v2/search-plugins` — `{string?}`
-- `POST /api/v2/search-flow-plugins` — `{string?}`
-- `POST /api/v2/search-flow-templates` — `{string?}`
+- `POST /api/v2/search-plugins` — `{string, pluginType}` (LIVE-VERIFIED —
+  docs omit `pluginType` but the server requires it; use `"standard"`)
+- `POST /api/v2/search-flow-plugins` — `{string, pluginType}` (LIVE-VERIFIED —
+  requires `pluginType`; use `"flow"`)
+- `POST /api/v2/search-flow-templates` — `{string}` (LIVE-VERIFIED)
 - `GET  /api/v2/download-plugins` — plugin zip
 - `POST /api/v2/sync-plugins` (W)
 - `POST /api/v2/update-plugins` (W)
@@ -116,7 +126,8 @@ Reads (getById / getAll) are not confirm-gated. Every other mode IS.
 - `POST /api/v2/delete-plugin` (W) — `{id}`
 - `POST /api/v2/verify-plugin` — `{id}`
 - `POST /api/v2/copy-community-to-local` (W) — `{id}` (install)
-- `POST /api/v2/run-help-command` — `{command, args?}` (ffmpeg/handbrake help)
+- `POST /api/v2/run-help-command` — `{mode, text}` (LIVE-VERIFIED — docs say
+  `command`/`args`, but the server wants `mode`+`text`; ffmpeg/handbrake help)
 
 ### Library settings
 - `POST /api/v2/toggle-folder-watch` (W) — `{libraryID}`
@@ -135,7 +146,8 @@ Reads (getById / getAll) are not confirm-gated. Every other mode IS.
 ### Reports / jobs
 - `POST /api/v2/list-footprintId-reports` — `{footprintId}`
 - `POST /api/v2/read-job-file`
-- `POST /api/v2/transcode-user-verdict` (W) — `{filePath, verdict}`
+- `POST /api/v2/transcode-user-verdict` (W) — `{filePath, verdict}` (verdict
+  string values ASSUMED, not live-verified — 'transcode'/'ignore' are guesses)
 - `POST /api/v2/item-proc-end` (W, internal) — node signals item completion
 
 ## Quirks worth knowing (from docs + community)
@@ -148,8 +160,9 @@ Reads (getById / getAll) are not confirm-gated. Every other mode IS.
   file index. Always `getAll` first to confirm collection name; never `removeAll`
   as a test.
 - **GPU worker type**: Tdarr supports GPU transcoding via NVENC (and others).
-  The worker_type enum for `alter-worker-limit` likely includes `gpu` but is
-  not explicitly documented — confirm on first live use.
+  The worker_type enum for `alter-worker-limit` is LIVE-CONFIRMED (2.84.01) as
+  `transcodecpu` / `transcodegpu` / `healthcheckcpu` / `healthcheckgpu` — read
+  from live NodeJSONDB.workerLimits.
 - **Plugin IDs**: typically a name like `Migz1Remux` rather than a UUID. The
   search-plugins response shows the canonical IDs.
 
@@ -162,20 +175,31 @@ Reads (getById / getAll) are not confirm-gated. Every other mode IS.
 - **No WebSocket surface in this MCP**: the Tdarr web UI uses Socket.IO for
   live progress updates — out of scope here.
 
-## Live-verification checklist (when Tdarr deploys)
+## Param-shape corrections caught live (2.84.01, 2026-07-20)
 
-Run in order; each pass closes one gap:
+Live-verification found the readme.io docs slightly stale. Fixed in the
+curated tools + this catalog:
 
-1. `tdarr_status()` — should return server status JSON.
-2. `tdarr_full_status()` — composite snapshot.
-3. `tdarr_nodes()` — empty until you connect a node.
-4. `tdarr_db_statuses()` — should show library DBs after first library setup.
-5. `tdarr_search_db(string=".mkv", limit=3)` — should return scanned files.
-6. `tdarr_search_plugins(string="")` — should return community + local plugins.
-7. **Reversible write proof**: `tdarr_create_backup(confirm=True)` →
-   `tdarr_backups()` → `tdarr_delete_backup(file_name, confirm=True)`.
-8. **Plugin install proof**: search → `tdarr_install_plugin(id, confirm=True)`
-   → re-search to verify present → optionally delete.
+- **`search-db`**: docs mark `lessThanGB`/`greaterThanGB` optional — the server
+  requires them. Curated tool always sends defaults.
+- **`search-plugins` / `search-flow-plugins`**: docs omit the required
+  `pluginType` field. Curated tools send `"standard"` / `"flow"`.
+- **`delete-backup`**: docs use `fileName` — the server wants `name`.
+- **`run-help-command`**: docs use `command`/`args` — the server wants
+  `mode`/`text`.
+- **`alter-worker-limit`**: worker_type enum confirmed from live
+  NodeJSONDB.workerLimits (see above).
 
-After all pass, bump `plugin.json` version from `0.1.0-docverified` → `0.2.0`
-and update README to drop the NOT-LIVE-VERIFIED warning.
+## Remaining live-verification gaps (re-run to close)
+
+These endpoints are documented but their payloads were NOT exercised live —
+run `mcp/_smoketest.py` / `mcp/_writeproof.py` and update this file:
+
+1. `scan-files` — capture a real `scanConfig` payload.
+2. `toggle-schedule` — confirm the `type` values.
+3. `transcode-user-verdict` — confirm the `verdict` strings.
+4. `/cruddb` write modes (insert/update) — per-collection `obj` shapes
+   (StagedJSONDB, FileJSONDB, etc.).
+5. The added-post-verification tools (`tdarr_libraries`, `tdarr_staged_files`,
+   `tdarr_create_plugin`, `tdarr_remove_video/audio_codec_exclude`) — present
+   in the smoke test but not yet re-run live.

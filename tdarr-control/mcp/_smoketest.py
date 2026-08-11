@@ -8,17 +8,20 @@
 # ///
 """Smoke test the Tdarr MCP server.
 
-**DOC-VERIFIED plugin — Tdarr is not yet deployed on this homelab.**
+**Plugin was LIVE-VERIFIED on Tdarr 2.84.01 (2026-07-20).** This is the
+re-verification harness. If Tdarr is not reachable from where you run it
+(e.g. an offline session, or config.local.json not filled in), every network
+tool fails with a connection error — that's environmental, not a plugin bug.
 
-This smoke test will fail with a connection error until Tdarr is deployed
-and config.local.json is filled in. That's expected and intended — the
-test exists so that the FIRST thing you do after deploying Tdarr is run:
+Run it whenever you want to re-confirm against a live server:
 
     cd tdarr-control && uv run --script mcp/_smoketest.py
 
-Every passing tool closes one "doc-verified → live-verified" gap. Write
-tools are NOT called (confirm-gated in the server) — use _writeproof.py
-after manually verifying the read paths.
+Its current job is to close the "added-post-verification" gap — the tools
+written after the 2026-07-20 run (tdarr_libraries, tdarr_staged_files, and the
+confirm-gated create_plugin / remove_*_codec_exclude) that have not yet been
+re-run live. Write tools are NOT called here (confirm-gated in the server) —
+use _writeproof.py after the read paths pass.
 """
 from __future__ import annotations
 
@@ -93,6 +96,8 @@ print(f"\n{'='*50}")
 print(f"{ok} OK, {fail} FAIL")
 if not_deployed:
     print(f"\nOf the failures, {not_deployed} are connection errors — Tdarr is "
-          f"not deployed yet. Run this same test after deploying to verify.")
-    print("The plugin is DOC-VERIFIED but NOT LIVE-VERIFIED. See README.")
+          f"not reachable from here right now (offline session or config not "
+          f"filled in). Re-run where the server is reachable to re-confirm.")
+    print("The plugin was LIVE-VERIFIED on Tdarr 2.84.01; connection errors "
+          "here are environmental. See README's gap taxonomy.")
 sys.exit(0 if fail == 0 else 1)

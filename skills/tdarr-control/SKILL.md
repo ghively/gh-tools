@@ -447,21 +447,54 @@ See `library-and-nodes.md` for the full checklist.
 
 ## Honesty
 
-- **LIVE-VERIFIED on Tdarr 2.84.01**: 16/16 smoke tools pass + reversible
-  backup create→list→delete proof PASSED. Live-confirmed: StatisticsJSONDB
-  shape, NodeJSONDB shape (incl. schedule + workerLimits + gpuSelect +
-  thoroughHealthCheckExtraArgs), SettingsGlobalJSONDB shape (incl. all
-  advanced toggles), plugin search param shape (requires `pluginType`),
-  delete-backup param shape (`name` not `fileName`), run-help-command shape
-  (`mode` + `text`).
-- **DOC-VERIFIED only** (param shapes not yet exercised live):
-  - `scan_files(scan_config)` — exact scanConfig shape.
-  - `toggle_schedule(type)`, `transcode_user_verdict(verdict)`, and write
-    modes of `tdarr_db` — always probe with `getAll`/`getById` first.
-  - `tdarr_staged_files`, `tdarr_create_plugin(definition)`, and
-    `tdarr_remove_video/audio_codec_exclude` — added after the 2026-07-20
-    verification; not yet exercised live.
-- **Hardware limits**: no AV1 encode on RTX 3060 (NVENC AV1 is RTX 40+).
+Three verification buckets. Trust a tool only as far as its bucket allows.
+
+**LIVE-VERIFIED on Tdarr 2.84.01** (exercised against the live server on
+2026-07-20; smoke-test reads + reversible backup write proof PASSED):
+- Reads: `tdarr_status`, `tdarr_full_status`, `tdarr_nodes`,
+  `tdarr_db_statuses`, `tdarr_performance_stats`, `tdarr_res_stats`,
+  `tdarr_backup_status`, `tdarr_backups`, `tdarr_search_db`,
+  `tdarr_search_plugins`, `tdarr_search_flow_plugins`,
+  `tdarr_search_flow_templates`, `tdarr_run_help_command`, and `tdarr_db`
+  READ modes (getAll/getById) on StatisticsJSONDB, NodeJSONDB,
+  SettingsGlobalJSONDB, LibrarySettingsJSONDB, FlowsJSONDB.
+- Writes: `tdarr_create_backup` + `tdarr_delete_backup` (reversible
+  create→list→delete proof PASSED).
+- Param shapes corrected against the live API: `search-db` requires
+  `lessThanGB`/`greaterThanGB`; `search-plugins` requires `pluginType`;
+  `delete-backup` wants `name` (not `fileName`); `run-help-command` wants
+  `mode`+`text` (not `command`+`args`); `alter_worker_limit` worker_type enum
+  confirmed as `transcodecpu`/`transcodegpu`/`healthcheckcpu`/`healthcheckgpu`
+  (from live NodeJSONDB.workerLimits).
+
+**DOC-VERIFIED only** (built from the docs, call/param shape NOT exercised
+live — the endpoint is documented but treat the payload as assumed):
+- `scan_files(scan_config)` — assumed scanConfig shape.
+- `toggle_schedule(type)`, `transcode_user_verdict(verdict)` — assumed
+  enum/string values; probe a live record first.
+- `tdarr_db` WRITE modes (insert/update) — per-collection `obj` shape varies
+  and is not live-verified; always `getAll`/`getById` first.
+- Plus the remaining doc-built tools: `tdarr_server_log`, `tdarr_node_log`,
+  `tdarr_scan_individual_file`, `tdarr_filescanner_status`,
+  `tdarr_verify_folder_exists`, `tdarr_get_subdirectories`,
+  `tdarr_delete_file`, `tdarr_delete_unhealthy_files`,
+  `tdarr_kill_file_scanner`, `tdarr_read_plugin`, `tdarr_install_plugin`,
+  `tdarr_delete_plugin`, `tdarr_sync_plugins`, `tdarr_update_plugins`,
+  `tdarr_verify_plugin`, `tdarr_restart_node`, `tdarr_disconnect_node`,
+  `tdarr_alter_worker_limit`, `tdarr_poll_worker_limits`,
+  `tdarr_cancel_worker_item`, `tdarr_kill_worker`, `tdarr_toggle_folder_watch`,
+  `tdarr_add_video_codec_exclude`, `tdarr_add_audio_codec_exclude`,
+  `tdarr_list_footprint_reports`.
+
+**added-post-verification** (written after the 2026-07-20 live run; present in
+`mcp/_smoketest.py` but NOT yet re-run against live Tdarr):
+- `tdarr_libraries` (getAll LibrarySettingsJSONDB — the underlying call was
+  live-observed, but this wrapper tool has not been re-run).
+- `tdarr_staged_files` (getAll StagedJSONDB — row shape not yet live-observed).
+- `tdarr_create_plugin(definition)` — assumed body shape.
+- `tdarr_remove_video_codec_exclude`, `tdarr_remove_audio_codec_exclude`.
+
+**Hardware limits**: no AV1 encode on RTX 3060 (NVENC AV1 is RTX 40+).
 
 ## See also
 - `codecs.md` — full codec reference

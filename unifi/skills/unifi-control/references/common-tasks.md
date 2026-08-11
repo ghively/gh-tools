@@ -126,13 +126,25 @@ unifi_device_locate(mac="<mac>", on=True, confirm=True)   # flash LED to find it
 unifi_device_port_cycle(mac="<switch mac>", port_idx=5, confirm=True)  # PoE power-cycle
 ```
 
-## Guest / hotspot
+## Guest / hotspot / vouchers
 
 ```
 unifi_call("stat/guest")                                  # current authorizations
 unifi_call("cmd/stamgr", method="POST",
            json={"cmd":"authorize-guest","mac":"<mac>","minutes":120})   # confirm
-unifi_call("stat/voucher")                                # vouchers
+unifi_vouchers()                                          # list voucher codes + _id
+# generate a batch of single-use, 1-day vouchers (confirm first):
+unifi_voucher_create(minutes=1440, count=5, quota=1, note="Party", confirm=True)
+# then read the generated codes:
+unifi_vouchers()
+```
+
+## Alarms
+
+```
+unifi_alarms()                                # open (unarchived) alarms + _id
+unifi_alarm_archive("<alarm _id>", confirm=True)   # archive one
+unifi_alarm_archive(confirm=True)                  # archive ALL open alarms
 ```
 
 ## Settings (read any section, write by key)
