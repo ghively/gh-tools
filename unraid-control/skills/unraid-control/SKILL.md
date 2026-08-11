@@ -84,7 +84,10 @@ fails, the problem is connectivity/auth (see Troubleshooting), not the task.
 | Array & disks | `unraid_array`, `_array_set_state` (start/stop), `unraid_disks`, `_assignable_disks`, `_disk`, `_array_disk_add`/`_remove`/`_mount`/`_unmount`/`_clear_stats`, `unraid_parity_history`, `unraid_parity_check` |
 | Docker | `unraid_docker_containers`, `_container`, `_logs`, `_stats` (live, via WebSocket), `_networks`, `_start`/`_stop`/`_restart`/`_pause`/`_unpause`/`_remove`/`_update`/`_update_all`/`_autostart_set` |
 | Docker env vars (SSH-backed, separate from the GraphQL layer above) | `unraid_ssh_test` (check connectivity first), `unraid_docker_env_get` (read, masks secret-looking values), `unraid_docker_env_set` (write, confirm-gated — stops/recreates the container) |
+| Deploy containers & apps (SSH-backed) | `unraid_docker_deploy` (custom container → native dockerMan template + managed labels, confirm-gated), `unraid_docker_redeploy`, `unraid_template_get`, `unraid_ca_search` (Community Applications catalog), `unraid_ca_deploy` (deploy a CA app by template URL, confirm-gated) |
+| Deploy compose stacks (SSH-backed) | `unraid_compose_deploy` (confirm-gated; auto-installs Compose Manager on first use), `unraid_compose_down`, `unraid_compose_list` |
 | VMs | `unraid_vms`, `_vm_start`/`_stop`/`_pause`/`_resume`/`_force_stop`/`_reboot`/`_reset` |
+| Create VMs (SSH-backed) | `unraid_vm_isos` (list ISOs), `unraid_vm_create` (vdisk + OVMF/q35 libvirt domain, confirm-gated), `unraid_vm_delete` (vdisk removal double-gated). Protected VMs (e.g. `GH-Dev`) are refused. |
 | Shares | `unraid_shares` |
 | Users / API keys | `unraid_me`, `unraid_api_keys`, `_api_key_roles_catalog`, `_api_key_create`, `_api_key_delete`, `_api_key_role` |
 | Network | `unraid_network_interfaces` |
@@ -106,9 +109,11 @@ specific devices on this box, and that's documented there.
 
 ## Known Hard Limits on this server — don't imply otherwise
 
-- **VMs are disabled** (VM Manager off in Settings) — `unraid_vms` returns
-  `available: false`. Any `unraid_vm_*` call will fail identically. If the
-  user wants VMs, that's a one-time webGUI setting only they should flip.
+- **VM Manager is ON** (live-verified) — `unraid_vms` lists the domains, and
+  the SSH deployment layer can create/delete VMs (`unraid_vm_create`/`_delete`).
+  If a different box has VM Manager off, `unraid_vms` returns
+  `available: false` and the `unraid_vm_*` GraphQL tools fail; that is a
+  one-time webGUI setting only the user should flip.
 - **No UPS is connected** — `unraid_ups` returns `connected: false`.
 - **Unraid Connect isn't installed** — remote-access/cloud fields
   (`connect`, `cloud`, `remoteAccess`) don't exist in the live schema at all.

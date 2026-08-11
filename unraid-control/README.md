@@ -15,18 +15,33 @@ API, from Claude Code. Built and tested against **GH-Nvidia**, running
     (`skills/unraid-control/references/schema.graphql`, pulled from
     github.com/unraid/api at the exact tag matching this server's API
     version) and searchable via `unraid_schema_search`/`unraid_schema_type`.
-  - **80 curated tools** (87 total with the generic passthrough and SSH
+  - **90 curated tools** (97 total with the generic passthrough and SSH
     layers) across system health, the array & disks & parity,
     Docker (including live per-container stats over WebSocket), VMs, shares,
     notifications, UPS, network, users/API keys, settings, plugins (both
     classic `.plg` and API-level), and RClone/flash backups.
-  - **A separate, opt-in SSH layer** (`unraid_ssh_test`,
-    `unraid_docker_env_get`, `unraid_docker_env_set`) for the one real gap
-    in Unraid's GraphQL API: there is no mutation to edit a container's
-    environment variables. This layer does `docker inspect` →
-    `stop`+`rm`+`run` with the same config plus your changes over SSH, and
-    best-effort syncs the matching Unraid XML template. Confirm-gated,
-    disabled unless you configure SSH credentials.
+  - **A separate, opt-in SSH layer** for the things Unraid's GraphQL API
+    cannot do at all (it can operate existing containers/VMs but not create
+    them, and has no container-env mutation):
+    - **Env editing** (`unraid_docker_env_get`, `unraid_docker_env_set`):
+      `docker inspect` → `stop`+`rm`+`run` with the same config plus your
+      changes, best-effort syncing the Unraid XML template.
+    - **Deployment layer** — deploy apps, containers, compose stacks, and VMs
+      the native Unraid way:
+      - `unraid_docker_deploy` / `unraid_docker_redeploy` / `unraid_template_get`
+        — writes a dockerMan template + runs with Unraid's managed labels, so
+        the container shows up and is editable in the Docker tab.
+      - `unraid_ca_search` / `unraid_ca_deploy` — search the Community
+        Applications catalog (~4000 apps) and deploy one by its template.
+      - `unraid_compose_deploy` / `unraid_compose_down` / `unraid_compose_list`
+        — multi-container stacks (auto-installs the Compose Manager plugin on
+        first use).
+      - `unraid_vm_isos` / `unraid_vm_create` / `unraid_vm_delete` — create a
+        VM (vdisk + OVMF/q35 libvirt domain + `virsh define`) so it appears in
+        the VM Manager; Linux + Windows.
+    - All deploy/create/delete tools are confirm-gated (vdisk deletion is
+      double-gated); the whole layer stays disabled until you configure SSH
+      credentials. `unraid_vm_*` refuse to touch protected VMs (e.g. `GH-Dev`).
 - **Skill** (`skills/unraid-control/`) — teaches Claude how to drive the
   server, with a categorized **API map + honest gap audit**
   (Works/Fixable/Hard-limit), verified **task recipes**, and an
@@ -45,10 +60,12 @@ API, from Claude Code. Built and tested against **GH-Nvidia**, running
    field can instead be set via environment variables (`UNRAID_HOST`,
    `UNRAID_PORT`, `UNRAID_HTTPS`, `UNRAID_API_KEY`, `UNRAID_VERIFY_SSL`,
    `UNRAID_TIMEOUT`), which override the file.
-2. **SSH credentials (optional)** — only needed for `unraid_docker_env_get`/
-   `unraid_docker_env_set`. Add `ssh_user` + (`ssh_password` or
-   `ssh_key_path`) to `config.local.json` (`ssh_host` defaults to `host`,
-   `ssh_port` defaults to 22). Each has an env-var override too
+2. **SSH credentials (optional)** — needed for the env-editing and deployment
+   layers (`unraid_docker_env_*`, `unraid_docker_deploy`, `unraid_ca_deploy`,
+   `unraid_compose_*`, `unraid_vm_create`/`delete`). Add `ssh_user` +
+   (`ssh_password` or `ssh_key_path`) to `config.local.json` (`ssh_host`
+   defaults to `host`, `ssh_port` defaults to 22). A dedicated key is
+   recommended over a password. Each has an env-var override too
    (`UNRAID_SSH_HOST`, `UNRAID_SSH_PORT`, `UNRAID_SSH_USER`,
    `UNRAID_SSH_PASSWORD`, `UNRAID_SSH_KEY_PATH`). Leave them unset to
    disable this layer entirely — every other tool works without it.
