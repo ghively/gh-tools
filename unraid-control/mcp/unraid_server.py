@@ -48,6 +48,7 @@ import re
 import shlex
 import sys
 import threading
+import uuid
 from pathlib import Path
 from typing import Any, Optional
 
@@ -2057,6 +2058,634 @@ def unraid_flash_backup_initiate(remote_name: str, source_path: str, destination
             "mutation($i: InitiateFlashBackupInput!) { initiateFlashBackup(input: $i) { status jobId } }",
             {"i": inp},
         ))
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+# ============================================================================ #
+# DEPLOYMENT LAYER (SSH-backed create/deploy)                                  #
+#                                                                              #
+# Unraid's GraphQL API can operate existing containers/VMs but cannot CREATE   #
+# them (no run/define mutation exists). These tools deploy over SSH the way    #
+# Unraid itself does — writing a dockerMan template + running with the         #
+# `net.unraid.docker.*` managed labels so the result is a first-class citizen  #
+# in the Docker/VM tabs — plus Community Applications and compose stacks.      #
+# Every value that reaches a shell is shlex.quote()d; every template value is  #
+# XML-escaped. All create/deploy/delete tools are confirm-gated.               #
+# ============================================================================ #
+_TEMPLATES_DIR = "/boot/config/plugins/dockerMan/templates-user"
+_COMPOSE_DIR = "/boot/config/plugins/compose.manager/projects"
+_DOMAINS_DIR = "/mnt/user/domains"
+_ISOS_DIR = "/mnt/user/isos"
+_CA_FEED_URL = "https://raw.githubusercontent.com/Squidly271/AppFeed/master/applicationFeed.json"
+# VMs that must never be created over / stopped / deleted by these tools. This
+# session runs inside GH-Dev on this very box; touching it would be suicidal.
+_PROTECTED_VMS = {"gh-dev"}
+_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$")
+
+_ca_feed_cache: dict = {"apps": None}
+
+
+def _xml_escape(s: str) -> str:
+    return (str(s).replace("&", "&amp;").replace("<", "&lt;")
+            .replace(">", "&gt;").replace('"', "&quot;"))
+
+
+def _valid_name(name: str) -> bool:
+    return bool(_NAME_RE.match(name or ""))
+
+
+def _norm_ports(ports) -> list[tuple[str, str, str]]:
+    """Normalize ports to (host, container, proto). Accepts "8080:80",
+    "8080:80/udp", 8080 (→ same host/container), or {"host","container","proto"}."""
+    out = []
+    for p in ports or []:
+        if isinstance(p, dict):
+            host = str(p.get("host") or p.get("container"))
+            cont = str(p.get("container") or p.get("host"))
+            proto = (p.get("proto") or "tcp").lower()
+        else:
+            s = str(p)
+            proto = "tcp"
+            if "/" in s:
+                s, proto = s.rsplit("/", 1)
+                proto = proto.lower()
+            host, _, cont = s.partition(":")
+            cont = cont or host
+        out.append((host, cont, proto))
+    return out
+
+
+def _norm_volumes(volumes) -> list[tuple[str, str, str]]:
+    """Normalize volumes to (host, container, mode). Accepts "/h:/c",
+    "/h:/c:ro", or {"host","container","mode"}."""
+    out = []
+    for v in volumes or []:
+        if isinstance(v, dict):
+            out.append((str(v["host"]), str(v["container"]), (v.get("mode") or "rw")))
+        else:
+            parts = str(v).split(":")
+            host, cont = parts[0], parts[1] if len(parts) > 1 else parts[0]
+            mode = parts[2] if len(parts) > 2 else "rw"
+            out.append((host, cont, mode))
+    return out
+
+
+def _build_container_template(spec: dict) -> str:
+    """Build an Unraid Container v2 XML template from a normalized spec so the
+    deployed container is editable in the Docker tab's Edit screen."""
+    name = spec["name"]
+    lines = [
+        '<?xml version="1.0"?>',
+        '<Container version="2">',
+        f'  <Name>{_xml_escape(name)}</Name>',
+        f'  <Repository>{_xml_escape(spec["image"])}</Repository>',
+        f'  <Registry>{_xml_escape(spec.get("registry", ""))}</Registry>',
+        f'  <Network>{_xml_escape(spec.get("network", "bridge"))}</Network>',
+        '  <MyIP/>',
+        f'  <Privileged>{"true" if spec.get("privileged") else "false"}</Privileged>',
+        f'  <Support>{_xml_escape(spec.get("support", ""))}</Support>',
+        f'  <Overview>{_xml_escape(spec.get("overview", ""))}</Overview>',
+        f'  <Category>{_xml_escape(spec.get("category", ""))}</Category>',
+        f'  <WebUI>{_xml_escape(spec.get("webui", ""))}</WebUI>',
+        f'  <Icon>{_xml_escape(spec.get("icon", ""))}</Icon>',
+        f'  <ExtraParams>{_xml_escape(spec.get("extra_params", ""))}</ExtraParams>',
+        '  <PostArgs/>',
+    ]
+    for host, cont, proto in _norm_ports(spec.get("ports")):
+        lines.append(
+            f'  <Config Name="Port {cont}" Target="{_xml_escape(cont)}" '
+            f'Default="{_xml_escape(host)}" Mode="{proto}" Description="" Type="Port" '
+            f'Display="always" Required="false" Mask="false">{_xml_escape(host)}</Config>'
+        )
+    for host, cont, mode in _norm_volumes(spec.get("volumes")):
+        lines.append(
+            f'  <Config Name="Path {cont}" Target="{_xml_escape(cont)}" '
+            f'Default="{_xml_escape(host)}" Mode="{mode}" Description="" Type="Path" '
+            f'Display="always" Required="false" Mask="false">{_xml_escape(host)}</Config>'
+        )
+    for k, v in (spec.get("env") or {}).items():
+        lines.append(
+            f'  <Config Name="{_xml_escape(k)}" Target="{_xml_escape(k)}" Default="" '
+            f'Mode="" Description="" Type="Variable" Display="always" Required="false" '
+            f'Mask="false">{_xml_escape(v)}</Config>'
+        )
+    lines.append('</Container>')
+    return "\n".join(lines) + "\n"
+
+
+def _build_run_command(spec: dict) -> str:
+    """Build the `docker run -d` command Unraid would, with managed labels."""
+    name = spec["name"]
+    parts = ["docker", "run", "-d", "--name", shlex.quote(name),
+             "--network", shlex.quote(spec.get("network", "bridge"))]
+    # Unraid manages boot-start via its autostart list, so containers run
+    # with restart policy "no" (see unraid_docker_autostart_set).
+    parts += ["--restart", "no"]
+    if spec.get("privileged"):
+        parts.append("--privileged")
+    for host, cont, proto in _norm_ports(spec.get("ports")):
+        parts += ["-p", shlex.quote(f"{host}:{cont}/{proto}")]
+    for host, cont, mode in _norm_volumes(spec.get("volumes")):
+        parts += ["-v", shlex.quote(f"{host}:{cont}:{mode}")]
+    for k, v in (spec.get("env") or {}).items():
+        parts += ["-e", shlex.quote(f"{k}={v}")]
+    parts += ["-l", shlex.quote("net.unraid.docker.managed=dockerman")]
+    if spec.get("icon"):
+        parts += ["-l", shlex.quote(f"net.unraid.docker.icon={spec['icon']}")]
+    if spec.get("webui"):
+        parts += ["-l", shlex.quote(f"net.unraid.docker.webui={spec['webui']}")]
+    if spec.get("extra_params"):
+        parts.append(spec["extra_params"])  # advanced: passed as-is, like Unraid
+    parts.append(shlex.quote(spec["image"]))
+    if spec.get("post_args"):
+        parts.append(spec["post_args"])
+    return " ".join(parts)
+
+
+def _deploy_container(cfg: dict, spec: dict, pull: bool = True) -> dict:
+    """Shared deploy engine: write template, (pull), run, verify."""
+    name = spec["name"]
+    steps = {}
+    template = _build_container_template(spec)
+    _ssh_write_file(cfg, f"{_TEMPLATES_DIR}/my-{name}.xml", template)
+    steps["template"] = f"{_TEMPLATES_DIR}/my-{name}.xml"
+    if pull:
+        code, out, e = _ssh_exec(cfg, f"docker pull {shlex.quote(spec['image'])}", timeout=600)
+        steps["pull"] = "ok" if code == 0 else (e.strip() or out.strip())
+    run_cmd = _build_run_command(spec)
+    code, out, e = _ssh_exec(cfg, run_cmd, timeout=120)
+    if code != 0:
+        return err(RuntimeError(f"docker run failed: {e.strip() or out.strip()}\ncommand: {run_cmd}"))
+    steps["container_id"] = out.strip()[:12]
+    steps["run_command"] = run_cmd
+    return ok({"name": name, **steps})
+
+
+@mcp.tool()
+def unraid_docker_deploy(name: str, image: str, ports: Optional[list] = None,
+                          volumes: Optional[list] = None, env: Optional[dict] = None,
+                          network: str = "bridge", webui: str = "", icon: str = "",
+                          extra_params: str = "", post_args: str = "",
+                          privileged: bool = False, autostart: bool = False,
+                          pull: bool = True, confirm: bool = False) -> dict:
+    """Deploy a NEW Docker container the native Unraid way: writes a dockerMan
+    template AND runs the container with Unraid's managed labels, so it appears
+    in the Docker tab, is editable in the UI, and works with
+    unraid_docker_env_set. Requires SSH (unraid_ssh_test) and confirm=True.
+
+    Args:
+        name: Container name (also the template name). Must be unique.
+        image: Full image ref, e.g. "lscr.io/linuxserver/syncthing".
+        ports: List of "host:container" or "host:container/udp" (or dicts).
+        volumes: List of "/host/path:/container/path[:ro]" (or dicts).
+        env: {VAR: value} environment variables.
+        network: "bridge" (default), "host", "br0", "none", or a custom net.
+        webui/icon: optional URLs surfaced in the Docker tab.
+        extra_params: advanced raw `docker run` flags (passed as-is).
+        post_args: arguments appended after the image (the container command).
+        privileged: run privileged.
+        autostart: set Unraid autostart on after deploy.
+        pull: docker pull the image first (default true).
+        confirm: must be True to deploy.
+    """
+    if not confirm:
+        return refuse(f"pass confirm=True to deploy container '{name}'.")
+    if not _valid_name(name):
+        return refuse(f"invalid container name '{name}' (letters/digits/._- , <=63 chars).")
+    cfg = load_config()
+    try:
+        code, out, _e = _ssh_exec(cfg, f"docker inspect {shlex.quote(name)} >/dev/null 2>&1; echo $?")
+        if out.strip().endswith("0"):
+            return refuse(f"a container named '{name}' already exists — pick another name "
+                          f"or use unraid_docker_remove first.")
+        spec = {"name": name, "image": image, "ports": ports, "volumes": volumes,
+                "env": env, "network": network, "webui": webui, "icon": icon,
+                "extra_params": extra_params, "post_args": post_args, "privileged": privileged}
+        result = _deploy_container(cfg, spec, pull=pull)
+        if result.get("success") and autostart:
+            try:
+                gql("mutation($i: DockerAutostartInput!) { docker { updateAutostartConfiguration(input: $i) { id } } }",
+                    {"i": {"entries": [{"id": name, "autoStart": True}]}})
+                result["data"]["autostart"] = "enabled"
+            except Exception as ae:  # noqa: BLE001
+                result["data"]["autostart"] = f"deploy ok, autostart failed: {ae}"
+        return result
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+@mcp.tool()
+def unraid_template_get(name: str) -> dict:
+    """Read back the stored dockerMan template XML for a container (read-only).
+    Useful to inspect what unraid_docker_deploy wrote or an existing app's
+    template. Requires SSH."""
+    cfg = load_config()
+    try:
+        return ok({"name": name, "xml": _ssh_read_file(cfg, f"{_TEMPLATES_DIR}/my-{name}.xml")})
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+def _load_ca_feed() -> list:
+    if _ca_feed_cache["apps"] is None:
+        with httpx.Client(timeout=60, follow_redirects=True) as c:
+            data = c.get(_CA_FEED_URL).json()
+        _ca_feed_cache["apps"] = data.get("applist", [])
+    return _ca_feed_cache["apps"]
+
+
+@mcp.tool()
+def unraid_ca_search(query: str, limit: int = 20) -> dict:
+    """Search the Community Applications catalog (~4000 apps) by name /
+    repository / overview. Returns the app name, image, template URL, category,
+    star/download counts, and overview — feed candidates into unraid_ca_deploy.
+    Fetched over the internet from the CA app feed (cached in-process)."""
+    try:
+        q = query.lower().strip()
+        apps = _load_ca_feed()
+        hits = []
+        for a in apps:
+            hay = f"{a.get('Name','')} {a.get('Repository','')} {a.get('Overview','')}".lower()
+            if q in hay:
+                hits.append({
+                    "name": a.get("Name"), "repository": a.get("Repository"),
+                    "template_url": a.get("TemplateURL"), "category": a.get("Category"),
+                    "icon": a.get("Icon"), "webui": a.get("WebUI"),
+                    "stars": a.get("stars"), "downloads": a.get("downloads"),
+                    "overview": (a.get("Overview") or "")[:200],
+                })
+        hits.sort(key=lambda h: (h.get("stars") or 0), reverse=True)
+        return ok({"query": query, "count": len(hits), "results": hits[:limit]})
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+def _parse_ca_template(xml: str) -> dict:
+    """Extract a deployable spec from a CA Container template XML."""
+    def tag(t):
+        m = re.search(rf"<{t}>(.*?)</{t}>", xml, re.DOTALL)
+        return _unescape(m.group(1).strip()) if m else ""
+    spec = {
+        "name": tag("Name"), "image": tag("Repository"), "registry": tag("Registry"),
+        "network": tag("Network") or "bridge", "webui": tag("WebUI"),
+        "icon": tag("Icon"), "overview": tag("Overview"), "category": tag("Category"),
+        "support": tag("Support"), "extra_params": tag("ExtraParams"),
+        "privileged": tag("Privileged").lower() == "true",
+        "ports": [], "volumes": [], "env": {},
+    }
+    # Config entries come in both forms: paired <Config ...>value</Config> and
+    # self-closing <Config ... Default="value"/> (linuxserver templates use the
+    # latter, with the value in the Default attribute).
+    for m in re.finditer(r"<Config\b([^>]*?)(?:/>|>(.*?)</Config>)", xml, re.DOTALL):
+        attrs = dict(re.findall(r'(\w+)="([^"]*)"', m.group(1)))
+        body = (m.group(2) or "").strip()
+        value = _unescape(body) if body else attrs.get("Default", "")
+        typ, target = attrs.get("Type"), attrs.get("Target", "")
+        if typ == "Port" and value and target:
+            spec["ports"].append(f"{value}:{target}/{(attrs.get('Mode') or 'tcp')}")
+        elif typ == "Path" and value and target:
+            spec["volumes"].append(f"{value}:{target}:{(attrs.get('Mode') or 'rw')}")
+        elif typ == "Variable" and target:
+            spec["env"][target] = value
+    return spec
+
+
+def _unescape(s: str) -> str:
+    return (s.replace("&lt;", "<").replace("&gt;", ">")
+            .replace("&quot;", '"').replace("&#xE0;", "à").replace("&amp;", "&"))
+
+
+@mcp.tool()
+def unraid_ca_deploy(template_url: str, name: str = "", overrides: Optional[dict] = None,
+                      pull: bool = True, autostart: bool = False, confirm: bool = False) -> dict:
+    """Deploy a Community Applications app by its template URL (from
+    unraid_ca_search). Fetches the official template, then deploys through the
+    same native engine as unraid_docker_deploy. Override any field with
+    `overrides` (e.g. {"name": "...", "ports": [...], "volumes": [...],
+    "env": {...}, "network": "..."}); paths default to the template's values,
+    so review them first. Requires SSH and confirm=True.
+
+    Args:
+        template_url: The app's TemplateURL from unraid_ca_search.
+        name: Override the container name (defaults to the template's Name).
+        overrides: Dict merged over the parsed template spec.
+        pull/autostart/confirm: as unraid_docker_deploy.
+    """
+    if not confirm:
+        return refuse("pass confirm=True to deploy this CA app.")
+    cfg = load_config()
+    try:
+        with httpx.Client(timeout=30, follow_redirects=True) as c:
+            xml = c.get(template_url).text
+        spec = _parse_ca_template(xml)
+        if name:
+            spec["name"] = name
+        if overrides:
+            for k, v in overrides.items():
+                if k in ("env",) and isinstance(v, dict):
+                    spec.setdefault("env", {}).update(v)
+                else:
+                    spec[k] = v
+        if not spec.get("name") or not spec.get("image"):
+            return err(RuntimeError("template missing Name/Repository; pass name= and check the URL."))
+        if not _valid_name(spec["name"]):
+            return refuse(f"invalid container name '{spec['name']}'.")
+        code, out, _e = _ssh_exec(cfg, f"docker inspect {shlex.quote(spec['name'])} >/dev/null 2>&1; echo $?")
+        if out.strip().endswith("0"):
+            return refuse(f"a container named '{spec['name']}' already exists.")
+        result = _deploy_container(cfg, spec, pull=pull)
+        if result.get("success") and autostart:
+            try:
+                gql("mutation($i: DockerAutostartInput!) { docker { updateAutostartConfiguration(input: $i) { id } } }",
+                    {"i": {"entries": [{"id": spec["name"], "autoStart": True}]}})
+                result["data"]["autostart"] = "enabled"
+            except Exception as ae:  # noqa: BLE001
+                result["data"]["autostart"] = f"deploy ok, autostart failed: {ae}"
+        return result
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+_COMPOSE_PLUGIN_URL = "https://raw.githubusercontent.com/dcflachs/compose_plugin/main/compose.manager.plg"
+
+
+def _compose_bin(cfg: dict) -> str:
+    """Return a working compose invocation ('docker compose' or
+    'docker-compose'), or '' if neither is present. Unraid ships no compose by
+    default — the Compose Manager plugin provides the docker-compose binary."""
+    code, out, _e = _ssh_exec(cfg, "docker compose version >/dev/null 2>&1 && echo ok")
+    if out.strip() == "ok":
+        return "docker compose"
+    code, out, _e = _ssh_exec(cfg, "docker-compose version >/dev/null 2>&1 && echo ok")
+    if out.strip() == "ok":
+        return "docker-compose"
+    return ""
+
+
+def _ensure_compose(cfg: dict) -> tuple[str, str]:
+    """Ensure a compose binary exists, installing Compose Manager if needed.
+    Returns (invocation, note)."""
+    binv = _compose_bin(cfg)
+    if binv:
+        return binv, "already present"
+    code, out, e = _ssh_exec(cfg, f"plugin install {shlex.quote(_COMPOSE_PLUGIN_URL)}", timeout=300)
+    binv = _compose_bin(cfg)
+    if not binv:
+        raise RuntimeError(f"compose unavailable and Compose Manager install failed: "
+                           f"{(e or out).strip()[-400:]}")
+    return binv, "installed Compose Manager plugin"
+
+
+def _compose_installed(cfg: dict) -> bool:
+    code, out, _e = _ssh_exec(cfg, f"test -d {shlex.quote(_COMPOSE_DIR)} && echo yes")
+    return out.strip() == "yes"
+
+
+@mcp.tool()
+def unraid_compose_deploy(name: str, compose_yaml: str, env_file: str = "",
+                           confirm: bool = False) -> dict:
+    """Deploy a multi-container compose stack. Writes the project under the
+    Compose Manager convention (so it shows in the UI) and runs
+    `docker compose up -d`. If the Compose Manager plugin dir is absent it
+    still deploys via the docker CLI's built-in compose. Requires SSH and
+    confirm=True.
+
+    Args:
+        name: Stack/project name.
+        compose_yaml: Full docker-compose.yml contents.
+        env_file: Optional .env file contents for the stack.
+        confirm: must be True.
+    """
+    if not confirm:
+        return refuse(f"pass confirm=True to deploy compose stack '{name}'.")
+    if not _valid_name(name):
+        return refuse(f"invalid stack name '{name}'.")
+    cfg = load_config()
+    try:
+        binv, note = _ensure_compose(cfg)
+        proj = f"{_COMPOSE_DIR}/{name}"
+        _ssh_exec(cfg, f"mkdir -p {shlex.quote(proj)}")
+        _ssh_write_file(cfg, f"{proj}/docker-compose.yml", compose_yaml)
+        # Compose Manager marks a project active/visible via a 'name' file.
+        _ssh_write_file(cfg, f"{proj}/name", name + "\n")
+        if env_file:
+            _ssh_write_file(cfg, f"{proj}/.env", env_file)
+        code, out, e = _ssh_exec(
+            cfg, f"cd {shlex.quote(proj)} && {binv} -p {shlex.quote(name)} up -d",
+            timeout=600)
+        if code != 0:
+            return err(RuntimeError(f"compose up failed: {e.strip() or out.strip()}"))
+        return ok({"name": name, "project_dir": proj, "output": (out + e).strip()[-1500:],
+                   "compose": binv, "compose_setup": note})
+    except Exception as ex:  # noqa: BLE001
+        return err(ex)
+
+
+@mcp.tool()
+def unraid_compose_down(name: str, remove_volumes: bool = False,
+                         confirm: bool = False) -> dict:
+    """Stop and remove a compose stack (`docker compose down`). remove_volumes
+    also deletes named volumes (data loss). Requires SSH and confirm=True."""
+    if not confirm:
+        return refuse(f"pass confirm=True to bring down compose stack '{name}'.")
+    cfg = load_config()
+    try:
+        binv = _compose_bin(cfg) or "docker compose"
+        proj = f"{_COMPOSE_DIR}/{name}"
+        vol = " -v" if remove_volumes else ""
+        code, out, e = _ssh_exec(
+            cfg, f"cd {shlex.quote(proj)} && {binv} -p {shlex.quote(name)} down{vol}",
+            timeout=300)
+        if code != 0:
+            return err(RuntimeError(f"compose down failed: {e.strip() or out.strip()}"))
+        return ok({"name": name, "output": (out + e).strip()[-1500:]})
+    except Exception as ex:  # noqa: BLE001
+        return err(ex)
+
+
+@mcp.tool()
+def unraid_compose_list() -> dict:
+    """List compose projects and their running state (read-only). Requires SSH."""
+    cfg = load_config()
+    try:
+        binv = _compose_bin(cfg)
+        if not binv:
+            return ok({"projects": [], "note": "no compose binary installed yet "
+                       "(unraid_compose_deploy installs Compose Manager on first use)"})
+        code, out, _e = _ssh_exec(cfg, f"{binv} ls --all --format json", timeout=30)
+        projects = json.loads(out.strip()) if out.strip().startswith("[") else out.strip()
+        return ok({"projects": projects})
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+@mcp.tool()
+def unraid_vm_isos() -> dict:
+    """List ISO images available for VM creation from /mnt/user/isos
+    (read-only). Requires SSH."""
+    cfg = load_config()
+    try:
+        code, out, _e = _ssh_exec(cfg, f"ls -1 {shlex.quote(_ISOS_DIR)} 2>/dev/null")
+        return ok({"isos_dir": _ISOS_DIR, "isos": [x for x in out.splitlines() if x.strip()]})
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+def _build_vm_xml(spec: dict) -> str:
+    """Generate a libvirt domain XML for an Unraid VM. Modeled on Unraid's own
+    VM-manager output for this host: q35 machine + OVMF (UEFI) with an
+    auto-copied nvram, virtio disk/net, VNC + qxl. Addresses are left for
+    libvirt to assign. `emulator` and OVMF paths are the Unraid defaults."""
+    name = spec["name"]
+    dom_uuid = spec["uuid"]
+    vcpus = int(spec.get("cpu", 2))
+    mem_kib = int(float(spec.get("mem_gb", 4)) * 1024 * 1024)
+    vdisk = spec["vdisk_path"]
+    iso = spec.get("iso_path", "")
+    os_type = spec.get("os_type", "linux")
+    disk_bus = spec.get("vdisk_bus", "virtio")
+    cdrom = ""
+    if iso:
+        cdrom = f"""
+    <disk type='file' device='cdrom'>
+      <driver name='qemu' type='raw'/>
+      <source file='{_xml_escape(iso)}'/>
+      <target dev='hda' bus='sata'/>
+      <readonly/>
+      <boot order='2'/>
+    </disk>"""
+    return f"""<domain type='kvm'>
+  <name>{_xml_escape(name)}</name>
+  <uuid>{dom_uuid}</uuid>
+  <metadata>
+    <vmtemplate xmlns="http://unraid" name="{_xml_escape(name)}" icon="{'windows.png' if os_type=='windows' else 'linux.png'}" os="{_xml_escape(os_type)}" webui="" storage="default"/>
+  </metadata>
+  <memory unit='KiB'>{mem_kib}</memory>
+  <currentMemory unit='KiB'>{mem_kib}</currentMemory>
+  <vcpu placement='static'>{vcpus}</vcpu>
+  <os>
+    <type arch='x86_64' machine='q35'>hvm</type>
+    <loader readonly='yes' type='pflash'>/usr/share/qemu/ovmf-x64/OVMF_CODE-pure-efi.fd</loader>
+    <nvram template='/usr/share/qemu/ovmf-x64/OVMF_VARS-pure-efi.fd'>/etc/libvirt/qemu/nvram/{dom_uuid}_VARS-pure-efi.fd</nvram>
+  </os>
+  <features><acpi/><apic/></features>
+  <cpu mode='host-passthrough' check='none' migratable='on'/>
+  <clock offset='utc'>
+    <timer name='rtc' tickpolicy='catchup'/>
+    <timer name='pit' tickpolicy='delay'/>
+    <timer name='hpet' present='no'/>
+  </clock>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>restart</on_crash>
+  <devices>
+    <emulator>/usr/local/sbin/qemu</emulator>
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='raw' cache='writeback'/>
+      <source file='{_xml_escape(vdisk)}'/>
+      <target dev='hdc' bus='{disk_bus}'/>
+      <boot order='1'/>
+    </disk>{cdrom}
+    <controller type='virtio-serial' index='0'/>
+    <interface type='bridge'>
+      <source bridge='br0'/>
+      <model type='virtio-net'/>
+    </interface>
+    <serial type='pty'/>
+    <console type='pty'/>
+    <channel type='unix'>
+      <target type='virtio' name='org.qemu.guest_agent.0'/>
+    </channel>
+    <input type='tablet' bus='usb'/>
+    <graphics type='vnc' port='-1' autoport='yes' websocket='-1' listen='0.0.0.0'/>
+    <video><model type='qxl'/></video>
+    <memballoon model='virtio'/>
+  </devices>
+</domain>
+"""
+
+
+@mcp.tool()
+def unraid_vm_create(name: str, cpu: int = 2, mem_gb: float = 4, vdisk_gb: float = 30,
+                      iso: str = "", os_type: str = "linux", vdisk_bus: str = "virtio",
+                      autostart: bool = False, confirm: bool = False) -> dict:
+    """Create a NEW VM the Unraid way: allocate a vdisk, generate libvirt
+    domain XML, and `virsh define` it so it appears in the VM Manager. Covers
+    Linux and Windows (os_type="windows" adds a USB tablet; attach the
+    virtio-win ISO as a second drive later for drivers). Requires SSH and
+    confirm=True.
+
+    Args:
+        name: VM name (dir /mnt/user/domains/<name> is created).
+        cpu: vCPU count. mem_gb: RAM in GiB. vdisk_gb: primary disk size in GiB.
+        iso: install ISO filename from unraid_vm_isos (blank = diskless/PXE).
+        os_type: "linux" or "windows".
+        vdisk_bus: "virtio" (needs drivers for Windows install) or "sata".
+        autostart: mark the VM to auto-start on boot.
+        confirm: must be True.
+    """
+    if not confirm:
+        return refuse(f"pass confirm=True to create VM '{name}'.")
+    if not _valid_name(name):
+        return refuse(f"invalid VM name '{name}'.")
+    if name.lower() in _PROTECTED_VMS:
+        return refuse(f"'{name}' is a protected VM and cannot be created/modified by this tool.")
+    cfg = load_config()
+    try:
+        code, out, _e = _ssh_exec(cfg, f"virsh dominfo {shlex.quote(name)} >/dev/null 2>&1; echo $?")
+        if out.strip().endswith("0"):
+            return refuse(f"a VM named '{name}' already exists.")
+        vm_dir = f"{_DOMAINS_DIR}/{name}"
+        vdisk = f"{vm_dir}/vdisk1.img"
+        _ssh_exec(cfg, f"mkdir -p {shlex.quote(vm_dir)} /etc/libvirt/qemu/nvram")
+        code, out, e = _ssh_exec(
+            cfg, f"qemu-img create -f raw {shlex.quote(vdisk)} {int(vdisk_gb)}G", timeout=300)
+        if code != 0:
+            return err(RuntimeError(f"vdisk create failed: {e.strip() or out.strip()}"))
+        spec = {"name": name, "uuid": str(uuid.uuid4()), "cpu": cpu, "mem_gb": mem_gb,
+                "vdisk_path": vdisk, "os_type": os_type, "vdisk_bus": vdisk_bus}
+        if iso:
+            spec["iso_path"] = f"{_ISOS_DIR}/{iso}"
+        xml = _build_vm_xml(spec)
+        remote_xml = f"{vm_dir}/{name}.xml"
+        _ssh_write_file(cfg, remote_xml, xml)
+        code, out, e = _ssh_exec(cfg, f"virsh define {shlex.quote(remote_xml)}", timeout=60)
+        if code != 0:
+            return err(RuntimeError(f"virsh define failed: {e.strip() or out.strip()}"))
+        result = {"name": name, "vdisk": vdisk, "vdisk_gb": int(vdisk_gb), "defined": out.strip()}
+        if autostart:
+            ac, ao, ae = _ssh_exec(cfg, f"virsh autostart {shlex.quote(name)}")
+            result["autostart"] = "enabled" if ac == 0 else (ae.strip() or ao.strip())
+        return ok(result)
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+@mcp.tool()
+def unraid_vm_delete(name: str, delete_vdisk: bool = False, confirm: bool = False,
+                      acknowledge: str = "") -> dict:
+    """Delete a VM (`virsh destroy` if running, then `virsh undefine`).
+    delete_vdisk also removes /mnt/user/domains/<name> (DATA LOSS) and is
+    DOUBLE-gated: pass confirm=True AND acknowledge='<name>'. Requires SSH.
+    Refuses protected VMs (e.g. GH-Dev)."""
+    if not confirm:
+        return refuse(f"pass confirm=True to delete VM '{name}'.")
+    if name.lower() in _PROTECTED_VMS:
+        return refuse(f"'{name}' is a protected VM and cannot be deleted by this tool.")
+    if delete_vdisk and acknowledge != name:
+        return refuse(f"deleting the vdisk is destructive — also pass acknowledge='{name}'.")
+    cfg = load_config()
+    try:
+        _ssh_exec(cfg, f"virsh destroy {shlex.quote(name)} 2>/dev/null; true")
+        code, out, e = _ssh_exec(cfg, f"virsh undefine {shlex.quote(name)} --nvram")
+        if code != 0:
+            return err(RuntimeError(f"virsh undefine failed: {e.strip() or out.strip()}"))
+        result = {"name": name, "undefined": out.strip()}
+        if delete_vdisk:
+            dc, do, de = _ssh_exec(cfg, f"rm -rf {shlex.quote(_DOMAINS_DIR + '/' + name)}")
+            result["vdisk_deleted"] = (dc == 0)
+        return ok(result)
     except Exception as e:  # noqa: BLE001
         return err(e)
 

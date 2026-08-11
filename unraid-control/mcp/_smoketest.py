@@ -84,11 +84,14 @@ live_tools = [
     ("unraid_plugin_install_operations", server.unraid_plugin_install_operations),
     ("unraid_rclone_settings",         server.unraid_rclone_settings),
 ]
-# SSH layer is opt-in — only probe it when credentials are configured.
+# SSH layer is opt-in — only probe it when credentials are configured. The
+# deployment layer's read-only tools also need SSH, so gate them the same way.
 if server._ssh_configured(cfg):
     live_tools.append(("unraid_ssh_test", server.unraid_ssh_test))
+    live_tools.append(("unraid_vm_isos", server.unraid_vm_isos))
+    live_tools.append(("unraid_compose_list", server.unraid_compose_list))
 else:
-    print("(SSH credentials not configured — skipping unraid_ssh_test)")
+    print("(SSH credentials not configured — skipping unraid_ssh_test + deployment reads)")
 
 ok = 0
 fail = 0
