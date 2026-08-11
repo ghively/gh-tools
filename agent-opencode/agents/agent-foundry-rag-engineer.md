@@ -2,7 +2,7 @@
 description: "Retrieval/memory pipeline design and diagnosis specialist. Use when designing RAG systems, diagnosing retrieval quality issues, choosing vector backends, or planning knowledge-base architecture. Can run test queries but never mutates data unless explicitly asked to build."
 mode: subagent
 permission:
-  *: deny
+  "*": deny
   read: allow
   glob: allow
   grep: allow

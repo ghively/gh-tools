@@ -39,7 +39,7 @@ content in the file — a good example teaches more than three paragraphs.
 
 <!--
 Authoring rules (delete this comment when done — enforced by the
-skill-quality-checklist reference in claude-code-authoring):
+skill-quality-checklist reference in opencode-authoring):
 - name matches the directory leaf name exactly, lowercase hyphenated
 - description is trigger-focused and third person
 - SKILL.md under 500 lines; depth goes to references/*.md

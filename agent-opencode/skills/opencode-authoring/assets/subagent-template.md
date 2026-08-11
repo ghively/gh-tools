@@ -37,7 +37,7 @@ reports.>
 
 <!--
 Authoring rules (delete this comment when done — see authoring-subagents
-reference in claude-code-authoring):
+reference in opencode-authoring):
 - filename is the agent name: .opencode/agents/<name>.md
 - permission: smallest set that does the job; read-only specialists get
   read/glob/grep plus bash: ask only if execution is essential

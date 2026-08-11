@@ -3,7 +3,7 @@ description: Author an OpenCode skill with trigger-focused frontmatter, concise 
 agent: build
 ---
 
-Create an OpenCode skill for `$ARGUMENTS`. Load `claude-code-authoring` only for
+Create an OpenCode skill for `$ARGUMENTS`. Load `opencode-authoring` only for
 the portable surface-selection and quality principles. Check collisions, draft
 the trigger description, and create `.opencode/skills/<name>/SKILL.md` or the
 global `~/.config/opencode/skills/<name>/SKILL.md`. Use only OpenCode-supported

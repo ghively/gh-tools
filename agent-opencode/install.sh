@@ -11,11 +11,14 @@ echo "Installing agent-opencode from $SRC → $DEST"
 mkdir -p "$DEST/agent-opencode" "$DEST/commands" "$DEST/agents"
 
 # 1. Skills + plugin (the bulk of the package)
+# --include before --exclude: keep the eval-suite template's cases.jsonl
+# while still excluding runtime *.jsonl audit logs.
 rsync -a --delete \
+  --include='cases.jsonl' \
   --exclude='node_modules' --exclude='dist' --exclude='*.log' --exclude='*.jsonl' \
   "$SRC/skills" "$SRC/plugins" "$DEST/agent-opencode/"
 
-# 2. Commands (14 agent-foundry workflows)
+# 2. Commands (20 agent-foundry workflows)
 for f in "$SRC"/commands/agent-foundry-*.md; do
   cp "$f" "$DEST/commands/"
 done

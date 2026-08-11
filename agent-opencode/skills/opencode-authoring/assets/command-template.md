@@ -23,7 +23,7 @@ covers the adjacent job.>
 
 <!--
 Authoring rules (delete this comment when done — see authoring-commands
-reference in claude-code-authoring):
+reference in opencode-authoring):
 - 25-40 lines total; a command is a workflow contract, not an essay
 - route to skills with backticked names ("Load the `x` skill")
 - $ARGUMENTS appears exactly once, early

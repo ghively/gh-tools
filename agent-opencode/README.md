@@ -2,7 +2,7 @@
 
 The agent-engineering skill library from [agent-foundry](https://github.com/ghively/agent-marketplace),
 ported from Claude Code to [OpenCode](https://opencode.ai). 13 pillars
-covering the full agent SDLC, plus 14 workflow commands, 4 specialist
+covering the full agent SDLC, plus 20 workflow commands, 4 specialist
 subagents, a primary `agent-foundry` workstation agent, and a deterministic
 safety floor.
 
@@ -24,7 +24,7 @@ agent-opencode/
 │   ├── agent-safety/          # OWASP, sandboxing, deterministic hooks
 │   ├── agent-deployment/      # packaging, serving, CI, Copilot, Duo
 │   └── opencode-authoring/    # authoring OpenCode extensions
-├── commands/                  # 14 /agent-foundry-* slash commands
+├── commands/                  # 20 /agent-foundry-* slash commands
 ├── agents/                    # 4 subagent definitions (.md)
 ├── plugins/
 │   └── agent-foundry-safety/  # TypeScript safety plugin + tests
@@ -43,7 +43,7 @@ cd gh-tools/agent-opencode
 
 The installer:
 1. Copies `skills/` and `plugins/` to `~/.config/opencode/agent-opencode/`.
-2. Copies the 14 commands to `~/.config/opencode/commands/`.
+2. Copies the 20 commands to `~/.config/opencode/commands/`.
 3. Copies the 4 subagents to `~/.config/opencode/agents/`.
 4. Creates or merges `~/.config/opencode/opencode.json` from the example.
 5. Builds and tests the safety plugin.
@@ -57,9 +57,10 @@ Restart OpenCode after install.
 - **`@agent-foundry-security-auditor`** — read-only security auditor.
 - **`@agent-foundry-rag-engineer`** — RAG/retrieval specialist.
 - **`@agent-foundry-eval-runner`** — eval-suite runner.
-- **14 `/agent-foundry-*` commands** — new-agent pipeline, design, build, smoke,
+- **20 `/agent-foundry-*` commands** — new-agent pipeline, design, build, smoke,
   ship-check, cost-audit, pick-model, new-mcp-server, new-skill, new-subagent,
-  new-eval-suite, review-agent, refresh-matrices, security-audit.
+  new-eval-suite, review-agent, refresh-matrices, security-audit, debug-agent,
+  extend-agent, migrate-agent, operate-agent, red-team, rollback-agent.
 - **Permission-based safety floor** — denies `curl|sh`, `rm -rf /`, writes to
   `/etc/passwd`, `~/.ssh/`, etc., at the OpenCode permission layer.
 
@@ -117,7 +118,7 @@ opencode run 'say ok'                  # should print 'ok', no errors
 In an OpenCode session:
 - `Tab` should show `agent-foundry` as a primary agent.
 - `@` should show the 4 specialist subagents.
-- `/` should show the 14 `agent-foundry-*` commands.
+- `/` should show the 20 `agent-foundry-*` commands.
 - Skills auto-discover via their descriptions.
 
 ## Source

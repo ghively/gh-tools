@@ -2,7 +2,7 @@
 description: "Runs eval suites, reports pass/fail with diagnosis. Use when executing golden eval tests, regression tests, or capability checks. Needs read + bash (to run the test command), but never writes to source unless explicitly asked to apply fixes."
 mode: subagent
 permission:
-  *: deny
+  "*": deny
   read: allow
   glob: allow
   grep: allow

@@ -113,7 +113,7 @@ Before implementation, the design should answer these questions in writing:
 | Customer chat agent | Injection defense, retrieval freshness, escalation paths |
 | Multi-agent fleet | Delegation contracts, per-agent tool policy, fan-out limits |
 
-Load `agent-type-taxonomy.md` when these constraints materially change the design. When the starting point is an existing Claude Code plugin, the `claude-code-authoring` skill's plugin-capability-audit reference derives the target agent type from the plugin's components before this design process begins.
+Load `agent-type-taxonomy.md` when these constraints materially change the design. When the starting point is an existing Claude Code plugin, the `opencode-authoring` skill's plugin-capability-audit reference derives the target agent type from the plugin's components before this design process begins.
 
 ## Minimal Design Artifact
 

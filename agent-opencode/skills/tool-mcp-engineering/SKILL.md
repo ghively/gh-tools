@@ -1,6 +1,6 @@
 ---
 name: tool-mcp-engineering
-description: "Giving agents new capabilities: tool design, choosing skill/script/CLI/MCP/plugin surfaces, MCP server authoring and debugging, and adapting HTTP APIs into MCP servers. Use when an agent needs a new action, a tool schema is confusing the model, an MCP server fails to start, or an existing API needs an agent-safe wrapper. Does not cover tool policy and permissions in depth (see agent-safety) or Claude Code skill/plugin authoring craft in general (see claude-code-authoring)."
+description: "Giving agents new capabilities: tool design, choosing skill/script/CLI/MCP/plugin surfaces, MCP server authoring and debugging, and adapting HTTP APIs into MCP servers. Use when an agent needs a new action, a tool schema is confusing the model, an MCP server fails to start, or an existing API needs an agent-safe wrapper. Does not cover tool policy and permissions in depth (see agent-safety) or OpenCode skill/plugin authoring craft in general (see opencode-authoring)."
 ---
 
 # Tool and MCP Engineering
@@ -17,7 +17,7 @@ The recurring failure mode in this area is overbuilding: reaching for a full MCP
 - An MCP server fails to start, list tools, authenticate, or respond.
 - You need to adapt an HTTP API into MCP.
 
-**Don't use for:** permission policy and sandbox enforcement (`agent-safety` skill), broader Claude Code surface authoring (`claude-code-authoring` skill), or model choice (`model-selection` skill).
+**Don't use for:** permission policy and sandbox enforcement (`agent-safety` skill), broader OpenCode surface authoring (`opencode-authoring` skill), or model choice (`model-selection` skill).
 
 A symptom often points at a different layer than where the fix lives: "the model calls the wrong tool" is usually a *naming/schema* problem, not a model problem; "the tool is missing" is usually a *server startup/handshake* problem, not a registration problem; "the agent does the wrong thing" is often a *return-format* problem (raw blob vs actionable summary). This skill helps you locate the right layer before editing it.
 
