@@ -13,7 +13,7 @@ A two-layer MCP server for ROMarr:
 - **Generic passthrough** — `romarr_call` reaches any `/api/v1/*` (or legacy
   `/api/*`) endpoint; `romarr_endpoints` is the master index, pulled live
   from ROMarr's own `/api/v1/openapi.json` (with a static fallback baked in).
-- **Curated tools** (~44) for status, library, acquisition, and config:
+- **Curated tools** (51) for status, library, acquisition, and config:
 
 | Area | Tools |
 |---|---|

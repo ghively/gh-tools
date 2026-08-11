@@ -1,7 +1,7 @@
 # ROMarr API map
 
 Full endpoint catalog as published live by ROMarr 0.7.0's own
-`/api/v1/openapi.json` (53 operations), with the curated tool that wraps
+`/api/v1/openapi.json` (59 operations), with the curated tool that wraps
 each one. `romarr_endpoints` returns this same data live (and stays
 accurate across ROMarr version upgrades); this file is a static snapshot
 for quick reference.
@@ -70,7 +70,7 @@ Not wrapped by a curated tool = reach it via `romarr_call(method, path, ...)`.
 | GET | `/login` | The sign-in screen | — (browser UI only) |
 | GET | `/metrics` | Prometheus exposition | `romarr_metrics` |
 
-53 total operations. 44 wrapped by a curated tool or directly equivalent
-(e.g. `/api/queue` legacy → use `romarr_queue`'s v1 route); the remainder
-are session/first-run/inbound-only routes with no legitimate reason for
-this client to call them, or the doc endpoint itself.
+59 total operations. 51 wrapped by a curated tool, plus `/api/queue`
+(legacy — directly equivalent to `romarr_queue`'s v1 route); the remaining
+7 are browser-UI, session/first-run, or inbound-only routes with no
+legitimate reason for this client to call them, or the doc endpoint itself.

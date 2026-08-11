@@ -74,7 +74,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import sys
 import threading
 from pathlib import Path
@@ -251,17 +250,6 @@ def _err(e: Exception) -> dict:
     return {"error": str(e)}
 
 
-def _parse_json_arg(name: str, value: Any) -> Any:
-    if value is None or value == "":
-        return None
-    if isinstance(value, (dict, list)):
-        return value
-    try:
-        return json.loads(value)
-    except json.JSONDecodeError as e:
-        raise RomarrError(f"{name} is not valid JSON: {e}") from e
-
-
 def _need_confirm(what: str) -> dict:
     return {
         "confirmation_required": True,
@@ -276,7 +264,7 @@ mcp = FastMCP("romarr")
 # --------------------------------------------------------------------------- #
 # Generic layer                                                               #
 # --------------------------------------------------------------------------- #
-# Static fallback — the full 53-endpoint surface captured live from
+# Static fallback — the full 59-operation surface captured live from
 # /api/v1/openapi.json on 2026-08-07 (ROMarr 0.7.0). Used only if the live
 # fetch fails; `romarr_endpoints` prefers the live spec.
 STATIC_ENDPOINT_CATALOG: list[dict] = [
@@ -346,7 +334,7 @@ STATIC_ENDPOINT_CATALOG: list[dict] = [
 def romarr_call(method: str, path: str, params: Optional[dict] = None,
                  body: Optional[dict] = None, confirm: bool = False) -> Any:
     """Call ANY ROMarr REST operation — the generic passthrough that reaches
-    the server's entire API surface (~53 endpoints). Use romarr_endpoints to
+    the server's entire API surface (~59 operations). Use romarr_endpoints to
     find an endpoint first; use a curated romarr_* tool when one exists.
 
     Args:
@@ -472,7 +460,7 @@ def romarr_logs(limit: int = 200) -> Any:
 def romarr_metrics() -> Any:
     """Raw Prometheus exposition text. GET /metrics."""
     try:
-        return CLIENT.request("GET", "/metrics", raw=True)
+        return _finish(CLIENT.request("GET", "/metrics", raw=True))
     except Exception as e:  # noqa: BLE001
         return _err(e)
 
@@ -585,7 +573,7 @@ def romarr_export(kind: str = "library", fmt: str = "json") -> Any:
         fmt: "json" or "csv".
     """
     try:
-        return CLIENT.request("GET", "/api/v1/export", params={"type": kind, "format": fmt}, raw=(fmt == "csv"))
+        return _finish(CLIENT.request("GET", "/api/v1/export", params={"type": kind, "format": fmt}, raw=(fmt == "csv")))
     except Exception as e:  # noqa: BLE001
         return _err(e)
 
@@ -609,7 +597,7 @@ def romarr_frontend_export(fmt: str) -> Any:
         fmt: One of the values returned by romarr_frontend_formats.
     """
     try:
-        return CLIENT.request("GET", "/api/v1/frontend/export", params={"format": fmt}, raw=True)
+        return _finish(CLIENT.request("GET", "/api/v1/frontend/export", params={"format": fmt}, raw=True))
     except Exception as e:  # noqa: BLE001
         return _err(e)
 
@@ -645,7 +633,8 @@ def romarr_search(game: str, platform: str = "") -> Any:
 
 
 @mcp.tool()
-def romarr_request(title: str, platform: str = "", confirm: bool = False, **extra: Any) -> Any:
+def romarr_request(title: str, platform: str = "", confirm: bool = False,
+                   extra: Optional[dict] = None) -> Any:
     """Request a game: ROMarr searches, scores, grabs the best release and
     imports it. WRITES: confirm-gated (initiates a real download).
     POST /api/request.
@@ -654,12 +643,13 @@ def romarr_request(title: str, platform: str = "", confirm: bool = False, **extr
         title: Game title to request.
         platform: Platform (see romarr_platforms for valid names).
         confirm: Must be true.
-        **extra: Any additional fields to merge into the request body.
+        extra: Optional JSON object of additional fields to merge into the
+            request body.
     """
     try:
         if not confirm:
             return _need_confirm(f"request '{title}'" + (f" for platform {platform}" if platform else ""))
-        body = {"title": title, **extra}
+        body = {"title": title, **(extra or {})}
         if platform:
             body["platform"] = platform
         return CLIENT.request("POST", "/api/request", body=body)
@@ -687,7 +677,8 @@ def romarr_release(game: str, platform: str = "") -> Any:
 
 
 @mcp.tool()
-def romarr_release_grab(release_id: str, confirm: bool = False, **extra: Any) -> Any:
+def romarr_release_grab(release_id: str, confirm: bool = False,
+                        extra: Optional[dict] = None) -> Any:
     """Grab a specific release from an interactive search by id (from
     romarr_release). WRITES: confirm-gated (initiates a real download).
     POST /api/v1/release/grab.
@@ -695,11 +686,13 @@ def romarr_release_grab(release_id: str, confirm: bool = False, **extra: Any) ->
     Args:
         release_id: The release's id, as returned by romarr_release.
         confirm: Must be true.
+        extra: Optional JSON object of additional fields to merge into the
+            request body.
     """
     try:
         if not confirm:
             return _need_confirm(f"grab release {release_id}")
-        body = {"id": release_id, **extra}
+        body = {"id": release_id, **(extra or {})}
         return CLIENT.request("POST", "/api/v1/release/grab", body=body)
     except Exception as e:  # noqa: BLE001
         return _err(e)
@@ -741,7 +734,8 @@ def romarr_manual_import(directory: str = "") -> Any:
 
 
 @mcp.tool()
-def romarr_command(name: str, confirm: bool = False, **extra: Any) -> Any:
+def romarr_command(name: str, confirm: bool = False,
+                   extra: Optional[dict] = None) -> Any:
     """Run a background task: search, import or refresh. WRITES:
     confirm-gated. POST /api/v1/command.
 
@@ -750,12 +744,13 @@ def romarr_command(name: str, confirm: bool = False, **extra: Any) -> Any:
             "Import", "Refresh" per the endpoint summary; check the error
             message if rejected).
         confirm: Must be true.
-        **extra: Extra fields merged into the body (e.g. a target id).
+        extra: Optional JSON object of extra fields merged into the body
+            (e.g. a target id).
     """
     try:
         if not confirm:
             return _need_confirm(f"run command '{name}'" + (f" with {extra}" if extra else ""))
-        body = {"name": name, **extra}
+        body = {"name": name, **(extra or {})}
         return CLIENT.request("POST", "/api/v1/command", body=body)
     except Exception as e:  # noqa: BLE001
         return _err(e)
@@ -1206,6 +1201,9 @@ CURATED_TOOLS: dict[tuple[str, str], str] = {
 # Entrypoint                                                                  #
 # --------------------------------------------------------------------------- #
 def main() -> None:
+    if not CONFIG.get("host"):
+        log("WARNING: no host configured — every call will fail to connect. "
+            "Fill config.local.json or set ROMARR_HOST.")
     if not CONFIG.get("api_key"):
         log("WARNING: no api_key configured — every call will 401. "
             "Fill config.local.json or set ROMARR_API_KEY.")
