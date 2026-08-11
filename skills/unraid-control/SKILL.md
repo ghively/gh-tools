@@ -89,7 +89,22 @@ fails, the problem is connectivity/auth (see Troubleshooting), not the task.
 | VMs | `unraid_vms`, `_vm_start`/`_stop`/`_pause`/`_resume`/`_force_stop`/`_reboot`/`_reset` |
 | Create VMs (SSH-backed) | `unraid_vm_isos` (list ISOs), `unraid_vm_create` (vdisk + OVMF/q35 libvirt domain, confirm-gated), `unraid_vm_delete` (vdisk removal double-gated). Protected VMs (e.g. `GH-Dev`) are refused. |
 | Files (SSH-backed) | `unraid_fs_list`, `unraid_fs_read` (reads); `unraid_fs_write` (write/append), `unraid_fs_mkdir`, `unraid_fs_move`, `unraid_fs_copy`, `unraid_fs_delete` (all confirm-gated; recursive delete double-gated; system paths refused) |
-| Shares (SSH-backed) | `unraid_shares` (read, GraphQL); `unraid_share_create` (writes cfg + dir + emcmd apply, confirm-gated), `unraid_share_delete` (data removal double-gated) |
+| Shares (SSH-backed) | `unraid_shares` (read, GraphQL); `unraid_share_create` / `unraid_share_delete` write the share cfg + dir only by default (confirm-gated; data removal double-gated). Making a share live (`apply=True`) is **guarded** — see the shfs-reload warning below. `unraid_shfs_risk_check` lists containers a reload would corrupt. |
+
+## ⚠️ shfs-reload hazard — read before applying shares or restarting the array
+
+Applying a share via `emcmd` (and some array operations) makes Unraid **restart
+services and reload the `/mnt/user` FUSE (shfs) layer**. Any RUNNING container
+whose appdata is bind-mounted through a **`/mnt/user/...`** path (rather than
+`/mnt/cache/...` or a direct disk) has its **open files severed** by that reload
+— on this box that once **wiped a running PostgreSQL's data directory**.
+
+- `unraid_share_create`/`_delete` default to `apply=False` (config-only, never
+  reloads shfs). Use `apply=True` only when `unraid_shfs_risk_check` reports
+  `safe_to_reload_shfs: true`; the tools refuse `apply=True` otherwise.
+- The real fix is on the container side: appdata should be mounted from
+  `/mnt/cache/appdata/...` (or `/mnt/<pool>/...`), not `/mnt/user/appdata/...`.
+  Recommend migrating any container `unraid_shfs_risk_check` flags.
 | Shares | `unraid_shares` |
 | Users / API keys | `unraid_me`, `unraid_api_keys`, `_api_key_roles_catalog`, `_api_key_create`, `_api_key_delete`, `_api_key_role` |
 | Network | `unraid_network_interfaces` |
