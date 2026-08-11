@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env -S uv run --script
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
@@ -10,7 +10,7 @@
 
 Adds a throwaway movie (12 Angry Men 1957, NOT in the live library), verifies
 it appears, deletes it (no file deletion), verifies it's gone. Drives the
-ACTUAL MCP server tools, not raw HTTP â€” proves the write path of the plugin.
+ACTUAL MCP server tools, not raw HTTP — proves the write path of the plugin.
 """
 from __future__ import annotations
 import sys
@@ -45,17 +45,17 @@ step("1. confirm throwaway is NOT in library (before add)")
 movies = server.radarr_list_movies(page=1, page_size=200, compact=True)
 matches = [m for m in movies["movies"] if THROWAWAY_TITLE.lower() in (m.get("title") or "").lower()]
 print(f"matches in library for '{THROWAWAY_TITLE}': {len(matches)}")
-assert not matches, "throwaway already in library â€” pick another"
+assert not matches, "throwaway already in library — pick another"
 
 # 2. Add (with confirm=True)
-step("2. radarr_add_movie(confirm=True) â€” search_for_movie=False (no download)")
+step("2. radarr_add_movie(confirm=True) — search_for_movie=False (no download)")
 result = server.radarr_add_movie(
     tmdb_id=THROWAWAY_TMDB,
     quality_profile_id=profile_id,
     root_folder_path=root_path,
-    monitored=False,                  # don't monitor â€” won't trigger anything
+    monitored=False,                  # don't monitor — won't trigger anything
     minimum_availability="released",
-    search_for_movie=False,           # NO search â€” won't touch download clients
+    search_for_movie=False,           # NO search — won't touch download clients
     confirm=True,
 )
 print(f"add result: {result}")
@@ -73,14 +73,14 @@ print(f"  hasFile: {got.get('hasFile')}")
 assert got.get("title") == THROWAWAY_TITLE
 assert got.get("tmdbId") == THROWAWAY_TMDB
 
-# 4. Delete (no file deletion â€” irreversible otherwise)
-step("4. radarr_delete_movie(confirm=True) â€” delete_files=False")
+# 4. Delete (no file deletion — irreversible otherwise)
+step("4. radarr_delete_movie(confirm=True) — delete_files=False")
 deleted = server.radarr_delete_movie(movie_id=added_id, delete_files=False, confirm=True)
 print(f"delete result: {deleted}")
 assert deleted.get("deleted")
 
 # 5. Verify it's gone (GET should 404)
-step("5. verify via radarr_get_movie â€” should 404")
+step("5. verify via radarr_get_movie — should 404")
 got_after = server.radarr_get_movie(added_id)
 print(f"  after-delete get: {got_after}")
 assert "error" in got_after and "404" in got_after["error"], "expected 404 after delete"
@@ -90,6 +90,6 @@ step("6. final library check")
 movies_after = server.radarr_list_movies(page=1, page_size=200, compact=True)
 matches_after = [m for m in movies_after["movies"] if THROWAWAY_TITLE.lower() in (m.get("title") or "").lower()]
 print(f"matches in library for '{THROWAWAY_TITLE}' after delete: {len(matches_after)}")
-assert not matches_after, "throwaway still in library â€” delete didn't fully clean up"
+assert not matches_after, "throwaway still in library — delete didn't fully clean up"
 
-print("\n=== RADARR write-path proof: ADD âœ“ / VERIFY âœ“ / DELETE âœ“ / VERIFY-GONE âœ“ ===")
+print("\n=== RADARR write-path proof: ADD ✓ / VERIFY ✓ / DELETE ✓ / VERIFY-GONE ✓ ===")
