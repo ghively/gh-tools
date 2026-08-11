@@ -90,6 +90,7 @@ if server._ssh_configured(cfg):
     live_tools.append(("unraid_ssh_test", server.unraid_ssh_test))
     live_tools.append(("unraid_vm_isos", server.unraid_vm_isos))
     live_tools.append(("unraid_compose_list", server.unraid_compose_list))
+    live_tools.append(("unraid_fs_list (/mnt/user)", lambda: server.unraid_fs_list("/mnt/user")))
 else:
     print("(SSH credentials not configured — skipping unraid_ssh_test + deployment reads)")
 

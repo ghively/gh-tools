@@ -88,6 +88,8 @@ fails, the problem is connectivity/auth (see Troubleshooting), not the task.
 | Deploy compose stacks (SSH-backed) | `unraid_compose_deploy` (confirm-gated; auto-installs Compose Manager on first use), `unraid_compose_down`, `unraid_compose_list` |
 | VMs | `unraid_vms`, `_vm_start`/`_stop`/`_pause`/`_resume`/`_force_stop`/`_reboot`/`_reset` |
 | Create VMs (SSH-backed) | `unraid_vm_isos` (list ISOs), `unraid_vm_create` (vdisk + OVMF/q35 libvirt domain, confirm-gated), `unraid_vm_delete` (vdisk removal double-gated). Protected VMs (e.g. `GH-Dev`) are refused. |
+| Files (SSH-backed) | `unraid_fs_list`, `unraid_fs_read` (reads); `unraid_fs_write` (write/append), `unraid_fs_mkdir`, `unraid_fs_move`, `unraid_fs_copy`, `unraid_fs_delete` (all confirm-gated; recursive delete double-gated; system paths refused) |
+| Shares (SSH-backed) | `unraid_shares` (read, GraphQL); `unraid_share_create` (writes cfg + dir + emcmd apply, confirm-gated), `unraid_share_delete` (data removal double-gated) |
 | Shares | `unraid_shares` |
 | Users / API keys | `unraid_me`, `unraid_api_keys`, `_api_key_roles_catalog`, `_api_key_create`, `_api_key_delete`, `_api_key_role` |
 | Network | `unraid_network_interfaces` |
