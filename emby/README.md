@@ -3,7 +3,7 @@
 A Claude Code plugin that gives Claude deep, honest control of an **Emby media
 server**: an MCP server with a generic passthrough reaching the server's entire
 REST surface (~484 operations, discovered live from its own OpenAPI spec) plus
-~30 curated tools, a control skill with official-docs references, and
+54 curated tools, a control skill with official-docs references, and
 slash-command workflows. Built and live-verified against **Emby Server 4.7.14.0**
 on Linux following the deep-integration-builder methodology in this repo.
 
@@ -26,7 +26,11 @@ emby/
 │       ├── configuration.md       official config guidance mapped to API keys
 │       ├── troubleshooting.md     logs, playback, scans, hw-accel, remote access
 │       ├── optimization.md        performance: hw-accel, throttling, DB, network
-│       └── plugin-management.md   plugin API + Emby plugin development primer
+│       ├── plugin-management.md   plugin API + Emby plugin development primer
+│       ├── livetv.md              Live TV / IPTV setup, guide, DVR
+│       ├── metadata-editing.md    deep curation: fields, identify, artwork, subs
+│       ├── customization.md       home screens, theming, webhooks, backups
+│       └── games-gamebrowser.md   GameBrowser plugin deep-dive
 └── commands/
     ├── emby-health.md             /emby-health — full health report
     ├── emby-sessions.md           /emby-sessions — now playing + transcode analysis
@@ -53,7 +57,7 @@ emby/
 
 ## Two layers
 
-- **Curated tools** (~44: `emby_status`, `emby_items`, `emby_sessions`,
+- **Curated tools** (54: `emby_status`, `emby_items`, `emby_sessions`,
   `emby_playback_control`, `emby_set_config`, `emby_plugin_config`,
   `emby_identify`, `emby_images`, `emby_subtitles`, `emby_library_manage`,
   `emby_bulk_update`, `emby_versions`, `emby_sync_jobs`, deep
@@ -70,7 +74,7 @@ emby/
 Every mutating tool is confirm-gated in code: called without `confirm=true` it
 returns a preview (current values, what would change) and changes nothing.
 `emby_delete_item` deletes actual media files and says so loudly. The smoketest
-proves all 21 gates hold.
+proves all 44 gate checks hold.
 
 ## Honest coverage notes (audited 2026-07)
 
