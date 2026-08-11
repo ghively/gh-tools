@@ -81,7 +81,8 @@ crafting `synology_call` requests.
   permissions, and network config return **403** until the request carries a
   password-confirmation token. Get it from `SYNO.Core.User.PasswordConfirm` · `auth`
   (`{"password": ...}`) → `SynoConfirmPWToken`, then pass that token on the write.
-  This is a normal DSM protection, not a hard block — the client can automate it.
+  This is a normal DSM protection, not a hard block — the server automates it
+  (`synology_call(..., elevate=True)`; curated write tools do it themselves).
 - **Security Advisor report** (`SYNO.SecurityAdvisor.Report`) needs manager rights
   (117); its config (`SYNO.SecurityAdvisor.Conf get`) and the security scan status
   (`SYNO.Core.SecurityScan.Status system_get`) are readable.

@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env -S uv run --script
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
@@ -21,10 +21,12 @@ All logging goes to stderr; stdout is reserved for the MCP protocol.
 """
 from __future__ import annotations
 
+import atexit
 import json
 import os
 import sys
 import threading
+import time
 from pathlib import Path
 from typing import Any, Optional
 
@@ -335,7 +337,8 @@ class DSMClient:
         return self._parse(r, "SYNO.Entry.Request", "request")
 
     # -- files (binary) --------------------------------------------------- #
-    def download(self, remote_path: str, dest: Optional[str] = None) -> dict:
+    def download(self, remote_path: str, dest: Optional[str] = None,
+                 _retried: bool = False) -> dict:
         self.ensure_session()
         path, ver = self._resolve("SYNO.FileStation.Download", None)
         params = {
@@ -347,20 +350,32 @@ class DSMClient:
             "_sid": self.sid,
         }
         headers = {"X-SYNO-TOKEN": self.synotoken} if self.synotoken else {}
-        with self._http.stream("GET", f"{self.base}/{path}", params=params, headers=headers) as r:
-            ctype = r.headers.get("content-type", "")
-            if "application/json" in ctype:
-                body = json.loads(b"".join(r.iter_bytes()))
-                self._parse_ok(body, "SYNO.FileStation.Download", "download")
-            content = b"".join(r.iter_bytes()) if not dest else None
-            if dest:
-                size = 0
-                with open(dest, "wb") as fh:
-                    with self._http.stream("GET", f"{self.base}/{path}", params=params, headers=headers) as r2:
-                        for chunk in r2.iter_bytes():
+        try:
+            with self._http.stream("GET", f"{self.base}/{path}", params=params, headers=headers) as r:
+                ctype = r.headers.get("content-type", "")
+                if "application/json" in ctype:
+                    # A JSON body here means DSM answered with an error envelope
+                    # (or, rarely, a bare success envelope) instead of file bytes.
+                    body = json.loads(b"".join(r.iter_bytes()))
+                    self._parse_ok(body, "SYNO.FileStation.Download", "download")
+                    return {"result": body.get("data", {})}
+                if dest:
+                    size = 0
+                    with open(dest, "wb") as fh:
+                        for chunk in r.iter_bytes():
                             fh.write(chunk)
                             size += len(chunk)
-                return {"saved_to": dest, "bytes": size}
+                    return {"saved_to": dest, "bytes": size}
+                content = b"".join(r.iter_bytes())
+        except DSMError as e:
+            if e.code in (105, 106, 107, 119) and not _retried:
+                log(f"session error {e.code} on download; re-authenticating and retrying")
+                self.sid = None
+                self.synotoken = None
+                self.confirm_token = None
+                self.login()
+                return self.download(remote_path, dest, _retried=True)
+            raise
         try:
             text = content.decode("utf-8")
             preview = text if len(text) <= 4000 else text[:4000] + f"\n...[truncated, {len(text)} chars total]"
@@ -383,7 +398,7 @@ class DSMClient:
             raise FileNotFoundError(local_path)
         headers = {"X-SYNO-TOKEN": self.synotoken} if self.synotoken else {}
         # The upload CGI ignores identity fields placed inside the multipart body,
-        # and format=sid logins set no cookie â€” api/version/method/_sid must ride
+        # and format=sid logins set no cookie — api/version/method/_sid must ride
         # the query string or DSM answers 119 (verified on DSM 7.3.1-86003).
         query = {
             "api": "SYNO.FileStation.Upload",
@@ -428,6 +443,14 @@ def client() -> DSMClient:
         if _client is None:
             _client = DSMClient(load_config())
         return _client
+
+
+@atexit.register
+def _cleanup() -> None:
+    """End the DSM session on shutdown so it doesn't linger until timeout."""
+    with _client_lock:
+        if _client is not None:
+            _client.logout()
 
 
 def ok(data: Any) -> dict:
@@ -504,7 +527,7 @@ def synology_describe_api(names: str) -> dict:
 @mcp.tool()
 def synology_call(api: str, method: str, version: Optional[int] = None, params: Optional[dict] = None,
                   http_method: str = "POST", elevate: bool = False) -> dict:
-    """THE universal tool â€” call any SYNO.* Web API method on the NAS. This reaches
+    """THE universal tool — call any SYNO.* Web API method on the NAS. This reaches
     every controllable feature, including ones without a curated wrapper.
 
     - api: e.g. "SYNO.Core.System", "SYNO.Core.Security.Firewall.Rules"
@@ -516,10 +539,10 @@ def synology_call(api: str, method: str, version: Optional[int] = None, params: 
     On error the DSM code is mapped to a message (e.g. 105 = no permission,
     103 = no such method, 102 = api not registered). If unsure of the api name,
     use synology_list_apis first. Destructive methods (delete/format/reboot) act
-    immediately â€” confirm intent with the user before calling them.
+    immediately — confirm intent with the user before calling them.
 
     Set elevate=True for sensitive settings that return error 403 (creating/deleting/
-    modifying shared folders, share permissions, network config) â€” this attaches a
+    modifying shared folders, share permissions, network config) — this attaches a
     password-confirmation token automatically."""
     try:
         c = client()
@@ -557,6 +580,18 @@ def synology_utilization() -> dict:
     """Live resource utilization: CPU load, memory, per-disk and network throughput."""
     try:
         return ok(client().call("SYNO.Core.System.Utilization", "get", 1))
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
+@mcp.tool()
+def synology_logs(limit: int = 50) -> dict:
+    """Recent system log entries (Log Center) with info/warning/error counts.
+    Useful for health checks and diagnosing what went wrong recently."""
+    try:
+        data = client().call("SYNO.Core.SyslogClient.Log", "list", None,
+                             {"offset": 0, "limit": limit})
+        return ok(data)
     except Exception as e:  # noqa: BLE001
         return err(e)
 
@@ -691,7 +726,6 @@ def synology_fs_search(folder_path: str, pattern: str, limit: int = 100) -> dict
         start = c.call("SYNO.FileStation.Search", "start", 2,
                        {"folder_path": folder_path, "pattern": pattern})
         taskid = start.get("taskid")
-        import time
         results = {}
         for _ in range(20):
             time.sleep(0.4)
@@ -700,8 +734,12 @@ def synology_fs_search(folder_path: str, pattern: str, limit: int = 100) -> dict
                               "additional": ["size", "type"]})
             if results.get("finished"):
                 break
-        c.call("SYNO.FileStation.Search", "stop", 2, {"taskid": taskid})
-        c.call("SYNO.FileStation.Search", "clean", 2, {"taskid": taskid})
+        # Best-effort cleanup; a failure here must not discard the results.
+        for m in ("stop", "clean"):
+            try:
+                c.call("SYNO.FileStation.Search", m, 2, {"taskid": taskid})
+            except Exception as ce:  # noqa: BLE001
+                log(f"search {m} cleanup failed for task {taskid}: {ce}")
         files = [{"name": f.get("name"), "path": f.get("path"), "is_dir": f.get("isdir")}
                  for f in results.get("files", [])]
         return ok({"total": results.get("total"), "files": files})
@@ -806,6 +844,17 @@ def synology_shares_list() -> dict:
         return err(e)
 
 
+@mcp.tool()
+def synology_snapshots_list(share_name: str) -> dict:
+    """List Btrfs snapshots of a shared folder (e.g. share_name="photo").
+    Read-only; snapshot create/delete needs the Snapshot Replication package."""
+    try:
+        return ok(client().call("SYNO.Core.Share.Snapshot", "list", None,
+                                {"name": share_name}))
+    except Exception as e:  # noqa: BLE001
+        return err(e)
+
+
 # ---- DownloadStation ------------------------------------------------------ #
 @mcp.tool()
 def synology_downloads_list() -> dict:
@@ -841,12 +890,16 @@ def synology_download_add(uri: str, destination: str = "") -> dict:
 
 
 @mcp.tool()
-def synology_download_control(task_ids: list[str], action: str) -> dict:
+def synology_download_control(task_ids: list[str], action: str, confirm: bool = False) -> dict:
     """Control download task(s): action = "pause", "resume", or "delete".
-    task_ids is a list of task id strings from synology_downloads_list."""
+    task_ids is a list of task id strings from synology_downloads_list.
+    Deleting removes the tasks from Download Station: requires confirm=True."""
     try:
         c = client()
         if action == "delete":
+            if not confirm:
+                return {"success": False,
+                        "error": "Refused: pass confirm=True to delete these download tasks."}
             return ok(c.call("SYNO.DownloadStation2.Task", "delete", 2,
                              {"id": task_ids, "force_complete": False}))
         if action in ("pause", "resume"):
@@ -954,7 +1007,7 @@ def synology_container_create(name: str, image: str, settings: Optional[dict] = 
     create request for advanced options (ports, volumes, env, network, restart
     policy). For anything non-trivial, prefer a Compose project
     (synology_project_create) or copy a profile from synology_container_inspect.
-    The image must already be present â€” pull it first with synology_image_pull."""
+    The image must already be present — pull it first with synology_image_pull."""
     try:
         params = {"name": name, "image": image}
         params.update(settings or {})
@@ -1099,7 +1152,7 @@ def synology_package_uninstall(package_id: str, confirm: bool = False) -> dict:
 @mcp.tool()
 def synology_package_available() -> dict:
     """List packages available to install from Synology's package server (the online
-    Package Center catalog) â€” names, versions, and descriptions."""
+    Package Center catalog) — names, versions, and descriptions."""
     try:
         return ok(client().call("SYNO.Core.Package.Server", "list", 2,
                                 {"blforcereload": False, "blloadothers": True}))
@@ -1306,7 +1359,7 @@ def synology_group_add_members(group: str, users: list[str], confirm: bool = Fal
 def synology_scheduler_list() -> dict:
     """List scheduled tasks (Control Panel > Task Scheduler): scripts, scheduled
     backups, etc., with their trigger and enabled state. Note: use version 3 of the
-    API â€” the max version does not support list."""
+    API — the max version does not support list."""
     try:
         data = client().call("SYNO.Core.TaskScheduler", "list", 3, {"offset": 0, "limit": 200})
         return ok(data)
@@ -1331,7 +1384,7 @@ def synology_firewall_status() -> dict:
 @mcp.tool()
 def synology_firewall_set_enabled(enable: bool, confirm: bool = False) -> dict:
     """Enable or disable the firewall (keeps the current active profile). Can lock
-    you out of the NAS if the active profile blocks your access â€” requires
+    you out of the NAS if the active profile blocks your access — requires
     confirm=True and uses password-confirm elevation. Check synology_firewall_status
     first."""
     if not confirm:

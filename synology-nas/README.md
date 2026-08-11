@@ -10,13 +10,18 @@ running **DSM 7.3.1**.
   CSRF token, auto re-login) and exposes:
   - **Generic passthrough** (`synology_call`, `synology_batch`, `synology_list_apis`,
     `synology_describe_api`) reaching **all ~870 SYNO.\* APIs** on the box.
-  - **27 curated tools** for system health, storage, File Station, Download Station,
-    packages, services, users, groups, shares, and power.
+  - **64 curated tools** for system health, logs, storage, snapshots, File Station,
+    Download Station, Container Manager (containers/images/Compose projects),
+    packages, services, users, groups, shares & permissions, firewall, DSM updates,
+    Hyper Backup / Active Backup, and power.
 - **Skill** (`skills/synology-control/`) — teaches Claude how to drive the server,
   with a full categorized **API map** of this NAS, verified **task recipes**, and the
   **auth/conventions** reference.
 - **Commands** (`commands/`) — `/syno-health`, `/syno-storage`, `/syno-downloads`,
-  `/syno-find-large`.
+  `/syno-find-large`, `/syno-containers`.
+- **Smoke test** (`mcp/_smoketest.py`) — runs every curated read-only tool against
+  the live NAS (`uv run --script mcp/_smoketest.py`); exits cleanly if no
+  `config.local.json` is present.
 
 ## Setup
 
@@ -38,9 +43,11 @@ running **DSM 7.3.1**.
 - The password lives only in `config.local.json` (git-ignored) or your environment.
 - HTTPS to a LAN NAS uses a self-signed cert, so certificate verification is off by
   default (`verify_ssl: false`). Set it true if you've installed a trusted cert.
-- Destructive tools (`synology_reboot`, `synology_shutdown`, `synology_fs_delete`)
-  require `confirm=True`. The skill instructs Claude to confirm any write/disruptive
-  action with you first.
+- Destructive/disruptive tools (`synology_reboot`, `synology_shutdown`,
+  `synology_fs_delete`, container/image/project stop & delete, package stop &
+  uninstall, DSM update apply, share/user/group writes, firewall toggle, download
+  task deletion) all require `confirm=True`. The skill instructs Claude to confirm
+  any write/disruptive action with you first.
 
 ## Coverage notes (this DSM)
 

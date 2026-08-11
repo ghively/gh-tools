@@ -29,7 +29,7 @@ required_environment_variables:
     prompt: DSM 2-step verification OTP code (only if 2FA is enabled)
     required_for: completing 2FA login
     optional: true
-version: 0.1.0
+version: 0.2.0
 author: poomonkey405
 ---
 
@@ -70,8 +70,8 @@ If it fails, the problem is connectivity/auth (see Troubleshooting), not the tas
 
 | Area | Tools |
 |------|-------|
-| Identity / health | `synology_status`, `synology_system_info`, `synology_utilization` |
-| Storage | `synology_storage` (volumes, disks, SMART, pools) |
+| Identity / health | `synology_status`, `synology_system_info`, `synology_utilization`, `synology_logs` |
+| Storage | `synology_storage` (volumes, disks, SMART, pools), `synology_snapshots_list` |
 | Files | `synology_fs_shares`, `synology_fs_list`, `synology_fs_search`, `synology_fs_download`, `synology_fs_upload`, `synology_fs_create_folder`, `synology_fs_rename`, `synology_fs_copy_move`, `synology_fs_delete` |
 | Downloads | `synology_downloads_list`, `synology_download_add`, `synology_download_control` |
 | Packages / apps | `synology_packages_list`, `synology_services_list`, `synology_package_control` (start/stop), `synology_package_available`, `synology_package_uninstall` |
@@ -113,8 +113,8 @@ sensitive write, retry the generic call with `elevate=True`.
 
 ## Discovery-first workflow (for anything not curated)
 
-Many requests (firewall, certificates, DSM updates, snapshots, VMM, notifications,
-task scheduler, network) have no curated tool. Do this:
+Many requests (certificates, VPN, notifications, UPS, DDNS, auto-block, general
+network config) have no curated tool. Do this:
 
 1. **Find the API.** `synology_list_apis(filter="Firewall")` →
    `SYNO.Core.Security.Firewall.Rules`, etc. Filter by a domain keyword.
@@ -154,9 +154,11 @@ This box holds real data (tens of TB across two volumes). Be deliberate:
   permissions/firewall/network/shares, stopping services, or removing users,
   state what you're about to do and get a clear go-ahead — a locked-out firewall
   rule or a stopped SMB service can cut off access to the box itself.
-- **Destructive curated tools are gated.** `synology_reboot`, `synology_shutdown`,
-  and `synology_fs_delete` require `confirm=True`. That gate is a backstop, not a
-  substitute for asking.
+- **Destructive curated tools are gated.** Every destructive or disruptive curated
+  tool — `synology_reboot`/`_shutdown`, `synology_fs_delete`, download-task delete,
+  container/image/project stop & delete, package stop & uninstall,
+  `synology_dsm_update_apply`, share/user/group writes, and the firewall toggle —
+  requires `confirm=True`. That gate is a backstop, not a substitute for asking.
 - **Prefer reversible steps** and read-back after a change (e.g. re-list after a
   `set`) to verify it took effect. Report what actually happened, including
   failures — don't claim success you didn't observe.

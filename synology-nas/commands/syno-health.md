@@ -20,13 +20,12 @@ reads in one round-trip where possible.
 4. **Load** — `synology_utilization` for current CPU load and memory usage.
 5. **Packages/services** — `synology_packages_list`; flag any expected package that
    is **not** `running`.
-6. **Security** — `synology_call(api="SYNO.Core.SecurityScan.Status", method="system_get")`
-   for last scan status, and `synology_call(api="SYNO.Core.Security.Firewall", method="get")`
-   for firewall state.
-7. **DSM updates** — `synology_call(api="SYNO.Core.Upgrade.Server", method="check")`;
-   report if an update is available.
-8. **Recent errors** — `synology_call(api="SYNO.Core.SyslogClient.Log", method="list", params={"limit":30})`;
-   summarize error/warning counts and the most recent notable entries.
+6. **Security** — `synology_firewall_status` for firewall state, and
+   `synology_call(api="SYNO.Core.SecurityScan.Status", method="system_get")` for the
+   last security scan status.
+7. **DSM updates** — `synology_dsm_update_check`; report if an update is available.
+8. **Recent errors** — `synology_logs(limit=30)`; summarize error/warning counts and
+   the most recent notable entries.
 
 ## Output
 
