@@ -1,8 +1,8 @@
 ---
-description: "Read-only agent-systems design specialist. Use when the user wants an agent system designed, an architecture reviewed, or a requirements interview conducted BEFORE any code is written — it produces a design document, never files or code. Delegate to it for "design an agent for X", "review this agent architecture", "what shape should this system be"."
+description: "Read-only agent-systems design specialist. Use when the user wants an agent system designed, an architecture reviewed, or a requirements interview conducted BEFORE any code is written — it produces a design document, never files or code. Delegate to it for 'design an agent for X', 'review this agent architecture', 'what shape should this system be'."
 mode: subagent
 permission:
-  *: deny
+  "*": deny
   read: allow
   glob: allow
   grep: allow

@@ -64,7 +64,7 @@ If a "production" deployment still looks like the left column, the deployment wo
 | Scheduled | Scheduler plus isolated run | Idempotency key, failure alert, last-run audit |
 | Part of a larger app | Embedded agent service/module | Typed tools, business logic outside the prompt, app-level auth |
 
-If the agent being shipped started life as a Claude Code plugin, the conversion-side doctrine — strategy choice, capability audit, framework and runtime matrices — lives in the `claude-code-authoring` skill's plugin-to-standalone-agent suite; this skill owns everything after the port.
+If the agent being shipped started life as a Claude Code plugin, the conversion-side doctrine — strategy choice, capability audit, framework and runtime matrices — lives in the `opencode-authoring` skill's plugin-to-standalone-agent suite; this skill owns everything after the port.
 
 ## Picking a Shape — Decision Procedure
 

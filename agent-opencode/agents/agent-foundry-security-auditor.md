@@ -2,7 +2,7 @@
 description: "Read-only security auditor for agent systems and their configs. Use for auditing an agent project before deployment, vetting third-party skills/plugins/MCP servers before install, secret scanning, and attack-surface review. Reports fail-mode + blast-radius + remediation; never runs active exploits and never applies fixes itself."
 mode: subagent
 permission:
-  *: deny
+  "*": deny
   read: allow
   glob: allow
   grep: allow

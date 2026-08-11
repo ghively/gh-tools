@@ -7,12 +7,12 @@ Auto-generated index of all skills in the agent-opencode package.
 | Skill | Description |
 |---|---|
 | `agent-deployment` | Deploying agents to production and operating them there: packaging, serving, session persistence, observability, versioning, rollout, live-agent tuning, and closed-loop improvement. |
-| `agent-design` | Designing an agent system before writing code: scope, task analysis, architecture patterns, tool surface, decision boundaries, failure modes, and the point where framework choice finally becomes appro. |
+| `agent-design` | Designing an agent system before writing code: scope, task analysis, architecture patterns, tool surface, decision boundaries, failure modes, and the point where framework choice finally becomes appropriate. |
 | `agent-evals` | Evaluate and verify agent systems with golden task suites, JSONL eval cases, integration gates, regression tests, trajectory scoring, and eval tooling. |
-| `agent-harness` | The agent runtime loop itself — the harness that wraps the model: tool-call dispatch and parallelism, context-window management during a run (compaction, eviction, summarization), session lifecycle (c. |
-| `agent-safety` | Agent safety and security hardening: secure agent systems with threat models, least-agency tool policy, sandbox tiers, guardrails, deterministic hooks, MCP/plugin audit practices, and third-party code. |
-| `deterministic-agents` | Making agent systems predictable, reproducible, and verifiable: structured outputs and schema-constrained decoding, explicit code-owned control flow, idempotent side effects, durable execution (Tempor. |
-| `framework-selection` | Choosing and getting productive in an agent framework or SDK: raw tool-call loops, LangGraph/LangChain, CrewAI, LlamaIndex, Microsoft Agent Framework, Claude Agent SDK, DSPy, Pydantic AI, smolagents, . |
+| `agent-harness` | The agent runtime loop itself — the harness that wraps the model: tool-call dispatch and parallelism, context-window management during a run, session lifecycle, mid-turn error recovery, streaming, step caps and doom-loop prevention, HITL interrupts, harness-level caching, and observability spans. |
+| `agent-safety` | Agent safety and security hardening: secure agent systems with threat models, least-agency tool policy, sandbox tiers, guardrails, deterministic hooks, MCP/plugin audit practices, and third-party code review. |
+| `deterministic-agents` | Making agent systems predictable, reproducible, and verifiable: structured outputs and schema-constrained decoding, explicit code-owned control flow, idempotent side effects, durable execution (Temporal/Inngest/Restate/LangGraph/Cloudflare/Step Functions), proof contracts for delegated work, and systematic workflow optimization. |
+| `framework-selection` | Choosing and getting productive in an agent framework or SDK: raw tool-call loops, LangGraph/LangChain, CrewAI, LlamaIndex, Microsoft Agent Framework, Claude Agent SDK, DSPy, Pydantic AI, smolagents, and profiling wrappers. |
 | `memory-rag` | Designing retrieval-augmented generation and agent memory systems: chunking, embeddings, vector and hybrid retrieval, reranking, RAG evaluation, memory backends, and agentic retrieval loops. |
 | `model-selection` | Choosing and routing models per task: cloud model matrices, local/open-weight model fit, router architecture, fallback chains, and cost tracking across providers. |
 | `multi-agent-orchestration` | Designing systems of multiple agents: orchestrator-worker decomposition, delegation, Claude Code subagents, multi-agent routing, review panels, and agent-to-agent protocol choices. |
@@ -24,19 +24,19 @@ Auto-generated index of all skills in the agent-opencode package.
 
 | Skill | Reference files |
 |---|---|
-| `agent-deployment` | 13 |
+| `agent-deployment` | 14 |
 | `agent-design` | 13 |
-| `agent-evals` | 6 |
+| `agent-evals` | 7 |
 | `agent-harness` | 12 |
-| `agent-safety` | 9 |
+| `agent-safety` | 10 |
 | `deterministic-agents` | 6 |
 | `framework-selection` | 12 |
-| `memory-rag` | 4 |
+| `memory-rag` | 5 |
 | `model-selection` | 5 |
 | `multi-agent-orchestration` | 5 |
 | `opencode-authoring` | 14 |
 | `prompt-context-engineering` | 5 |
-| `tool-mcp-engineering` | 5 |
+| `tool-mcp-engineering` | 6 |
 
 ## Commands (Workflow Entry Points)
 
@@ -55,7 +55,7 @@ Auto-generated index of all skills in the agent-opencode package.
 | `/agent-foundry-new-subagent` | Author a least-privilege OpenCode subagent with explicit mode, permissions, prompt defense, and output contract. |
 | `/agent-foundry-operate-agent` | Operate a deployed agent — verify health, review the audit trail, surface anomalies, decide on tweaks vs incidents. |
 | `/agent-foundry-pick-model` | Recommend cloud or local models for a task or agent role using current matrices, routing tiers, cost, privacy, and verification tasks. |
-| `/agent-foundry-red-team` | Red-team an agent — adversarial test campaign across jailbreak, injection, privilege-escalation, and exfiltration vectors. Produces regression eval ca |
+| `/agent-foundry-red-team` | Red-team an agent — adversarial test campaign across jailbreak, injection, privilege-escalation, and exfiltration vectors. Produces regression eval cases. |
 | `/agent-foundry-refresh-matrices` | Re-verify stale model matrices and framework surveys against live sources and update only verified Last verified banners. |
 | `/agent-foundry-review-agent` | Review an existing agent codebase against the seven-stage design doctrine and failure-mode catalog without modifying it. |
 | `/agent-foundry-rollback-agent` | Roll back a deployed agent — restore code, prompt, model, tool, memory, and config to the last known-good manifest; verify. |

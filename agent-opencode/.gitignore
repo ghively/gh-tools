@@ -8,7 +8,8 @@ dist/
 *.jsonl
 
 # Eval cases are jsonl files that MUST be committed
-!agent-opencode/skills/agent-evals/assets/eval-suite-template/cases.jsonl
+# (paths here are relative to this directory, not the repo root)
+!skills/agent-evals/assets/eval-suite-template/cases.jsonl
 
 # OS / editor cruft
 .DS_Store

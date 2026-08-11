@@ -139,9 +139,9 @@ Adopt a hosted platform only when coordination, annotation, auditability, or pro
 | `scripts/eval-sandbox-wrapper.sh` | Running eval commands with timeout, restricted working directory, and destructive-command shims |
 | `scripts/verify-agent-integration.py` | Running generic Python integration gates for compile/config/tool wrapper checks |
 
-### Worked Reference Implementation In This Repo
+### Worked Reference Implementation
 
-This marketplace dogfoods the golden-suite gate on its own plugins. Read these two repo-root files as a concrete reference implementation of everything above:
+The upstream source repo ([ghively/agent-marketplace](https://github.com/ghively/agent-marketplace)) dogfoods the golden-suite gate on its own plugins. Read these two of its repo-root files as a concrete reference implementation of everything above:
 
 - `scripts/run-plugin-evals.py` — the runner. Each plugin pins a golden contract at `plugins/<name>/evals/golden/plugin-contract.json` (skills that must exist, command routing, trigger vocabulary, subagent least-privilege, safety-floor smoke cases). Failures print a diagnosis and exit non-zero — the doctrine's "fix the plugin or edit the contract deliberately, never both silently" made executable.
 - `.github/workflows/validate.yml` — the gate. The `self-evals` job runs `run-plugin-evals.py` on every push and PR; a contract violation blocks merge, exactly as doctrine #1 requires. The same workflow runs the structural validator and the safety-hook floor tests.
