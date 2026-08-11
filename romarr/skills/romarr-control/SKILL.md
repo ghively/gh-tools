@@ -43,7 +43,7 @@ indexing, SABnzbd for usenet, RomM as the library backend).
 
 ROMarr is one REST surface, mostly under `/api/v1/<resource>` with a handful
 of legacy routes at `/api/<resource>` (health, import, platforms, queue,
-request, search). ~53 endpoints total. Key conventions:
+request, search). ~59 operations total. Key conventions:
 
 - Auth: `X-Api-Key` header on every request except `/`, `/api/health` and
   `/api/v1/login`. **ROMarr's own UI does not display its API key anywhere**
@@ -93,7 +93,7 @@ count, queue size.
 | Scored interactive search | `romarr_release(game=, platform=)` |
 | Grab a scored release (write) | `romarr_release_grab(release_id=, confirm=)` |
 | Request a game end-to-end (write) | `romarr_request(title=, platform=, confirm=)` |
-| Run a background task (write) | `romarr_command(name=, confirm=, **extra)` — accepted names for `name` are unconfirmed beyond the summary ("search, import or refresh"); probe first |
+| Run a background task (write) | `romarr_command(name=, confirm=, extra=)` — accepted names for `name` are unconfirmed beyond the summary ("search, import or refresh"); probe first |
 | Active downloads | `romarr_queue()` |
 | Activity log | `romarr_history(params=)` |
 | Blocked releases | `romarr_blocklist()` |
