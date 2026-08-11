@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env -S uv run --script
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
@@ -27,7 +27,7 @@ control. 401/`error: Missing api key` = bad key.
 SABnzbd conventions this file encodes (all verified live):
 * All actions are GET-or-POST /api?mode=<name>&output=json&apikey=<key>.
 * Modes that change state accept their inputs as query params (e.g.
-  pause?minutes=60, addurl?name=<url>, delete?value=<nzo_id>&del_files=1).
+  pause?value=60, addurl?name=<url>, delete?value=<nzo_id>&del_files=1).
 * `queue`, `history`, `fullstatus` return rich nested dicts.
 * Server returns `{"error": "..."}` on most failures (HTTP 200, error in body)
   or `{"status": true/false}` for simple acknowledgements.
@@ -35,7 +35,7 @@ SABnzbd conventions this file encodes (all verified live):
 * Add NZB by URL: `addurl` with `name=<url>` (URL-encoded).
 
 WRITES are confirm-gated in code. SHUTDOWN/RESTART additionally require an
-explicit acknowledgement token â€” never call these without explicit owner
+explicit acknowledgement token — never call these without explicit owner
 approval. (During initial development of this integration, a probe of
 `mode=shutdown` actually shut the server down. We learned.)
 
@@ -46,10 +46,8 @@ from __future__ import annotations
 import json
 import os
 import sys
-import threading
 from pathlib import Path
 from typing import Any, Optional
-from urllib.parse import quote
 
 import httpx
 from mcp.server.fastmcp import FastMCP
@@ -137,7 +135,6 @@ class SabnzbdClient:
             verify=cfg["verify_ssl"],
             timeout=cfg["timeout"],
         )
-        self._lock = threading.Lock()
 
     def call(self, mode: str, params: Optional[dict] = None,
              raw: bool = False) -> Any:
@@ -156,9 +153,20 @@ class SabnzbdClient:
                 if v is None or v == "":
                     continue
                 q[k] = v
-        resp = self._client.get("/api", params=q)
+        try:
+            resp = self._client.get("/api", params=q)
+        except httpx.TimeoutException as e:
+            raise SabnzbdError(
+                f"timeout after {self.cfg['timeout']}s on mode={mode} "
+                f"({self.base}) — is SABnzbd up? Adjust timeout in "
+                "config.local.json / SABNZBD_TIMEOUT if it is just slow."
+            ) from e
+        except httpx.HTTPError as e:
+            raise SabnzbdError(
+                f"connection failed on mode={mode} ({self.base}): {e}"
+            ) from e
         if resp.status_code == 401:
-            raise SabnzbdError("401 Unauthorized â€” the API key was rejected.")
+            raise SabnzbdError("401 Unauthorized — the API key was rejected.")
         if resp.status_code >= 400:
             raise SabnzbdError(f"HTTP {resp.status_code} on mode={mode}: {resp.text[:300]}")
         if not resp.content:
@@ -223,20 +231,6 @@ def _need_confirm(what: str) -> dict:
     }
 
 
-def _bytes_to_human(n: Optional[int]) -> Optional[str]:
-    if n is None:
-        return None
-    try:
-        n = float(n)
-    except (TypeError, ValueError):
-        return None
-    for unit in ("B", "KB", "MB", "GB", "TB", "PB"):
-        if abs(n) < 1024:
-            return f"{n:.1f} {unit}"
-        n /= 1024
-    return f"{n:.1f} EB"
-
-
 mcp = FastMCP("sabnzbd")
 
 
@@ -268,14 +262,14 @@ MODE_CATALOG: list[dict] = [
     {"mode": "delete",        "rw": "W", "summary": "Delete job(s): value=<nzo_ids> del_files=1"},
     {"mode": "retry",         "rw": "W", "summary": "Retry a failed history job: value=<nzo_id>"},
     {"mode": "change_opts",   "rw": "W", "summary": "Change post-proc options for a job"},
-    {"mode": "queue",         "rw": "W", "summary": "Also writable: queue delete/rename/priority via name=..."},
+    {"mode": "queue",         "rw": "W", "summary": "Also writable: queue delete/rename/priority/pause/resume/change_cat via name=..."},
     # Config (WRITE)
     {"mode": "set_config",    "rw": "W", "summary": "Update config: section, keyword, value"},
     {"mode": "set_apikey",    "rw": "W", "summary": "Generate a new API key (DANGEROUS)"},
-    {"mode": "test_email",    "rw": "W", "summary": "Send a test email (email_to=<addr>) â€” verifies notification config"},
+    {"mode": "test_email",    "rw": "W", "summary": "Send a test email (email_to=<addr>) — verifies notification config"},
     # Lifecycle (DANGEROUS)
-    {"mode": "restart",       "rw": "W", "summary": "Restart SABnzbd â€” HEAVILY confirm-gated in tools"},
-    {"mode": "shutdown",      "rw": "W", "summary": "Shut down SABnzbd â€” HEAVILY confirm-gated in tools"},
+    {"mode": "restart",       "rw": "W", "summary": "Restart SABnzbd — HEAVILY confirm-gated in tools"},
+    {"mode": "shutdown",      "rw": "W", "summary": "Shut down SABnzbd — HEAVILY confirm-gated in tools"},
     # Misc
     {"mode": "history",       "rw": "W", "summary": "History also accepts delete/clear via value=..."},
 ]
@@ -283,7 +277,7 @@ MODE_CATALOG: list[dict] = [
 
 @mcp.tool()
 def sabnzbd_call(mode: str, params: str = "") -> Any:
-    """Call ANY SABnzbd /api mode â€” the generic passthrough. Use
+    """Call ANY SABnzbd /api mode — the generic passthrough. Use
     sabnzbd_list_modes to find a mode first.
 
     Args:
@@ -489,7 +483,7 @@ def sabnzbd_get_config(section: str = "", keyword: str = "") -> Any:
 
 
 # --------------------------------------------------------------------------- #
-# Queue control (WRITE â€” confirm-gated)                                       #
+# Queue control (WRITE — confirm-gated)                                       #
 # --------------------------------------------------------------------------- #
 @mcp.tool()
 def sabnzbd_pause(minutes: Optional[int] = None, confirm: bool = False) -> Any:
@@ -550,7 +544,7 @@ def sabnzbd_speed_limit(value: int, confirm: bool = False) -> Any:
 
 
 # --------------------------------------------------------------------------- #
-# Job management (WRITE â€” confirm-gated)                                      #
+# Job management (WRITE — confirm-gated)                                      #
 # --------------------------------------------------------------------------- #
 @mcp.tool()
 def sabnzbd_add_url(url: str, pp: str = "", category: str = "", priority: str = "",
@@ -562,7 +556,7 @@ def sabnzbd_add_url(url: str, pp: str = "", category: str = "", priority: str = 
         pp: Post-processing options (e.g. "3" for repair+unpack+delete).
         category: Category name (must match one configured in SABnzbd).
         priority: Priority (-100 .. 2, where 2 = force).
-        confirm: Must be true â€” adds a real download.
+        confirm: Must be true — adds a real download.
     """
     try:
         if not url or not url.startswith(("http://", "https://")):
@@ -587,28 +581,34 @@ def sabnzbd_add_url(url: str, pp: str = "", category: str = "", priority: str = 
 
 @mcp.tool()
 def sabnzbd_delete_jobs(nzo_ids: list, delete_files: bool = False,
+                         from_history: bool = False,
                          confirm: bool = False) -> Any:
     """Delete one or more jobs from the queue or history. WRITES: confirm-gated.
 
     Args:
         nzo_ids: List of nzo_id strings to delete.
         delete_files: Also delete downloaded files from disk (irreversible).
+        from_history: Delete from history instead of the active queue.
+            (Queue and history are separate delete endpoints; an nzo_id that
+            has moved to history is only deletable with from_history=true.)
         confirm: Must be true.
     """
     try:
         if not nzo_ids:
             raise SabnzbdError("nzo_ids must be a non-empty list")
+        where = "history" if from_history else "queue"
         if not confirm:
             return _need_confirm(
-                f"delete SABnzbd job(s) {nzo_ids} "
+                f"delete SABnzbd {where} job(s) {nzo_ids} "
                 f"(delete_files={delete_files})"
             )
         params = {"name": "delete", "value": ",".join(nzo_ids)}
         if delete_files:
             params["del_files"] = "1"
-        # delete is invoked via the queue OR history endpoint; both accept it.
-        data = CLIENT.call("queue", params)
-        return {"deleted": True, "nzo_ids": nzo_ids, "raw": data}
+        # mode=queue&name=delete for queue jobs; mode=history&name=delete
+        # for history jobs.
+        data = CLIENT.call(where, params)
+        return {"deleted": True, "from": where, "nzo_ids": nzo_ids, "raw": data}
     except Exception as e:  # noqa: BLE001
         return _err(e)
 
@@ -665,13 +665,13 @@ def sabnzbd_set_config(section: str, keyword: str, value: str,
 
 
 # --------------------------------------------------------------------------- #
-# DANGEROUS â€” double-gated (confirm + acknowledge token)                      #
+# DANGEROUS — double-gated (confirm + acknowledge token)                      #
 # --------------------------------------------------------------------------- #
 @mcp.tool()
 def sabnzbd_restart(confirm: bool = False, acknowledge: str = "") -> Any:
     """Restart the SABnzbd service/process.
 
-    DOUBLY GATED â€” requires confirm=true AND acknowledge='restart' (typed).
+    DOUBLY GATED — requires confirm=true AND acknowledge='restart' (typed).
     This is intentional: SABnzbd honors mode=restart, which kills active
     downloads mid-flight. Only invoke after explicit owner approval.
 
@@ -699,7 +699,7 @@ def sabnzbd_shutdown(confirm: bool = False, acknowledge: str = "") -> Any:
     """Shut down SABnzbd. The container/process must be restarted externally
     (DSM, systemd, Docker) to bring it back.
 
-    DOUBLY GATED â€” requires confirm=true AND acknowledge='shutdown' (typed).
+    DOUBLY GATED — requires confirm=true AND acknowledge='shutdown' (typed).
     SABnzbd honors mode=shutdown and will NOT auto-restart. Only invoke after
     explicit owner approval.
 
@@ -727,7 +727,7 @@ def sabnzbd_shutdown(confirm: bool = False, acknowledge: str = "") -> Any:
 # --------------------------------------------------------------------------- #
 @mcp.tool()
 def sabnzbd_categories() -> Any:
-    """List configured categories (Default, Movies, TV, etc.) â€” useful when
+    """List configured categories (Default, Movies, TV, etc.) — useful when
     adding NZBs or changing a job's category. READ-ONLY."""
     try:
         data = CLIENT.call("get_config", {"section": "categories"}) or {}
@@ -760,7 +760,7 @@ def sabnzbd_test_email(email_address: str, confirm: bool = False) -> Any:
 
     Args:
         email_address: Recipient for the test email.
-        confirm: Must be true â€” actually sends an email.
+        confirm: Must be true — actually sends an email.
     """
     try:
         if not email_address or "@" not in email_address:
@@ -775,7 +775,7 @@ def sabnzbd_test_email(email_address: str, confirm: bool = False) -> Any:
 @mcp.tool()
 def sabnzbd_add_local_file(path: str, pp: str = "", category: str = "",
                            priority: str = "", confirm: bool = False) -> Any:
-    """Add an NZB file from a path ON THE SABnzBD SERVER (not your client).
+    """Add an NZB file from a path ON THE SABnzbd SERVER (not your client).
     Useful when NZBs are downloaded to the server by another tool. WRITES:
     confirm-gated.
 
@@ -854,6 +854,47 @@ def sabnzbd_queue_change_priority(nzo_id: str, priority: int,
 
 
 @mcp.tool()
+def sabnzbd_pause_job(nzo_id: str, confirm: bool = False) -> Any:
+    """Pause a SINGLE queued download (the rest of the queue keeps going).
+    WRITES: confirm-gated.
+
+    Args:
+        nzo_id: The job's nzo_id (from sabnzbd_queue).
+        confirm: Must be true.
+    """
+    try:
+        if not nzo_id:
+            raise SabnzbdError("nzo_id is required")
+        if not confirm:
+            return _need_confirm(f"pause SABnzbd job {nzo_id}")
+        # SABnzbd: mode=queue&name=pause&value=<nzo_id>
+        data = CLIENT.call("queue", {"name": "pause", "value": nzo_id})
+        return {"paused": True, "nzo_id": nzo_id, "raw": data}
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
+def sabnzbd_resume_job(nzo_id: str, confirm: bool = False) -> Any:
+    """Resume a SINGLE paused download. WRITES: confirm-gated.
+
+    Args:
+        nzo_id: The job's nzo_id (from sabnzbd_queue).
+        confirm: Must be true.
+    """
+    try:
+        if not nzo_id:
+            raise SabnzbdError("nzo_id is required")
+        if not confirm:
+            return _need_confirm(f"resume SABnzbd job {nzo_id}")
+        # SABnzbd: mode=queue&name=resume&value=<nzo_id>
+        data = CLIENT.call("queue", {"name": "resume", "value": nzo_id})
+        return {"resumed": True, "nzo_id": nzo_id, "raw": data}
+    except Exception as e:  # noqa: BLE001
+        return _err(e)
+
+
+@mcp.tool()
 def sabnzbd_history_clear(failed_only: bool = False, confirm: bool = False) -> Any:
     """Clear completed (or failed) jobs from history. WRITES: confirm-gated.
 
@@ -865,9 +906,11 @@ def sabnzbd_history_clear(failed_only: bool = False, confirm: bool = False) -> A
         if not confirm:
             scope = "failed-only history" if failed_only else "ALL history"
             return _need_confirm(f"clear {scope}")
-        params = {"name": "history", "value": "failed" if failed_only else "all",
+        # SABnzbd: mode=history&name=delete&value=all|failed (search=... also
+        # works for scoped clears via sabnzbd_call).
+        params = {"name": "delete", "value": "failed" if failed_only else "all",
                   "del_files": "0"}
-        data = CLIENT.call("queue", params)
+        data = CLIENT.call("history", params)
         return {"cleared": True, "failed_only": failed_only, "raw": data}
     except Exception as e:  # noqa: BLE001
         return _err(e)
@@ -878,7 +921,7 @@ def sabnzbd_history_clear(failed_only: bool = False, confirm: bool = False) -> A
 # --------------------------------------------------------------------------- #
 def main() -> None:
     if not CONFIG.get("api_key"):
-        log("WARNING: no api_key configured â€” every call will error. "
+        log("WARNING: no api_key configured — every call will error. "
             "Fill config.local.json or set SABNZBD_API_KEY.")
     mcp.run()
 
