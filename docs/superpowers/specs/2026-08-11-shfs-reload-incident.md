@@ -67,3 +67,40 @@ Recovery options (owner decision — not performed automatically):
    recreate its schema, then re-scan the library from disk. Loses accounts,
    collections, play history, and save-state metadata; rebuilds the library.
 2. If any older copy of `postgres_data` exists elsewhere, restore from it first.
+
+## Resolution (2026-08-11, performed with owner approval)
+
+Full assessment found the damage was broader than postgres: appdata for
+**romm, ROMarr, Qdrant, ollama, and postgres** was gone from the cache pool
+(searched cache + both array disks; not relocated, not recoverable). The media
+stack (**sonarr/radarr/prowlarr/sabnzbd**) appdata was intact (sonarr's
+`config.xml` was severed but its DB survived). The 31 GB ROM library and the
+array media shares were untouched.
+
+Executed, in order, each step verified:
+1. **Backup:** all intact appdata + all container templates + all `docker
+   inspect` + share cfgs copied to `/mnt/disk2/gh-tools-backup-*` (on the array).
+2. **Harden (root cause):** every container's appdata bind mount migrated from
+   `/mnt/user/appdata/...` to `/mnt/cache/appdata/...` via editing each Unraid
+   template and running the native `rebuild_container`. Media-library mounts
+   (`/mnt/user/TV` etc.) were intentionally left as-is. `unraid_shfs_risk_check`
+   now reports `safe_to_reload_shfs: true`.
+3. **Automated backups (were absent):** `/boot/config/scripts/gh-appdata-backup.sh`
+   (pg_dumpall + appdata-config tar + templates tar to `/mnt/disk2/appdata-backups`,
+   7-day retention) scheduled daily 03:30 via
+   `/boot/config/plugins/dynamix/gh-appdata-backup.cron` (persistent). Test run
+   verified.
+4. **Rebuild:** postgres re-created on a clean data dir (fresh `romm` DB); romm
+   rebuilt and ran its schema migrations against it; ROMarr/Qdrant/ollama
+   rebuilt. All 9 containers healthy, all appdata on `/mnt/cache`.
+
+**Owner follow-ups:** create the romm admin account and re-scan the library
+(rebuilds from the intact ROM files); re-pull any ollama models and re-index
+Qdrant as needed; reconfigure ROMarr's connections.
+
+## Code hardening (committed)
+
+- Share tools default to config-only; live apply guarded by `_assert_shfs_safe`.
+- `unraid_shfs_risk_check` reports at-risk containers; the guard now flags only
+  appdata/VM-domain mounts on `/mnt/user` (not media-library shares), so its
+  signal is accurate.

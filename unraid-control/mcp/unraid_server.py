@@ -2718,11 +2718,19 @@ _EMCMD = "/usr/local/sbin/emcmd"
 # (writes config only, no service restart), and even the opt-in apply refuses
 # while a running container holds appdata open on a /mnt/user path.
 # ---------------------------------------------------------------------------- #
+# App-state paths on the FUSE overlay that an shfs reload can corrupt. Media
+# libraries (e.g. /mnt/user/TV, /mnt/user/Movies, /mnt/user/Roms) are array
+# shares that legitimately use /mnt/user and are NOT flagged — the hazard is
+# databases/configs (appdata) and VM disks (domains) that hold files open
+# continuously and live on the cache pool.
+_USER_STATE_PREFIXES = ("/mnt/user/appdata/", "/mnt/user/appdata", "/mnt/user/domains/", "/mnt/user/domains")
+
+
 def _containers_mounting_user_share(cfg: dict) -> list[str]:
-    """Return names of RUNNING containers with any bind mount whose host source
-    is under /mnt/user (the FUSE overlay). These are the containers a shfs
-    reload would corrupt. Best-effort; on any error returns [] with the caller
-    deciding how conservative to be (callers treat inspect failure as unsafe)."""
+    """Return names of RUNNING containers that bind-mount appdata or VM-domain
+    state through the /mnt/user FUSE overlay — the containers an shfs reload
+    would corrupt. Media-library mounts under /mnt/user are intentionally NOT
+    flagged. Raises on inspect failure so callers can treat it as unsafe."""
     code, out, _e = _ssh_exec(
         cfg,
         "for c in $(docker ps -q); do "
@@ -2730,13 +2738,18 @@ def _containers_mounting_user_share(cfg: dict) -> list[str]:
         "done",
         timeout=30,
     )
+    if code != 0:
+        raise RuntimeError("docker inspect failed over SSH")
     hits = []
     for line in out.splitlines():
         parts = line.strip().split(" ", 1)
         if len(parts) != 2:
             continue
         cname, sources = parts[0].lstrip("/"), parts[1]
-        if any(s.startswith("/mnt/user/") for s in sources.split("|") if s):
+        srcs = [s for s in sources.split("|") if s]
+        if any(s == "/mnt/user/appdata" or s == "/mnt/user/domains"
+               or s.startswith("/mnt/user/appdata/") or s.startswith("/mnt/user/domains/")
+               for s in srcs):
             hits.append(cname)
     return hits
 
