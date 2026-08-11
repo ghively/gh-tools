@@ -16,6 +16,8 @@ SearXNG has no configuration API: its control surface is the runtime HTTP API
    `searx_engine_errors` / `searx_stats` / `searx_health` (diagnostics).
 3. **Config management (SSH → settings.yml → restart)** — `searx_settings_read`,
    `searx_engine_show`, `searx_engine_toggle`, `searx_engine_add`,
+   `searx_engine_module_deploy` / `searx_engine_module_remove` (custom Python
+   engine modules, syntax-checked before registering),
    `searx_setting_set`, `searx_settings_backups` / `searx_settings_restore`,
    `searx_restart`, `searx_logs`. **Every write is confirm-gated and
    auto-backed-up; changes apply on restart.**
@@ -49,6 +51,13 @@ Copy `config.example.json` → `config.local.json` (git-ignored):
 
 Then hand-place your `config.local.json` in the installed plugin dir (it is
 git-ignored and never ships with the plugin).
+
+To smoke-test against your live instance (read-only tools only; skips cleanly
+when no config is present):
+
+```
+cd searxng-control && uv run --script mcp/_smoketest.py
+```
 
 ## Skill & workflows
 
