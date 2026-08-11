@@ -21,24 +21,39 @@ and neither one's files are touched by the other's tooling.
 
 | Plugin | Controls | Highlights |
 |---|---|---|
-| `synology-nas` | Synology DS1817+ (DSM 7.3) | all ~870 SYNO.* APIs + 27 curated tools |
-| `gitlab` | Self-hosted GitLab CE 19.0 | REST+GraphQL over 177 resource groups, 79 curated tools |
-| `unifi-network` (`unifi/`) | Ubiquiti UniFi console (UDR7) | v1/v2/UniFi-OS APIs, ~30 curated tools |
-| `emby` | Emby media server | ~484-op REST passthrough, ~30 curated tools |
+| `synology-nas` | Synology DS1817+ (DSM 7.3) | all ~870 SYNO.* APIs + 64 curated tools |
+| `gitlab` | Self-hosted GitLab CE 19.0 | REST+GraphQL over 177 resource groups, 75 curated tools |
+| `unifi-network` (`unifi/`) | Ubiquiti UniFi console (UDR7) | v1/v2/UniFi-OS APIs, ~35 curated tools |
+| `emby` | Emby media server | ~484-op REST passthrough, 54 curated tools |
 | `romm` | RomM ROM-library server | ~189-op REST passthrough, ~70 curated tools |
-| `romarr` | ROMarr (the *arr for games) | 53-op REST passthrough, ~44 curated tools, found a real credential-leak bug |
-| `unraid-control` | Unraid server (7.x) | full GraphQL schema passthrough, 84 curated tools |
+| `romarr` | ROMarr (the *arr for games) | 59-op REST passthrough, 51 curated tools, found a real credential-leak bug |
+| `unraid-control` | Unraid server (7.x) | full GraphQL schema passthrough, 87 tools incl. SSH env-var editing |
 | `comfyui-control` | ComfyUI generation server | full API passthrough + image/video generation suite |
 | `opencode-control` | OpenCode coding agent | 188-op passthrough + 49 curated tools, HTTP + ACP |
 | `searxng-control` | Self-hosted SearXNG | search + 249-engine inventory + settings.yml tuning over SSH |
-| `radarr-control` | Radarr movie manager | 467-op passthrough, 64 curated tools |
-| `sonarr-control` | Sonarr TV manager | 463-op passthrough, 66 curated tools |
-| `sabnzbd-control` | SABnzbd usenet downloader | 21 curated tools, double-gated lifecycle control |
-| `tdarr-control` | Tdarr transcoding server | 67-endpoint passthrough + ~30 curated tools + 3,700+ line knowledge base |
+| `radarr-control` | Radarr movie manager | 467-op passthrough, 65 curated tools |
+| `sonarr-control` | Sonarr TV manager | 463-op passthrough, 69 curated tools |
+| `sabnzbd-control` | SABnzbd usenet downloader | 25 curated tools, double-gated lifecycle control |
+| `tdarr-control` | Tdarr transcoding server | 65-endpoint passthrough + 50 curated tools + 3,700+ line knowledge base |
 | `deep-integration-builder` | — (methodology) | the skill + command used to build the others |
 
+## Quick start — one dependency
+
+The entire fleet needs exactly one thing installed: [`uv`](https://docs.astral.sh/uv/).
+Every MCP server is a self-contained PEP 723 script; its deps (`mcp<2.0.0`,
+`httpx`, plus a couple of per-plugin extras) resolve automatically from uv's
+shared package cache.
+
+```bash
+scripts/bootstrap.sh                                  # installs uv if missing + pre-warms every server env (~3s warm)
+eval $(op signin) && python3 scripts/pull_secrets.py  # optional: build all config.local.json files from 1Password
+scripts/bootstrap.sh --test                           # run every plugin's smoke test against your live services
+```
+
 Each plugin reads its credentials from a git-ignored `config.local.json`
-(`config.example.json` shows the shape). No secrets live in this repo.
+(`config.example.json` shows the shape). No secrets live in this repo —
+`scripts/pull_secrets.py` fills them from the 1Password Gregory vault
+(`--dry-run` to preview the item mapping first).
 
 ---
 
