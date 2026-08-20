@@ -1,7 +1,7 @@
 # Configuring opencode — the complete config reference
 
 Read this before editing `opencode.json` or advising on configuration. Verified against
-opencode 1.18.3 (repo `anomalyco/opencode`). Patch config with `oc_config_update(patch,
+opencode 1.x (repo `anomalyco/opencode`). Patch config with `oc_config_update(patch,
 confirm=true, scope=...)`, or write files directly for deletions/complex edits.
 
 ## File locations & precedence

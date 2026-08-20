@@ -9,7 +9,7 @@
 """Emby media server MCP server.
 
 Exposes an Emby server to Claude through the Model Context Protocol.
-Tested against Emby Server 4.7.14.0 on Linux. The design is two-layered,
+Tested against Emby Server 4.7.x on Linux. The design is two-layered,
 mirroring the Synology/UniFi/GitLab plugins in this repo:
 
 * A GENERIC passthrough (`emby_call` / `emby_list_endpoints`) that can reach

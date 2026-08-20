@@ -3,7 +3,7 @@
 ## The deployment's shape
 - Container runs `--lowvram`: weights offload aggressively to **system RAM**,
   so RAM (not VRAM) is the working ceiling — cgroup limit **24g**
-  (gh-Nvidia compose, raised from 12g after verified OOMs on 2026-07-15).
+  (unraid-host compose, raised from 12g after verified OOMs on 2026-07-15).
 - The GPU is **shared with Ollama** (8g cgroup, models evict after 10m idle).
   `comfy_status` → `vram_free_gib` before heavy runs; below ~2 GiB free,
   expect the load to thrash.

@@ -22,7 +22,7 @@ and neither one's files are touched by the other's tooling.
 | Plugin | Controls | Highlights |
 |---|---|---|
 | `synology-nas` | Synology DS1817+ (DSM 7.3) | all ~870 SYNO.* APIs + 64 curated tools |
-| `gitlab` | Self-hosted GitLab CE 19.0 | REST+GraphQL over 177 resource groups, 75 curated tools |
+| `gitlab` | Self-hosted GitLab CE 19.x | REST+GraphQL over 177 resource groups, 75 curated tools |
 | `unifi-network` (`unifi/`) | Ubiquiti UniFi console (UDR7) | v1/v2/UniFi-OS APIs, ~35 curated tools |
 | `emby` | Emby media server | ~484-op REST passthrough, 54 curated tools |
 | `romm` | RomM ROM-library server | ~189-op REST passthrough, ~70 curated tools |
@@ -52,7 +52,7 @@ scripts/bootstrap.sh --test                           # run every plugin's smoke
 
 Each plugin reads its credentials from a git-ignored `config.local.json`
 (`config.example.json` shows the shape). No secrets live in this repo —
-`scripts/pull_secrets.py` fills them from the 1Password Gregory vault
+`scripts/pull_secrets.py` fills them from the 1Password Homelab vault
 (`--dry-run` to preview the item mapping first).
 
 ---

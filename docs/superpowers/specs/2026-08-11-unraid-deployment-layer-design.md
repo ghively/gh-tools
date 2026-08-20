@@ -14,7 +14,7 @@ run a new container, define a VM, or install an app. The user wants the plugin
 to deploy apps, containers, and VMs and fully configure the box — so this adds
 a **deployment layer** built on the same SSH foundation the env-var editor uses.
 
-Verified live on GH-Nvidia (Unraid 7.3.2, docker 29.5.3, key-only SSH as root):
+Verified live on Unraid-Host (Unraid 7.x, docker 29.5.3, key-only SSH as root):
 
 - Docker templates: `/boot/config/plugins/dockerMan/templates-user/my-<Name>.xml`
   (Container XML v2). Unraid marks a container "managed" via container labels

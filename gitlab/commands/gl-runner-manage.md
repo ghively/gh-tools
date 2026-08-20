@@ -36,5 +36,5 @@ reviewed list.
    new runner needed).
 
 Common follow-ups: upgrade stale `gitlab-runner` binaries (host-side, may need the `ansible`
-agent for gh-Nvidia); re-register runners on the v16 flow if still on legacy registration
+agent for unraid-host); re-register runners on the v16 flow if still on legacy registration
 tokens; right-size `concurrent =` in `config.toml` if a host is overloaded.

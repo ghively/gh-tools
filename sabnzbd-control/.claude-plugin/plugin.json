@@ -1,6 +1,6 @@
 {
   "name": "sabnzbd-control",
-  "description": "Full control of a SABnzbd usenet downloader (v4+ HTTP API) from Claude Code. Bundles an MCP server authenticated with a SABnzbd API key (apikey= query param), exposing both a generic passthrough reaching every /api mode and curated tools for status, version, queue, history, server stats, warnings, categories, scripts, pause/resume (whole queue or single job, confirm-gated), add-by-URL/local-file, delete/retry jobs, change job category/priority, clear history, speed limit, get/set config, test email, and shutdown/restart (heavily gated). Tested against SABnzbd 5.0.4.",
+  "description": "Full control of a SABnzbd usenet downloader (v4+ HTTP API) from Claude Code. Bundles an MCP server authenticated with a SABnzbd API key (apikey= query param), exposing both a generic passthrough reaching every /api mode and curated tools for status, version, queue, history, server stats, warnings, categories, scripts, pause/resume (whole queue or single job, confirm-gated), add-by-URL/local-file, delete/retry jobs, change job category/priority, clear history, speed limit, get/set config, test email, and shutdown/restart (heavily gated). Tested against SABnzbd 5.x.",
   "version": "0.3.0",
   "author": {
     "name": "Gene Hively"

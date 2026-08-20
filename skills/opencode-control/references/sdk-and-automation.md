@@ -2,7 +2,7 @@
 
 How to drive opencode programmatically — the `@opencode-ai/sdk`, raw HTTP from any
 language, and running opencode in CI (GitHub, GitLab, other forges). Verified against
-`@opencode-ai/sdk` 1.18.3 source and live docs. This plugin's own MCP server *is* a raw-HTTP
+`@opencode-ai/sdk` 1.x source and live docs. This plugin's own MCP server *is* a raw-HTTP
 client of exactly this API, so these patterns compose with the `oc_*` tools.
 
 ## The SDK: three entrypoints (`@opencode-ai/sdk`, JS/TS)

@@ -1,6 +1,6 @@
 {
   "name": "emby",
-  "description": "Full control of an Emby media server (4.x) from Claude Code. Bundles an MCP server that authenticates with an Emby API key and exposes both a generic passthrough reaching every one of the server's REST operations (self-discovered from its live OpenAPI spec) plus curated tools for status, libraries, item search & metadata editing, users & policies, sessions & remote playback control, scheduled tasks, plugins & the package catalog, logs, activity, collections, playlists and server configuration \u2014 along with a control skill (including official-docs references for configuration, troubleshooting, optimization, and plugin management) and slash-command workflows. Tested against Emby Server 4.7.14.0 on Linux.",
+  "description": "Full control of an Emby media server (4.x) from Claude Code. Bundles an MCP server that authenticates with an Emby API key and exposes both a generic passthrough reaching every one of the server's REST operations (self-discovered from its live OpenAPI spec) plus curated tools for status, libraries, item search & metadata editing, users & policies, sessions & remote playback control, scheduled tasks, plugins & the package catalog, logs, activity, collections, playlists and server configuration \u2014 along with a control skill (including official-docs references for configuration, troubleshooting, optimization, and plugin management) and slash-command workflows. Tested against Emby Server 4.7.x on Linux.",
   "version": "0.1.1",
   "author": {
     "name": "Gene Hively"

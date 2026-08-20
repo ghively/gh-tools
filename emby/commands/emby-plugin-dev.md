@@ -6,7 +6,7 @@ argument-hint: e.g. "scaffold a plugin that tags 4K content", "add a REST endpoi
 # Emby plugin development
 
 Develop a custom Emby server plugin using the emby-control skill's
-plugin-management.md reference (Part b). Target server: Emby 4.7.14.0 —
+plugin-management.md reference (Part b). Target server: Emby 4.7.x —
 compile against `MediaBrowser.Server.Core` 4.7.x.
 
 ## Scaffold ("scaffold ...")
@@ -32,11 +32,11 @@ compile against `MediaBrowser.Server.Core` 4.7.x.
 `dotnet --version`). The deliverable is the single DLL in
 `bin/Release/netstandard2.0/`.
 
-## Deploy to gh-media
+## Deploy to media-host
 
 The plugins folder is `/var/lib/emby/plugins/` ON THE SERVER — there is no
 upload API. Options (ask which):
-- If SSH/SMB access to gh-media exists: copy the DLL there, then
+- If SSH/SMB access to media-host exists: copy the DLL there, then
   `chown emby:emby` it.
 - Otherwise: hand me the DLL path and copy instructions.
 Then restart Emby (`emby_restart_server` — check `emby_sessions` for viewers

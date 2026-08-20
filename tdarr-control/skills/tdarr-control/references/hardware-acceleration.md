@@ -1,7 +1,7 @@
 # Hardware acceleration for Tdarr transcoding
 
 Practical guide to picking the right encoder for your hardware. Focused on
-**gh-nvidia (RTX 3060)** but covers every option.
+**unraid-host (RTX 3060)** but covers every option.
 
 ## The hardware-acceleration decision
 
@@ -21,9 +21,9 @@ Every modern video encoder has BOTH a software implementation (`libx264`,
 For Tdarr specifically, hardware is almost always right — you're batch-processing
 a library, and you'd rather have 100 files done overnight than 10 done perfectly.
 
-## What gh-nvidia has
+## What unraid-host has
 
-Per the homelab context (`~/gh-Nvidia/inventory/group_vars/gpu_hosts.yml`):
+Per the homelab context (`~/unraid-host/inventory/group_vars/gpu_hosts.yml`):
 - **GPU:** NVIDIA RTX 3060 (12 GB VRAM, ~3rd-gen NVENC + 5th-gen NVDEC)
 - **Driver:** 595 (proprietary)
 - **Container toolkit:** installed (NVIDIA Container Toolkit)
@@ -211,7 +211,7 @@ CPU encoding is the fallback when:
 - You want the absolute smallest file and can wait.
 - You're processing 1 file and don't care about throughput.
 
-## What to do on gh-nvidia specifically
+## What to do on unraid-host specifically
 
 Given RTX 3060 + driver 595:
 

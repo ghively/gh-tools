@@ -226,7 +226,7 @@ DAST), say **"EE-only, not available on this CE instance"** rather than treating
 error. See `references/ce-vs-ee-and-security.md`.
 
 When a workflow depends on the SSH/CLI-only surface (backup-restore, `gitlab-ctl`, Rails
-console, runner-binary install on gh-Nvidia), hand off to the `ansible` agent for the host-side
+console, runner-binary install on unraid-host), hand off to the `ansible` agent for the host-side
 work — don't burn API calls probing the impossible.
 
 ## Composing workflows (chained jobs)

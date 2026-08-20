@@ -9,7 +9,7 @@
 """Sonarr MCP server.
 
 Exposes a Sonarr TV-series manager (v3+ REST API) to Claude through the Model
-Context Protocol. Verified against Sonarr 4.0.18.2978. Two-layer design,
+Context Protocol. Verified against Sonarr 4.x. Two-layer design,
 mirroring the emby/radarr plugins:
 
 * GENERIC passthrough (`sonarr_call` / `sonarr_list_endpoints`) reaching every
@@ -649,7 +649,7 @@ def sonarr_add_series(tvdb_id: int, quality_profile_id: int, root_folder_path: s
             )
         # Sonarr's /series/lookup/tvdb path 404s on 4.x; the correct form is
         # /series/lookup?term=tvdb:<id> which returns a list of one match.
-        # (Verified live 2026-07-19 on Sonarr 4.0.18.2978.)
+        # (Verified live 2026-07-19 on Sonarr 4.x.)
         matches = CLIENT.request("GET", "/api/v3/series/lookup",
                                  params={"term": f"tvdb:{tvdb_id}"}) or []
         if not isinstance(matches, list) or not matches:

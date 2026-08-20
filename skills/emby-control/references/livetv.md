@@ -1,6 +1,6 @@
-# Live TV / IPTV — setup and operation (live-verified on gh-media, 4.7.14.0)
+# Live TV / IPTV — setup and operation (live-verified on media-host, 4.7.x)
 
-Live TV is Emby's largest API domain (66 operations). On gh-media it is
+Live TV is Emby's largest API domain (66 operations). On media-host it is
 **ready but unconfigured**: the M3U TV Tuner, XmlTV and Emby Guide Data plugins
 are installed, Emby Premiere is active (DVR licensed), and the full setup write
 path was **proven live and reversibly** (tuner add → Live TV enabled → tuner

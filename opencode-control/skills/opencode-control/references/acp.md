@@ -19,7 +19,7 @@ implement the **client** side, so you can run opencode as an agent from anywhere
 Use ACP when you want a clean, self-contained agent run. Use HTTP when you're operating an
 already-running opencode instance (its sessions, its TUI).
 
-## Protocol facts (verified against opencode 1.18.3)
+## Protocol facts (verified against opencode 1.x)
 
 - Transport: **newline-delimited JSON** (NDJSON) over stdio — one JSON object per line, no
   embedded newlines. (Not LSP Content-Length framing.)
@@ -70,13 +70,13 @@ Any value other than `reject` **runs mutating operations**, so the tool requires
 Read-only code question (safe):
 ```
 oc_acp_prompt(prompt="Summarize the architecture of this repo and list entrypoints.",
-              cwd="/home/ghively/projects/foo")     # permission defaults to reject
+              cwd="/home/user/projects/foo")     # permission defaults to reject
 ```
 
 Let opencode actually make a change (confirm with the user first):
 ```
 oc_acp_prompt(prompt="Add a --version flag to the CLI and a test for it.",
-              cwd="/home/ghively/projects/foo",
+              cwd="/home/user/projects/foo",
               permission="allow", confirm=true, timeout=600)
 # transcript.files_written lists what it changed; review the diff with oc_vcs('diff') or git.
 ```
@@ -84,7 +84,7 @@ oc_acp_prompt(prompt="Add a --version flag to the CLI and a test for it.",
 Plan-mode design pass (read-only by nature):
 ```
 oc_acp_prompt(prompt="Propose a migration plan to Postgres.", mode="plan",
-              cwd="/home/ghively/projects/foo")
+              cwd="/home/user/projects/foo")
 ```
 
 ## Model / agent selection in ACP

@@ -5,10 +5,10 @@
 # auto-assignment of owners as reviewers works on Free.
 
 # Default owner for everything
-*                       @dadmonkey405
+*                       @homelab-admin
 
 # Per-area examples (edit to taste)
-# /docs/                @dadmonkey405
-# *.tf                  @gregory/infra
-# /.gitlab-ci.yml       @gregory/platform
-# /db/migrations/       @gregory/backend
+# /docs/                @homelab-admin
+# *.tf                  @homelab/infra
+# /.gitlab-ci.yml       @homelab/platform
+# /db/migrations/       @homelab/backend

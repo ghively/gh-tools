@@ -1,6 +1,6 @@
 {
-  "_comment": "Copy to config.local.json (git-ignored) and fill in. Tdarr does NOT traditionally require an API key — the API trusts the LAN like the *arr stack does. The optional api_key field is for if you front Tdarr with an auth-proxy (nginx-basic-auth, Authentik, etc.) and need to pass a token. Env vars (TDARR_HOST, TDARR_PORT, TDARR_HTTPS, TDARR_URL_BASE, TDARR_API_KEY, TDARR_API_KEY_HEADER, TDARR_VERIFY_SSL, TDARR_TIMEOUT) override the file. When Tdarr is deployed on gh-nvidia it'll likely be at http://gh-nvidia:8265 (server) — fill host/port accordingly. Until Tdarr is deployed this plugin will fail every call; that's expected.",
-  "host": "gh-nvidia",
+  "_comment": "Copy to config.local.json (git-ignored) and fill in. Tdarr does NOT traditionally require an API key — the API trusts the LAN like the *arr stack does. The optional api_key field is for if you front Tdarr with an auth-proxy (nginx-basic-auth, Authentik, etc.) and need to pass a token. Env vars (TDARR_HOST, TDARR_PORT, TDARR_HTTPS, TDARR_URL_BASE, TDARR_API_KEY, TDARR_API_KEY_HEADER, TDARR_VERIFY_SSL, TDARR_TIMEOUT) override the file. When Tdarr is deployed on unraid-host it'll likely be at http://unraid-host:8265 (server) — fill host/port accordingly. Until Tdarr is deployed this plugin will fail every call; that's expected.",
+  "host": "unraid-host",
   "port": 8265,
   "https": false,
   "url_base": "",

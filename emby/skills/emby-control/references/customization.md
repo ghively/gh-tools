@@ -93,7 +93,7 @@ playlists (system-managed).
 
 ### Games (GameBrowser plugin — INSTALLED and live-verified 2026-07-15)
 
-GameBrowser 3.2.9 is active on gh-media (id `4c2fda1c-fd5e-433a-ad2b-718e0b73e9a9`).
+GameBrowser 3.2.9 is active on media-host (id `4c2fda1c-fd5e-433a-ad2b-718e0b73e9a9`).
 The reason game setups historically fail: **creating a games library is NOT
 enough** — platforms must be configured in the PLUGIN config first.
 
@@ -156,7 +156,7 @@ enough on 4.7.14. `emby_library_manage` handles this; remember it when using
 
 The official **Auto Organize** plugin (catalog name "Auto Organize") watches a
 folder and moves/renames episodes & movies into your library structure.
-Not currently installed on gh-media. Setup workflow:
+Not currently installed on media-host. Setup workflow:
 1. `emby_install_plugin("Auto Organize", confirm=true)` → restart.
 2. Configure via store `autoorganize` (`emby_plugin_config`): watch folder,
    target libraries, naming pattern, delete-empty-folders.

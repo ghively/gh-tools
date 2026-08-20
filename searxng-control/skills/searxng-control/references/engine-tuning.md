@@ -3,7 +3,7 @@
 The single most common SearXNG problem: **searches return few or zero results.**
 This is almost never "SearXNG is down" — it's upstream engines blocking the
 instance's IP. This playbook diagnoses and fixes it. Grounded in live behavior on
-gh-arm (an Oracle Cloud aarch64 VM = **datacenter IP**).
+arm-host (an Oracle Cloud aarch64 VM = **datacenter IP**).
 
 ## Why it happens
 
@@ -14,7 +14,7 @@ failure SearXNG **suspends** that engine for `search.suspended_times` —
 TooManyRequests. Under any real query volume several defaults suspend at once and
 `results` drops toward 0. It "works for a few queries, then goes empty."
 
-Residential IPs suffer far less; datacenter IPs suffer a lot. gh-arm is a
+Residential IPs suffer far less; datacenter IPs suffer a lot. arm-host is a
 datacenter IP, so **engine selection is the lever**, not raw uptime.
 
 ## Diagnose (read-only)
@@ -31,7 +31,7 @@ datacenter IP, so **engine selection is the lever**, not raw uptime.
 
 ## Fix — shift to datacenter-tolerant engines
 
-**Verified on gh-arm:** `searx_search("x", engines="bing,mojeek")` returns full
+**Verified on arm-host:** `searx_search("x", engines="bing,mojeek")` returns full
 results even while duckduckgo/startpage/brave are suspended.
 
 Engines that tolerate datacenter IPs well (enable / prefer these):

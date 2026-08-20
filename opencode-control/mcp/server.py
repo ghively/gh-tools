@@ -21,7 +21,7 @@ Config authoring (agents / commands / skills are FILES, not HTTP resources):
      oc_agent_write / oc_command_write / oc_skill_write create them on disk in
      the opencode config dir, and oc_config_update patches opencode.json.
 
-Conventions (verified live against opencode 1.18.3):
+Conventions (verified live against opencode 1.x):
   * Local server is unauthenticated on 127.0.0.1 unless OPENCODE_SERVER_PASSWORD
     is set, in which case requests need `Authorization: Bearer <password>`.
   * Plain JSON in/out. Legacy routes return bare arrays/objects.

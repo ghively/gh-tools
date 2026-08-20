@@ -1,6 +1,6 @@
 # ROMarr API map
 
-Full endpoint catalog as published live by ROMarr 0.7.0's own
+Full endpoint catalog as published live by ROMarr 0.x's own
 `/api/v1/openapi.json` (59 operations), with the curated tool that wraps
 each one. `romarr_endpoints` returns this same data live (and stays
 accurate across ROMarr version upgrades); this file is a static snapshot

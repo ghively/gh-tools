@@ -2,8 +2,8 @@
 
 Control of a **Tdarr** distributed transcoding server (v2 API) from Claude Code / opencode.
 
-**LIVE-VERIFIED on Tdarr 2.84.01** (2026-07-20). 16/16 smoke tools passed
-against the live server at `gh-nvidia:8265`; reversible backup
+**LIVE-VERIFIED on Tdarr 2.x** (2026-07-20). 16/16 smoke tools passed
+against the live server at `unraid-host:8265`; reversible backup
 create→list→delete write proof PASSED. The plugin was originally built
 doc-only and verified live on first deployment — the smoke test
 (`mcp/_smoketest.py`) and write proof (`mcp/_writeproof.py`) are how the gap
@@ -38,7 +38,7 @@ Two-layer MCP server for Tdarr:
 
 ## Configuration
 
-1. **Deploy Tdarr.** Typical Docker on `gh-nvidia`:
+1. **Deploy Tdarr.** Typical Docker on `unraid-host`:
    ```bash
    docker run -d --name tdarr -p 8265:8265 -p 8266:8266 \
      -e PUID=1000 -e PGID=1000 \
@@ -50,7 +50,7 @@ Two-layer MCP server for Tdarr:
      ghcr.io/haveagitgat/tdarr:latest
    ```
    (When you actually deploy, formalize this as an Ansible playbook under
-   `~/gh-Nvidia/playbooks/projects/`.)
+   `~/unraid-host/playbooks/projects/`.)
 2. **Copy** `config.example.json` → `config.local.json` (git-ignored) and fill
    in `host`/`port` (Tdarr does not require an API key — the API trusts the LAN).
 3. Optional: if you front Tdarr with an auth proxy, set `api_key` +
@@ -74,7 +74,7 @@ override the file.
 
 ## Honest gap taxonomy
 
-- **LIVE-VERIFIED (reads, against Tdarr 2.84.01):** status, full_status, nodes,
+- **LIVE-VERIFIED (reads, against Tdarr 2.x):** status, full_status, nodes,
   db_statuses, performance_stats, res_stats, backup_status, backups, search_db,
   search_plugins/flow_plugins/flow_templates (with `pluginType`), db getAll on
   StatisticsJSONDB/NodeJSONDB/SettingsGlobalJSONDB/LibrarySettingsJSONDB/FlowsJSONDB,

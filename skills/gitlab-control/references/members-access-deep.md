@@ -25,8 +25,8 @@ falls back to the next-lower valid tier (`10` Guest). Don't use them on Free.
 
 1. **Direct membership** — the user is added to this specific project or group.
    `members(scope_type, scope_id, action="add", user_id, access_level, confirm=true)`.
-2. **Inherited from a parent group** — if a user is an Owner of `gregory`, they're
-   effectively Owner of every subgroup and project under `gregory/archive/...` unless
+2. **Inherited from a parent group** — if a user is an Owner of `homelab`, they're
+   effectively Owner of every subgroup and project under `homelab/archive/...` unless
    overridden. Inheritance is additive (max wins), never subtractive.
 3. **Shared group** (group-to-group or group-to-project sharing) — a group shares access
    to one of its projects with another group, at a capped access level.

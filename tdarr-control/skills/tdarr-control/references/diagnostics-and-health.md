@@ -1,7 +1,7 @@
 # Tdarr diagnostics, health checks, and troubleshooting
 
 How to detect, diagnose, and fix Tdarr issues. Built from the docs + live
-config on Tdarr 2.84.01.
+config on Tdarr 2.x.
 
 ## Health checks — what they are and how they work
 

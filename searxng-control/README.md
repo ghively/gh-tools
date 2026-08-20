@@ -1,8 +1,7 @@
 # searxng-control
 
 Deep control of a self-hosted **SearXNG** metasearch instance from Claude Code —
-search, introspect, diagnose, and **tune** it. Verified live against **SearXNG
-2026.5.7**.
+search, introspect, diagnose, and **tune** it. Verified live against a recent **SearXNG** release.
 
 SearXNG has no configuration API: its control surface is the runtime HTTP API
 (read) plus `settings.yml` inside the container (write). This plugin bridges both.
@@ -28,8 +27,8 @@ Copy `config.example.json` → `config.local.json` (git-ignored):
 
 ```json
 {
-  "base_url": "http://gh-arm:8888",
-  "ssh_host": "gh-arm",
+  "base_url": "http://arm-host:8888",
+  "ssh_host": "arm-host",
   "container": "searxng",
   "settings_path": "/etc/searxng/settings.yml",
   "verify_ssl": false,

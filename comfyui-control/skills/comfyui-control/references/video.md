@@ -31,7 +31,7 @@ SamplerCustom(euler) → VAEDecode → CreateVideo(fps) → SaveVideo(mp4/h264).
 
 ## comfy_img2video (image-to-video, FLF seamless cycles)
 `comfy_img2video(image, prompt, loop=True)` — the curated i2v path. Graph
-(verified against 0.26.0 nodes_lt.py): LoadImage → LTXVPreprocess
+(verified against 0.x nodes_lt.py): LoadImage → LTXVPreprocess
 (jpeg-degrade to match LTXV training) → the txt2video trunk with
 `LTXVAddGuide(frame_idx=0)` pinning the still as frame one and, with
 loop=True, a second `LTXVAddGuide(frame_idx=-1)` (negative = from the end)

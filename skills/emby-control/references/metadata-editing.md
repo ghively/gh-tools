@@ -1,7 +1,7 @@
 # Deep metadata, artwork, collections & library management (live-verified)
 
 The complete toolkit for curating an Emby library. Everything here was
-verified against gh-media (4.7.14.0). All writes preview-then-confirm.
+verified against media-host (4.7.x). All writes preview-then-confirm.
 
 ## 1. Editing an item's metadata — `emby_update_item`
 
@@ -74,7 +74,7 @@ overview/sort `emby_update_item(collection_id, '{"Overview": ...,
 ## 4b. Duplicates & versions (`emby_versions`)
 
 - `find_duplicates` — groups movies sharing a TMDb/IMDb id (found 5 real
-  groups on gh-media: two downloaded copies each). Options per group:
+  groups on media-host: two downloaded copies each). Options per group:
   **merge** them into one entry with quality versions
   (`POST /Videos/MergeVersions` — files untouched, reversible with `split`),
   or `emby_delete_item` the redundant copy (removes the FILE).
@@ -103,13 +103,13 @@ merge per-item lists you must loop `emby_update_item` instead.
 
 `emby_items(include_types="Episode", is_missing="true", fields="SeriesName")`
 — episodes the metadata providers say exist but aren't on disk (125 tracked on
-gh-media). Group by SeriesName for a "gaps report". Users only see these if
+media-host). Group by SeriesName for a "gaps report". Users only see these if
 their display preference "Display missing episodes" is on.
 
 ## 5. Subtitles — `emby_subtitles`
 
 - `list` — current streams (embedded + external, with Index and Path).
-- `search(language="eng")` — queries Open Subtitles (configured on gh-media);
+- `search(language="eng")` — queries Open Subtitles (configured on media-host);
   results ranked by download count.
 - `download(subtitle_id, confirm=true)` — fetches next to the media file
   (per-library `SaveSubtitlesWithMedia`); appears as a new external stream.
@@ -125,7 +125,7 @@ their display preference "Display missing episodes" is on.
 - `add_path` / `remove_path` — folders can live on multiple disks/shares.
 - `rename`, `delete` (media files stay on disk; Emby metadata is removed).
 - `get_options` / `update_options(options_patch)` — the full LibraryOptions
-  object round-tripped. High-value keys (all present on gh-media's build):
+  object round-tripped. High-value keys (all present on media-host's build):
   `EnableRealtimeMonitor`, `EnableChapterImageExtraction`,
   `ExtractChapterImagesDuringLibraryScan`, `EnableMarkerDetection` (intro
   markers), `DownloadImagesInAdvance`, `SaveLocalMetadata` (NFO),

@@ -8,7 +8,7 @@
 # ///
 """Smoke test the Tdarr MCP server.
 
-**Plugin was LIVE-VERIFIED on Tdarr 2.84.01 (2026-07-20).** This is the
+**Plugin was LIVE-VERIFIED on Tdarr 2.x (2026-07-20).** This is the
 re-verification harness. If Tdarr is not reachable from where you run it
 (e.g. an offline session, or config.local.json not filled in), every network
 tool fails with a connection error — that's environmental, not a plugin bug.
@@ -98,6 +98,6 @@ if not_deployed:
     print(f"\nOf the failures, {not_deployed} are connection errors — Tdarr is "
           f"not reachable from here right now (offline session or config not "
           f"filled in). Re-run where the server is reachable to re-confirm.")
-    print("The plugin was LIVE-VERIFIED on Tdarr 2.84.01; connection errors "
+    print("The plugin was LIVE-VERIFIED on Tdarr 2.x; connection errors "
           "here are environmental. See README's gap taxonomy.")
 sys.exit(0 if fail == 0 else 1)

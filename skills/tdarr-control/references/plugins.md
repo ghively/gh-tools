@@ -178,7 +178,7 @@ These are the building blocks of Tdarr 2.x flows but also usable as 1.x
 
 ## Recommended starter stacks
 
-For a homelab with NVIDIA GPU (gh-nvidia) targeting library-size reduction:
+For a homelab with NVIDIA GPU (unraid-host) targeting library-size reduction:
 
 **Stack 1: Aggressive HEVC (max savings)**
 1. `MC93_Migz1FFMPEG` (NVENC HEVC, CQ 21, 10-bit)

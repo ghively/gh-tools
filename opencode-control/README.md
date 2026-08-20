@@ -4,7 +4,7 @@ Deep control of the **OpenCode** AI coding agent (`anomalyco/opencode`, formerly
 `sst/opencode`) from Claude Code — a Claude Code plugin with an MCP server, a control
 skill, and workflow commands. Built with the
 [deep-integration-builder](../deep-integration-builder) methodology and **live-verified
-against opencode 1.18.3**.
+against opencode 1.x**.
 
 ## Two connectors
 

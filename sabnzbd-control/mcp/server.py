@@ -9,7 +9,7 @@
 """SABnzbd MCP server.
 
 Exposes a SABnzbd usenet downloader (v4+/5+ HTTP API) to Claude through the
-Model Context Protocol. Verified against SABnzbd 5.0.4. Two-layer design,
+Model Context Protocol. Verified against SABnzbd 5.x. Two-layer design,
 mirroring the other gh-tools plugins:
 
 * GENERIC passthrough (`sabnzbd_call` / `sabnzbd_list_modes`) reaching every
@@ -237,7 +237,7 @@ mcp = FastMCP("sabnzbd")
 # --------------------------------------------------------------------------- #
 # Generic layer                                                               #
 # --------------------------------------------------------------------------- #
-# SABnzbd API modes (from the official wiki + live probes on 5.0.4). Each is
+# SABnzbd API modes (from the official wiki + live probes on 5.x). Each is
 # tagged [R]ead / [W]rite so callers can tell at a glance.
 MODE_CATALOG: list[dict] = [
     # Status

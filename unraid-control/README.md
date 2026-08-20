@@ -1,8 +1,8 @@
 # unraid-control
 
 Full, authenticated control of an Unraid server over its official GraphQL
-API, from Claude Code. Built and tested against **GH-Nvidia**, running
-**Unraid OS 7.3.2** / **unraid-api 4.35.1**.
+API, from Claude Code. Built and tested against **Unraid-Host**, running
+**Unraid OS 7.x** / **unraid-api 4.x**.
 
 ## What's inside
 

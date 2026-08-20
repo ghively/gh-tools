@@ -1,4 +1,4 @@
-# Emby API map — all service domains, audited live (4.7.14.0, gh-media, 2026-07)
+# Emby API map — all service domains, audited live (4.7.x, media-host, 2026-07)
 
 484 operations across 392 paths, discovered from the server's own `/openapi.json`
 (search it live with `emby_list_endpoints`). Every domain below was probed with real

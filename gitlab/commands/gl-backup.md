@@ -25,7 +25,7 @@ are non-mutating to the source (exports don't modify the project).
    counts should match the pre-flight baseline.
 6. **Report**: project, tarball path, size, item counts (pre vs post), verification status,
    and what was NOT captured (runners, registry images, packages, webhooks secrets — re-push
-   or reconfigure separately). Recommend storage target (gh-storage via the synology agent).
+   or reconfigure separately). Recommend storage target (nas-host via the synology agent).
 
 Never claim "100% backed up" without the verify step. CI secrets travel in the tarball — treat
 the backup file as a credential.

@@ -1,4 +1,4 @@
-# Full enumerated API surface — ComfyUI 0.26.0
+# Full enumerated API surface — ComfyUI 0.x
 
 Source-enumerated from the deployed tree (`server.py`, `api_server/`), verified
 live 2026-07-15. 46 HTTP routes + websocket. Every route is reachable via

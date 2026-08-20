@@ -1,7 +1,7 @@
 # Common tasks — verified `synology_call` recipes
 
 Copy-paste recipes for jobs that have **no curated tool**. Every call below was run
-successfully against this box (DS1817+, DSM 7.3.1) unless explicitly marked. Use the
+successfully against this box (DS1817+, DSM 7.x) unless explicitly marked. Use the
 curated `synology_*` tools when one exists; drop to these for everything else.
 
 Call shape: `synology_call(api=..., method=..., version=<optional>, params={...})`.

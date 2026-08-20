@@ -1,6 +1,6 @@
 # opencode conventions, auth, quirks, and the gap taxonomy
 
-Verified live against **opencode 1.18.3**. The project moves fast (multiple releases/day)
+Verified live against **opencode 1.x**. The project moves fast (multiple releases/day)
 and `sst/opencode` now redirects to **`anomalyco/opencode`** — treat `GET /doc` (the live
 OpenAPI spec) as the source of truth, not any hardcoded snapshot.
 
@@ -61,7 +61,7 @@ only it exposes (e.g. `/api/fs/*`, `/api/integration/*`, `/api/pty` token flow).
 
 ## Gap taxonomy — Works / Fixable / Hard-limit
 
-Honest map from the live audit (opencode 1.18.3 on this host). "Works" = read verified
+Honest map from the live audit (opencode 1.x on this host). "Works" = read verified
 and/or write path proven; "Fixable" = reachable but state/param-dependent; "Hard-limit" =
 not practical through this integration.
 

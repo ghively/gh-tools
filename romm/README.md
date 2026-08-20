@@ -1,7 +1,7 @@
 # romm — RomM control plugin for Claude Code
 
 Full control of a [RomM](https://romm.app) ROM-library server from Claude
-Code. Verified against **RomM 5.0.0**.
+Code. Verified against **RomM 5.x**.
 
 ## What's inside
 
@@ -78,5 +78,5 @@ What's genuinely covered vs. what's a deliberate boundary, not a gap:
   `romm_scan`'s single blocking call (now `romm_scan`/`romm_scan_status`
   start-and-poll, so a long scan reports progress instead of going silent),
   and `romm_roms()`'s default sort (`order_by="name"` silently returns an
-  empty library when unfiltered on RomM 5.0.0 — the default is now
+  empty library when unfiltered on RomM 5.x — the default is now
   `created_at`, which doesn't trigger the bug).

@@ -1,6 +1,6 @@
 # GameBrowser — definitive setup & troubleshooting (Emby 4.7.14, plugin 3.2.9)
 
-> **Live status on gh-media (2026-07-15):** GameBrowser 3.2.9 INSTALLED and
+> **Live status on media-host (2026-07-15):** GameBrowser 3.2.9 INSTALLED and
 > active (GUID `4c2fda1c-fd5e-433a-ad2b-718e0b73e9a9`). Config write +
 > `/GameBrowser/GamePlatforms` registration proven reversibly via
 > `emby_plugin_config` (legacy config route — the only plugin here using it).

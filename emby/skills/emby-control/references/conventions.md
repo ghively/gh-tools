@@ -1,8 +1,8 @@
-# Emby API conventions (proven live against 4.7.14.0)
+# Emby API conventions (proven live against 4.7.x)
 
 ## Connection & auth
 
-- Base URL: `http://<host>:8096` (HTTPS on 8920 only if enabled — on gh-media
+- Base URL: `http://<host>:8096` (HTTPS on 8920 only if enabled — on media-host
   it is NOT; the server speaks plain HTTP on the LAN).
 - Every request needs the API key: header `X-Emby-Token: <key>` (query param
   `?api_key=` also works). Keys are minted in Dashboard → Advanced → API Keys
@@ -67,13 +67,13 @@ mechanism is **named configuration stores**:
 - Live OpenAPI catalog: `GET /openapi.json` (~484 ops — emby_list_endpoints
   serves a searchable index of it).
 
-## Verified facts about gh-media (2026-07)
+## Verified facts about media-host (2026-07)
 
-- Emby Server 4.7.14.0, Linux, `ProgramDataPath /var/lib/emby`,
+- Emby Server 4.7.x, Linux, `ProgramDataPath /var/lib/emby`,
   transcode temp `/var/emby-transcode-temp` (check `emby_get_config("encoding")`).
 - **Emby Premiere active** (`/Plugins/SecurityInfo` → IsMBSupporter true) —
   Sync/downloads, cinema intros etc. are license-eligible.
-- Users: `dadmonkey405` (admin), `Home`. Libraries: Movies (`/mnt/Media/Movies`),
+- Users: `homelab-admin` (admin), `Home`. Libraries: Movies (`/mnt/Media/Movies`),
   TV shows (`/mnt/Media/TV`), Collections. ~513 movies, 262 series,
   24k episodes, 61 collections.
 - Live TV: disabled (no tuner/guide configured; M3U Tuner + XmlTV + Emby
