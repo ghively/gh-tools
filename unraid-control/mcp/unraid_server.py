@@ -10,7 +10,7 @@
 # ///
 """Unraid MCP server.
 
-Exposes an Unraid server (tested on Unraid OS 7.3.2, unraid-api 4.35.1) to
+Exposes an Unraid server (tested on Unraid OS 7.x, unraid-api 4.x) to
 Claude through the Model Context Protocol. The design is two-layered:
 
 * A GENERIC passthrough (`unraid_graphql` / `unraid_schema_search` /

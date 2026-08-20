@@ -1,7 +1,7 @@
 # Unraid GraphQL API map & gap audit
 
 Full schema SDL: `references/schema.graphql` (3,713 lines, pulled from
-github.com/unraid/api tag `v4.35.1` — the exact tag matching this server's
+github.com/unraid/api tag `v4.x` — the exact tag matching this server's
 `unraid_api_version`). Search it with `unraid_schema_search` /
 `unraid_schema_type` rather than reading the raw file. This document is the
 categorized summary plus the honest "what actually works" audit.
@@ -31,7 +31,7 @@ field with `unraid_schema_search`.
 ## Gap audit — Works / Fixable / Hard-limit
 
 Following the standard three-bucket taxonomy. "Live-executed" = actually run
-against GH-Nvidia during the build; "shape-verified" = arguments/fields
+against Unraid-Host during the build; "shape-verified" = arguments/fields
 checked byte-for-byte against the authoritative schema SDL but not executed
 (true of every `confirm=True`-gated write, since writes are never
 self-tested — see Safety in SKILL.md).

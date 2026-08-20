@@ -1,6 +1,6 @@
 # comfyui-control
 
-Deep Claude Code integration for ComfyUI (built against 0.26.0 on gh-nvidia).
+Deep Claude Code integration for ComfyUI (built against 0.x on unraid-host).
 
 - **MCP server** (`mcp/server.py`, self-provisioning via `uv run --script`):
   generic passthrough to all 46 HTTP routes + curated tools — status, models,

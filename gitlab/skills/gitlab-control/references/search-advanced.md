@@ -28,10 +28,10 @@ a 400 error ("Elasticsearch is not enabled") on a CE instance without ES configu
 ## Using the search tool
 
 ```
-search_gitlab(term="TODO", scope="blobs", project="gregory/myproj", limit=20)
-search_gitlab(term="auth", scope="commits", project="gregory/myproj")
+search_gitlab(term="TODO", scope="blobs", project="homelab/myproj", limit=20)
+search_gitlab(term="auth", scope="commits", project="homelab/myproj")
 search_gitlab(term="deploy", scope="projects")                      # global, basic
-search_gitlab(term="incident", scope="issues", group="gregory")    # group-scoped
+search_gitlab(term="incident", scope="issues", group="homelab")    # group-scoped
 ```
 
 Params: `term` (required), `scope` (default `projects`), one of `project` / `group` (for

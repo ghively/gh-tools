@@ -1,8 +1,8 @@
 # Tdarr API map
 
 **SOURCE:** Built from the official Tdarr API docs at <https://tdarr.readme.io/reference>
-(v2.25.01+), then **LIVE-VERIFIED against Tdarr 2.84.01 on 2026-07-20** at
-`gh-nvidia:8265` (smoke-test reads + reversible backup write proof PASSED).
+(v2.25.01+), then **LIVE-VERIFIED against Tdarr 2.x on 2026-07-20** at
+`unraid-host:8265` (smoke-test reads + reversible backup write proof PASSED).
 The catalog itself is doc-sourced and complete for the v2 API; individual
 param shapes are tagged below as live-verified vs assumed. Several doc param
 shapes were WRONG and were corrected against the live API — see
@@ -13,7 +13,7 @@ live are still labelled (exact shape assumed).
 
 **Tdarr Server is currently unauthenticated.** If you later enable Tdarr
 auth (set `auth=true` env on the server), generate an API key via the
-web UI's Tools → API Keys page, store it in 1Password (vault: `Gregory`),
+web UI's Tools → API Keys page, store it in 1Password (vault: `Homelab`),
 and reference it in `config.local.json` as `api_key` with
 `api_key_header: "X-API-Key"`.
 
@@ -103,7 +103,7 @@ Reads (getById / getAll) are not confirm-gated. Every other mode IS.
 - `POST /api/v2/restart-node` (W) — `{nodeID}`
 - `POST /api/v2/disconnect-node` (W, doubly-gated) — `{nodeID}`
 - `POST /api/v2/alter-worker-limit` (W) — `{nodeID, workerType, limit}`
-  (workerType enum LIVE-CONFIRMED from NodeJSONDB.workerLimits on 2.84.01:
+  (workerType enum LIVE-CONFIRMED from NodeJSONDB.workerLimits on 2.x:
   `transcodecpu` / `transcodegpu` / `healthcheckcpu` / `healthcheckgpu`)
 - `POST /api/v2/poll-worker-limits` — `{nodeID}`
 - `POST /api/v2/cancel-worker-item` (W) — `{nodeID, workerType}`
@@ -160,7 +160,7 @@ Reads (getById / getAll) are not confirm-gated. Every other mode IS.
   file index. Always `getAll` first to confirm collection name; never `removeAll`
   as a test.
 - **GPU worker type**: Tdarr supports GPU transcoding via NVENC (and others).
-  The worker_type enum for `alter-worker-limit` is LIVE-CONFIRMED (2.84.01) as
+  The worker_type enum for `alter-worker-limit` is LIVE-CONFIRMED (2.x) as
   `transcodecpu` / `transcodegpu` / `healthcheckcpu` / `healthcheckgpu` — read
   from live NodeJSONDB.workerLimits.
 - **Plugin IDs**: typically a name like `Migz1Remux` rather than a UUID. The
@@ -175,7 +175,7 @@ Reads (getById / getAll) are not confirm-gated. Every other mode IS.
 - **No WebSocket surface in this MCP**: the Tdarr web UI uses Socket.IO for
   live progress updates — out of scope here.
 
-## Param-shape corrections caught live (2.84.01, 2026-07-20)
+## Param-shape corrections caught live (2.x, 2026-07-20)
 
 Live-verification found the readme.io docs slightly stale. Fixed in the
 curated tools + this catalog:

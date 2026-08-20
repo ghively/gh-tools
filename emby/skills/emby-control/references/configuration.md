@@ -1,6 +1,6 @@
-# CONFIGURATION.md — Emby Server Configuration via REST API (Emby 4.7.14.0, Linux)
+# CONFIGURATION.md — Emby Server Configuration via REST API (Emby 4.7.x, Linux)
 
-> **Live-verified deltas for gh-media (4.7.14.0):** `GET /Users` works (as does
+> **Live-verified deltas for media-host (4.7.x):** `GET /Users` works (as does
 > `/Users/Query`). `POST /System/Configuration/Partial` is a newer-server route —
 > do not assume it on 4.7.14; the round-trip pattern below always works and is
 > what the `emby_set_config` tool implements. Named stores verified live here:
@@ -9,7 +9,7 @@
 
 Reference for controlling Emby Server configuration through its REST API. Accurate to Emby
 (NOT Jellyfin — the projects diverged in 2018 and their config models are different).
-Written against Emby Server 4.7.14.0 on Linux; version-specific caveats are flagged.
+Written against Emby Server 4.7.x on Linux; version-specific caveats are flagged.
 
 ## 1. API fundamentals
 
@@ -109,7 +109,7 @@ Networking / remote access (Dashboard → Network):
 - `WanDdns` (string — "External domain"; hostname only, no port).
 - `IsBehindProxy` (bool) — with a reverse proxy, trust `X-Real-Ip`/`X-Forwarded-For`
   (newer builds expose `ProxyHeaderMode` instead/in addition).
-- `LocalNetworkSubnets` (string[] of CIDRs, e.g. `["192.168.0.0/24"]`) — what counts as LAN
+- `LocalNetworkSubnets` (string[] of CIDRs, e.g. `["192.0.2.0/24"]`) — what counts as LAN
   for bandwidth/access decisions; `LocalNetworkAddresses` — bind addresses.
 - `RemoteIPFilter` (string[]) + `IsRemoteIPFilterBlacklist` (bool) — allow/deny lists.
 - `RemoteClientBitrateLimit` (int, bits-per-second; 0 = unlimited) — global internet

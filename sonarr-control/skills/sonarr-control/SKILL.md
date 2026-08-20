@@ -23,7 +23,7 @@ metadata:
     category: media
     requires_tools: [sonarr_status]
     config:
-      - {key: sonarr.host, prompt: Sonarr host/IP, default: 192.168.0.133}
+      - {key: sonarr.host, prompt: Sonarr host/IP, default: 192.0.2.20}
       - {key: sonarr.port, prompt: Sonarr port, default: 8989}
 required_environment_variables:
   - name: SONARR_API_KEY
@@ -37,8 +37,8 @@ author: ghively
 
 This skill drives a real Sonarr TV-series manager through the **`sonarr`
 MCP server** (tools shown as `sonarr_*`). Verified against **Sonarr
-4.0.18.2978** on the homelab NAS (`192.168.0.133:8989`, "GH-Storage").
-Auth = `X-Api-Key` header (admin API key in 1Password "Gregory" vault).
+4.x** on the homelab NAS (`192.0.2.20:8989`, "NAS-Host").
+Auth = `X-Api-Key` header (admin API key in 1Password "Homelab" vault).
 
 ## Mental model
 

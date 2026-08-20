@@ -14,7 +14,7 @@ Layers:
   * Workflow power tools — extract the graph embedded in any ComfyUI PNG,
     re-run/remix it, install custom nodes (gated; restarts the service).
 
-Conventions (verified live against ComfyUI 0.26.0 @ gh-nvidia):
+Conventions (verified live against ComfyUI 0.x @ unraid-host):
   * No auth. Plain JSON. /object_info is ~1.4 MB — always filtered server-side.
   * Disruptive actions are confirm-gated. Logs to stderr; stdout is MCP.
 """

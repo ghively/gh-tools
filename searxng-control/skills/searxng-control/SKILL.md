@@ -1,13 +1,13 @@
 ---
 name: searxng-control
-description: Control, configure, tune, and diagnose a self-hosted SearXNG metasearch instance via the searxng MCP server. Use whenever the user wants to search through SearXNG, inspect or change its configuration (engines, limiter, outgoing/timeouts, UI, formats), add custom search engines, or troubleshoot it — especially "why are my SearXNG results empty", "tune SearXNG", "enable/disable an engine", "add a search engine", "SearXNG on gh-arm". Drive the live server through the tools; do not answer from memory.
+description: Control, configure, tune, and diagnose a self-hosted SearXNG metasearch instance via the searxng MCP server. Use whenever the user wants to search through SearXNG, inspect or change its configuration (engines, limiter, outgoing/timeouts, UI, formats), add custom search engines, or troubleshoot it — especially "why are my SearXNG results empty", "tune SearXNG", "enable/disable an engine", "add a search engine", "SearXNG on arm-host". Drive the live server through the tools; do not answer from memory.
 metadata:
   hermes:
     tags: [searxng, search, metasearch, self-hosted, privacy, mcp, homelab, web-search]
     category: infrastructure
     requires_tools: [searx_status]
     config:
-      - {key: searxng.base_url, prompt: SearXNG base URL, default: "http://gh-arm:8888"}
+      - {key: searxng.base_url, prompt: SearXNG base URL, default: "http://arm-host:8888"}
 version: 0.2.1
 author: ghively
 ---
@@ -15,7 +15,7 @@ author: ghively
 # SearXNG control
 
 Drive a self-hosted **SearXNG** metasearch instance through the `searxng` MCP
-server. Verified live against **SearXNG 2026.5.7** on gh-arm. The server has
+server. Verified live against a recent **SearXNG** release on arm-host. The server has
 three layers; know which one a task needs:
 
 1. **Runtime HTTP API** (read-only): search, autocomplete, `/config`, `/stats`,
@@ -46,7 +46,7 @@ three layers; know which one a task needs:
 ## The #1 issue: empty / degraded results
 
 SearXNG aggregates public engines. When it runs from a **datacenter IP**
-(gh-arm is an Oracle Cloud VM), Google/DuckDuckGo/Brave/Startpage **CAPTCHA or
+(arm-host is an Oracle Cloud VM), Google/DuckDuckGo/Brave/Startpage **CAPTCHA or
 rate-limit** it, and SearXNG then **suspends** the engine — `search.suspended_times`:
 CAPTCHA = **1 hour**, Cloudflare-CAPTCHA = **15 days**, TooManyRequests = 3 min.
 With several defaults suspended, `results` collapses toward 0.

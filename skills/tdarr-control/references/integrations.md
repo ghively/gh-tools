@@ -127,7 +127,7 @@ either:
 2. Drive Tdarr via this MCP server (gives you confirm-gating + ergonomic
    tool names + the codec/workflow knowledge base).
 3. Hit the `tdarr_call` MCP tool from any MCP-aware client (Claude,
-   Gregory, etc.).
+   Homelab, etc.).
 
 ## Auto-update controls
 
@@ -165,7 +165,7 @@ can be pointed at any zip URL matching the repo layout. Use cases:
     API calls. Both work; `:8266` is canonical for direct API access.
 - **UI path:** `/` on port 8265.
 
-For Tdarr in Docker on gh-nvidia:
+For Tdarr in Docker on unraid-host:
 - `ports: 8265:8265, 8266:8266` exposes both.
 - Nodes in separate containers connect via the docker network (`serverURL:
   http://tdarr:8266`) — confirmed live (your `kind-koi` node uses this).

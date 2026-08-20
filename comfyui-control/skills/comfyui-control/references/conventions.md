@@ -1,4 +1,4 @@
-# ComfyUI call conventions (verified live, v0.26.0)
+# ComfyUI call conventions (verified live, v0.x)
 
 - **No auth.** Plain HTTP JSON on the trusted LAN. Anyone on the LAN can do
   anything — treat writes with care; there is no undo service-side.

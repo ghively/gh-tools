@@ -13,7 +13,7 @@ description: >-
   soundtracks/music, client feeds (Tinfoil/webRcade/PKGi), gamelist.xml or
   Pegasus exports, uploading or downloading ROM files, or anything else the
   RomM REST API exposes. Trigger this skill even when the user just says "my
-  ROMs", "gh-nvidia roms", "check RomM", "scan my library", "add this to a
+  ROMs", "unraid-host roms", "check RomM", "scan my library", "add this to a
   collection", or "why isn't this game matched" — do not answer from memory;
   drive the live server through the tools.
 metadata:
@@ -40,12 +40,12 @@ author: ghively
 This skill drives a real RomM server through the **`romm` MCP server** (tools
 are named `mcp__romm__*`, shown to you as `romm_*`). The target server, auth,
 and behavior are already wired up — your job is to pick the right
-tool/endpoint and interpret results. Verified against **RomM 5.0.0** on
-gh-nvidia (`http://192.168.0.214:8095`).
+tool/endpoint and interpret results. Verified against **RomM 5.x** on
+unraid-host (`http://192.0.2.11:8095`).
 
 ## Mental model
 
-RomM is a FastAPI app: one REST surface (~189 operations, 27 tags on 5.0.0)
+RomM is a FastAPI app: one REST surface (~189 operations, 27 tags on 5.x)
 rooted at `/api`, plus a Socket.IO channel for scans/logs/netplay/sync. Auth
 is a RomM **API key** sent as `Authorization: Bearer rmm_...` — the MCP
 server attaches it for you. Conventions the tools encode:
@@ -239,7 +239,7 @@ server's environment — `romm_status` shows which are live.
   hand-replay the login via `romm_call` — it would resend the same plaintext
   password for no signal beyond what the error already gives you.
 
-## Known 5.0.0 server quirks (verified live; tools already work around them)
+## Known 5.x server quirks (verified live; tools already work around them)
 
 - `GET /api/roms/{id}/files` takes a **file** id, not a ROM id, and 500s
   regardless — `romm_rom_files` reads the file list from the ROM detail

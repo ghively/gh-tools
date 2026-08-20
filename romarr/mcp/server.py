@@ -10,7 +10,7 @@
 
 Exposes a ROMarr instance (the *arr for games — Cartridge ecosystem by Move
 Weight, https://github.com/BlizzHacker/romarr) to Claude through the Model
-Context Protocol. Verified live against ROMarr 0.7.0. Two-layer design,
+Context Protocol. Verified live against ROMarr 0.x. Two-layer design,
 mirroring the sonarr/radarr/romm plugins in this marketplace:
 
 * GENERIC passthrough (`romarr_call` / `romarr_endpoints`) reaching every
@@ -29,7 +29,7 @@ Auth model (proven live): every request except `/`, `/api/health` and
 (ROMarr also accepts `Authorization: Bearer` or `?apikey=`, but the header
 is what this client uses). 401 = missing or wrong key.
 
-ROMarr conventions and quirks discovered live (2026-08-07/08, v0.7.0):
+ROMarr conventions and quirks discovered live (2026-08-07/08, v0.x):
 * ROMarr's own `/api/v1/openapi.json` does NOT publish per-operation
   parameter or request-body schemas — only method/path/summary/response
   codes. There is therefore no useful separate "describe one operation"
@@ -38,7 +38,7 @@ ROMarr conventions and quirks discovered live (2026-08-07/08, v0.7.0):
   best available hint, verify actual param names live, and fall back to
   `romarr_call` with a hand-built body when guessing wrong.
 * Despite the README documenting "the API key is generated on first run
-  and shown under Settings > General", the actual shipped 0.7.0 UI's
+  and shown under Settings > General", the actual shipped 0.x UI's
   General settings page has NO api-key field at all — it only holds the
   Prowlarr/qBittorrent/RomM connection URLs ("Credentials live in the
   environment file, not here — this page never shows or stores a secret").
@@ -265,7 +265,7 @@ mcp = FastMCP("romarr")
 # Generic layer                                                               #
 # --------------------------------------------------------------------------- #
 # Static fallback — the full 59-operation surface captured live from
-# /api/v1/openapi.json on 2026-08-07 (ROMarr 0.7.0). Used only if the live
+# /api/v1/openapi.json on 2026-08-07 (ROMarr 0.x). Used only if the live
 # fetch fails; `romarr_endpoints` prefers the live spec.
 STATIC_ENDPOINT_CATALOG: list[dict] = [
     {"method": "GET",    "path": "/",                                 "summary": "The web UI."},

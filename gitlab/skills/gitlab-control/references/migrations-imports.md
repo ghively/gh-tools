@@ -13,7 +13,7 @@ and where it's going:
 File-upload import (multipart tarball via `/projects/:id/import`) is the only
 path that doesn't fit a JSON tool cleanly — drive it via `gitlab_rest` or the UI.
 
-Verified live on `git.hively.dev` 19.0.0: project export/import works;
+Verified live on `gitlab.example.com` 19.x: project export/import works;
 `bulk_import_enabled: true` since 2026-07-15.
 
 ## What's in a project export tarball
@@ -173,7 +173,7 @@ admin_settings(action="update", params={"import_sources": ["github","bitbucket"]
 4. **Verify**: re-import into a throwaway namespace on the same instance (or a
    staging instance) and diff: `repo_tree`, `list_issues`, `list_merge_requests`,
    `commits(action="refs")`. Confirm MR count, issue count, commit count match.
-5. **Store**: tarball to your backup target (gh-storage via the synology agent,
+5. **Store**: tarball to your backup target (nas-host via the synology agent,
    S3, etc.). Retain per policy.
 6. **Report**: project, size, item counts, verification status.
 

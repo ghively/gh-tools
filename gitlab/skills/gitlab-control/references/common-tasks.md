@@ -1,7 +1,7 @@
 # Verified call recipes for non-curated jobs
 
 All via `gitlab_rest` (writes need `confirm=true` + user approval). These paths
-were live-verified (reads) or 400-probed (writes) on 19.0.0 CE.
+were live-verified (reads) or 400-probed (writes) on 19.x CE.
 
 > **Many of these now have curated tools** (v0.4.0/v0.5.0) — prefer the curated tool when it
 > exists. Mapping: emoji reactions → `award_emoji`, draft notes → `draft_notes`, suggestions →
@@ -107,11 +107,11 @@ DELETE /groups/:id/dependency_proxy/cache
 
 ```graphql
 # Work items / alerts / CI catalog / achievements / ML models — GraphQL-first on CE
-{ project(fullPath: "gregory/hermes-vault") {
+{ project(fullPath: "homelab/hermes-vault") {
     workItems { count } alertManagementAlerts { nodes { iid title } }
     mlModels { count } } }
 { ciCatalogResources { count } }
-{ group(fullPath: "gregory") { achievements { count }
+{ group(fullPath: "homelab") { achievements { count }
     dependencyProxySetting { enabled } } }
 ```
 
@@ -119,14 +119,14 @@ DELETE /groups/:id/dependency_proxy/cache
 
 ```graphql
 # Nested fetch: project → open MRs → their pipelines, one round-trip
-{ project(fullPath: "gregory/hermes-vault") {
+{ project(fullPath: "homelab/hermes-vault") {
     mergeRequests(state: opened) { nodes { iid title
       headPipeline { status } } } } }
 
 # Work items (newer issue model; REST covers classic issues only)
-{ workItemsByReference(refs: ["gregory/hermes-vault#1"]) { nodes { id title } } }
+{ workItemsByReference(refs: ["homelab/hermes-vault#1"]) { nodes { id title } } }
 
 # CI config validation with includes resolved
-{ ciConfig(projectPath: "gregory/hermes-vault", content: "...") {
+{ ciConfig(projectPath: "homelab/hermes-vault", content: "...") {
     status errors mergedYaml } }
 ```

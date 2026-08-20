@@ -1,4 +1,4 @@
-# GitLab API conventions & quirks (verified on 19.0.0 CE)
+# GitLab API conventions & quirks (verified on 19.x CE)
 
 ## Auth
 
@@ -13,7 +13,7 @@
 ## Identifiers
 
 - Projects and groups accept a numeric id **or** URL-encoded full path
-  (`gregory%2Fhermes-vault`). Curated tools encode paths automatically.
+  (`homelab%2Fhermes-vault`). Curated tools encode paths automatically.
 - Issues/MRs use per-project `iid` (what the UI shows), not global `id`.
 - File paths inside `/repository/files/...` must be URL-encoded (handled by
   `read_file`/`write_files`).
@@ -65,7 +65,7 @@ EE-only lists in `api-map.md`.
 - `GET /bulk_imports` (direct transfer) 404s until the admin setting
   `bulk_import_enabled` is turned on — a settings gate, not a tier gate.
   (Enabled on this instance 2026-07-15; endpoint verified live.)
-- Container registry is live at `git.hively.dev:5050` (verified: the
+- Container registry is live at `gitlab.example.com:5050` (verified: the
   `homelab-ansible` project hosts an `ansible-ci` image). Pages is enabled
   (per-project access levels; no custom domains configured).
 - Rate limiting: no `RateLimit-*` headers observed on this instance (defaults

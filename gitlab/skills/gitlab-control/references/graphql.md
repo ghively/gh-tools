@@ -33,7 +33,7 @@ query/mutation examples you can copy and adapt.
 ### Worked example of the null gotcha (run live on this instance)
 
 ```
-query { project(fullPath: "gregory/gh-tools") { name webUrl } }
+query { project(fullPath: "homelab/gh-tools") { name webUrl } }
 ```
 returns
 ```json
@@ -60,7 +60,7 @@ query {
   }
 }
 ```
-(The api-map.md reference contains the full enumerated list for 19.0.0.)
+(The api-map.md reference contains the full enumerated list for 19.x.)
 
 ### Inspect a single type's fields + arguments
 ```graphql
@@ -219,7 +219,7 @@ query {
   }
 }
 ```
-Pair with the `include: - component: git.hively.dev/<webPath>@<version>` CI
+Pair with the `include: - component: gitlab.example.com/<webPath>@<version>` CI
 syntax. See `references/cicd.md` for the include syntax.
 
 ### 7. Runner fleet (admin — role-gated, not tier-gated)

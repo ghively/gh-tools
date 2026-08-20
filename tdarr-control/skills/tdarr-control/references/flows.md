@@ -190,7 +190,7 @@ The `Worker Type` flow node is what enables **flow-based worker routing**:
 set the node tag and only matching nodes pick up that step. Critical for
 mixed-node fleets (GPU node vs CPU node, mapped vs unmapped, etc.).
 
-## Live flow data on gh-nvidia
+## Live flow data on unraid-host
 
 Currently (2026-07-20, fresh Tdarr deploy) there are **zero flows** in
 `FlowsJSONDB` — you haven't built any yet. Once you create your first flow via

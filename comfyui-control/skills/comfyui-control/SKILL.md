@@ -1,13 +1,13 @@
 ---
 name: comfyui-control
-description: Drive the ComfyUI generation server (gh-nvidia :8188) via the comfyui MCP server — images (txt2img/img2img/inpaint/upscale/LoRA/batch/hires-fix), LTX-Video txt2video + img2video seamless loops (FLF), parametric still animation (zoom/rotate/drift/pulse/kaleido/tunnel), seamless mp4/GIF looping, 1080p mastering, vpt9 media-library delivery, model downloads from HuggingFace/Civitai, PNG workflow extraction & remixing, custom-node installs, websocket progress, plus raw API passthrough. Use whenever the user wants to generate or edit images/video, make projection-mapping/VJ content, manage models, or script ComfyUI.
+description: Drive the ComfyUI generation server (unraid-host :8188) via the comfyui MCP server — images (txt2img/img2img/inpaint/upscale/LoRA/batch/hires-fix), LTX-Video txt2video + img2video seamless loops (FLF), parametric still animation (zoom/rotate/drift/pulse/kaleido/tunnel), seamless mp4/GIF looping, 1080p mastering, vpt9 media-library delivery, model downloads from HuggingFace/Civitai, PNG workflow extraction & remixing, custom-node installs, websocket progress, plus raw API passthrough. Use whenever the user wants to generate or edit images/video, make projection-mapping/VJ content, manage models, or script ComfyUI.
 metadata:
   hermes:
     tags: [comfyui, stable-diffusion, image-generation, video-generation, mcp, homelab]
     category: infrastructure
     requires_tools: [comfy_status]
     config:
-      - {key: comfyui.base_url, prompt: ComfyUI base URL, default: "http://192.168.0.214:8188"}
+      - {key: comfyui.base_url, prompt: ComfyUI base URL, default: "http://192.0.2.11:8188"}
 version: 2.5.0
 author: Gene Hively
 ---
@@ -15,7 +15,7 @@ author: Gene Hively
 # Controlling ComfyUI
 
 The `comfyui` MCP server (this plugin) talks to ComfyUI at the host in
-`config.local.json` (currently `http://192.168.0.214:8188`, ComfyUI 0.26.0,
+`config.local.json` (currently `http://192.0.2.11:8188`, ComfyUI 0.x,
 RTX 3060 12GB, `--lowvram`, no auth on the trusted LAN).
 
 **Read the reference that matches the job before non-trivial work:**

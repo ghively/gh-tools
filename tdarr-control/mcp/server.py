@@ -11,10 +11,10 @@
 Exposes a Tdarr distributed transcoding server (v2 API) to Claude through the
 Model Context Protocol.
 
-**STATUS: LIVE-VERIFIED on Tdarr 2.84.01 (2026-07-20) — MIXED.** Not every
+**STATUS: LIVE-VERIFIED on Tdarr 2.x (2026-07-20) — MIXED.** Not every
 tool is equally verified. Read each tool's docstring tag:
 
-* **LIVE-VERIFIED** — actually exercised against the live 2.84.01 server
+* **LIVE-VERIFIED** — actually exercised against the live 2.x server
   during the audit (the smoke-test reads + the reversible backup write proof)
   or its exact param shape was corrected against the live API.
 * **DOC-VERIFIED** — call/param shape taken from the official docs
@@ -500,7 +500,7 @@ def tdarr_node_log(node_id: str) -> Any:
 def tdarr_search_db(string: str = "", less_than_gb: int = 100000,
                      greater_than_gb: int = 0, limit: int = 100) -> Any:
     """Search files in the library DB. READ-ONLY.
-    **LIVE-VERIFIED** — POST /api/v2/search-db (Tdarr 2.84.01).
+    **LIVE-VERIFIED** — POST /api/v2/search-db (Tdarr 2.x).
 
     Args:
         string: Substring to match against file paths (pass "" for all).
@@ -652,7 +652,7 @@ def tdarr_kill_file_scanner(db_name: str, confirm: bool = False,
 @mcp.tool()
 def tdarr_search_plugins(string: str = "", plugin_type: str = "standard") -> Any:
     """Search installed + community plugins. READ-ONLY.
-    **LIVE-VERIFIED** — POST /api/v2/search-plugins (Tdarr 2.84.01).
+    **LIVE-VERIFIED** — POST /api/v2/search-plugins (Tdarr 2.x).
 
     Args:
         string: Substring to match (pass "" for all). Tdarr requires this field.
@@ -668,7 +668,7 @@ def tdarr_search_plugins(string: str = "", plugin_type: str = "standard") -> Any
 @mcp.tool()
 def tdarr_search_flow_plugins(string: str = "", plugin_type: str = "flow") -> Any:
     """Search flow plugins (Tdarr 2.x flow system). READ-ONLY.
-    **LIVE-VERIFIED** — POST /api/v2/search-flow-plugins (Tdarr 2.84.01).
+    **LIVE-VERIFIED** — POST /api/v2/search-flow-plugins (Tdarr 2.x).
 
     Args:
         string: Substring to match (pass "" for all). Tdarr requires this field.
@@ -684,7 +684,7 @@ def tdarr_search_flow_plugins(string: str = "", plugin_type: str = "flow") -> An
 @mcp.tool()
 def tdarr_search_flow_templates(string: str = "") -> Any:
     """Search flow templates. READ-ONLY.
-    **LIVE-VERIFIED** — POST /api/v2/search-flow-templates (Tdarr 2.84.01).
+    **LIVE-VERIFIED** — POST /api/v2/search-flow-templates (Tdarr 2.x).
 
     Args:
         string: Substring to match (pass "" for all). Tdarr requires this field.
@@ -841,7 +841,7 @@ def tdarr_alter_worker_limit(node_id: str, worker_type: str, limit: int,
     Args:
         node_id: Node id.
         worker_type: One of the 4 worker types (live-confirmed from
-            NodeJSONDB.workerLimits on Tdarr 2.84.01):
+            NodeJSONDB.workerLimits on Tdarr 2.x):
             'transcodecpu', 'transcodegpu', 'healthcheckcpu', 'healthcheckgpu'.
         limit: New limit (integer).
         confirm: Must be true.
@@ -942,7 +942,7 @@ def tdarr_create_backup(confirm: bool = False) -> Any:
 @mcp.tool()
 def tdarr_delete_backup(name: str, confirm: bool = False) -> Any:
     """Delete a backup file. WRITES: confirm-gated.
-    **LIVE-VERIFIED** — POST /api/v2/delete-backup with {"name": <file>} (Tdarr 2.84.01)."""
+    **LIVE-VERIFIED** — POST /api/v2/delete-backup with {"name": <file>} (Tdarr 2.x)."""
     try:
         if not name:
             raise TdarrError("name is required (the backup file name from tdarr_backups)")
@@ -983,7 +983,7 @@ def tdarr_db(mode: str, collection: str, doc_id: str = "",
     e.g. acknowledge='removeAll'). POST /api/v2/cruddb.
 
     **Verification status is mixed:** the READ modes (getAll/getById) were
-    LIVE-VERIFIED on Tdarr 2.84.01 against StatisticsJSONDB, NodeJSONDB,
+    LIVE-VERIFIED on Tdarr 2.x against StatisticsJSONDB, NodeJSONDB,
     SettingsGlobalJSONDB, LibrarySettingsJSONDB, and FlowsJSONDB (their row
     shapes are known). The WRITE modes (insert/update) are DOC-VERIFIED only:
     the per-collection `obj` shape is NOT live-verified and varies by
@@ -1049,7 +1049,7 @@ def tdarr_libraries() -> Any:
     excludes, transcode cache, schedules, folder-watch, etc.). READ-ONLY.
     **added-post-verification** — thin wrapper over /cruddb getAll on
     LibrarySettingsJSONDB. The underlying getAll call pattern was live-observed
-    during the 2.84.01 audit, but this wrapper tool was added afterward and has
+    during the 2.x audit, but this wrapper tool was added afterward and has
     not itself been re-run against live Tdarr."""
     try:
         return _finish(CLIENT.request(
@@ -1197,7 +1197,7 @@ def tdarr_run_help_command(mode: str, text: str = "") -> Any:
     """Run an FFmpeg or HandBrake help command (returns the CLI output).
     READ-ONLY. Useful for "what codecs does this build support?"
     **LIVE-VERIFIED** — POST /api/v2/run-help-command with {"mode": ..., "text": ...}
-    (Tdarr 2.84.01). Tdarr 2.84 ships ffmpeg 7.1.4-Jellyfin + HandBrake.
+    (Tdarr 2.x). Tdarr 2.84 ships ffmpeg 7.1.4-Jellyfin + HandBrake.
 
     Args:
         mode: 'ffmpeg' or 'handbrake'.

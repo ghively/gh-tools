@@ -2,10 +2,10 @@
 
 The plugin ships ready-to-use templates under `templates/`. The CI templates are
 **live-verified**: every one was validated against this instance's CI Lint API
-(`POST /projects/:id/ci/lint` on GitLab 19.0.0) and returned `valid: true` — they are known-good
+(`POST /projects/:id/ci/lint` on GitLab 19.x) and returned `valid: true` — they are known-good
 on your GitLab, not just plausible. Re-lint (`ci_lint(project, content=...)`) after any edit.
 
-## CI/CD pipelines — `templates/ci/*.yml` (all `valid:true` on 19.0.0)
+## CI/CD pipelines — `templates/ci/*.yml` (all `valid:true` on 19.x)
 
 | File | What it does | Notes |
 |---|---|---|
@@ -76,7 +76,7 @@ also surfaces the repo's `.gitlab/` issue/MR templates. Use these for a quick `.
 
 ## The bulletproof guarantee
 
-CI templates: proven `valid:true` on GitLab 19.0.0 via the live CI Lint API. Config presets: param
+CI templates: proven `valid:true` on GitLab 19.x via the live CI Lint API. Config presets: param
 shapes matched to verified-working endpoints (protected_branches / project PATCH / webhooks /
 variables all returned 200 in the gap audit). Scaffolding: static, structure-verified. If you edit
 a CI template, **re-lint before committing** — that's the whole point.

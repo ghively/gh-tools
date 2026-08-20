@@ -1,6 +1,6 @@
 # DSM Web API conventions & quirks (this box)
 
-Verified against gh-storage / DS1817+, DSM 7.3.1-86003. The `synology` MCP server
+Verified against nas-host / DS1817+, DSM 7.x. The `synology` MCP server
 implements all of this for you; this is background for interpreting behavior and
 crafting `synology_call` requests.
 
@@ -86,6 +86,6 @@ crafting `synology_call` requests.
 - **Security Advisor report** (`SYNO.SecurityAdvisor.Report`) needs manager rights
   (117); its config (`SYNO.SecurityAdvisor.Conf get`) and the security scan status
   (`SYNO.Core.SecurityScan.Status system_get`) are readable.
-- **`admin` and `poomonkey405`** are both in the `administrators` group.
+- **`admin` and `homelab-admin`** are both in the `administrators` group.
 - One volume (`volume_2`, btrfs) currently reports status **`attention`** — worth
   surfacing in any health check.

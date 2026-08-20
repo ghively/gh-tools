@@ -16,7 +16,7 @@ string values). Read `references/cicd.md`.
    `gitlab_rest` cleanly. Two options:
    - **UI**: Project → Settings → CI/CD → Secure files → upload.
    - **Shell**: `curl --request POST --header "PRIVATE-TOKEN: <token>" --form "name=<alias>" \
-     --form "file=@/path/to/file" https://git.hively.dev/api/v4/projects/:id/secure_files`.
+     --form "file=@/path/to/file" https://gitlab.example.com/api/v4/projects/:id/secure_files`.
    For larger batches, drop into the shell. **Confirm the file's contents are appropriate to
    store in GitLab** (it becomes a project credential — treat like a secret).
 4. **Remove**: `gitlab_rest("DELETE", "/projects/:id/secure_files/:file_id", confirm=true)`.

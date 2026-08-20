@@ -6,7 +6,7 @@ session, sends a prompt, services the agent's callbacks (permission requests and
 fs read/write), collects the streamed `session/update` notifications, and returns
 a structured transcript.
 
-Verified against the ACP v1 schema and opencode 1.18.3's acp implementation:
+Verified against the ACP v1 schema and opencode 1.x's acp implementation:
   * framing: newline-delimited JSON, no embedded newlines, UTF-8
   * initialize -> session/new {cwd, mcpServers:[]} -> session/prompt {sessionId, prompt:[blocks]}
   * agent->client requests: session/request_permission, fs/read_text_file, fs/write_text_file

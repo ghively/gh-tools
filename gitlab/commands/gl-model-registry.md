@@ -14,7 +14,7 @@ Read `references/ai-and-model-registry.md`.
 3. **MLflow detail** (MLflow-compatible clients log here): `model_registry(project, action="mlflow",
    mlflow_path="registered-models/search")`, `.../model-versions/search`, `.../runs/search`,
    `.../experiments/search`. These mirror the MLflow REST API 2.0 — the tracking URI a client would
-   use is `https://git.hively.dev/api/v4/projects/<id>/ml/mlflow`.
+   use is `https://gitlab.example.com/api/v4/projects/<id>/ml/mlflow`.
 4. **Artifacts**: `model_registry(project, action="packages")` — the ml_model package files/versions
    backing each model.
 5. If the user asks about wiring CI to log a model: point them at the MLflow tracking URI above +

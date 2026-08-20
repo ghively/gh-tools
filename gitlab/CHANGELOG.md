@@ -144,7 +144,7 @@ Surfacing more verified-working CE features:
 - **`/gl-apply-suggestions`** — batch-apply MR review suggestions.
 - **`/gl-search`** — structured multi-scope instance search.
 
-### Added — CI templates (5, all `valid:true` on 19.0.0)
+### Added — CI templates (5, all `valid:true` on 19.x)
 
 - **`php.yml`** — composer install + phpcs (advisory) + phpunit (JUnit).
 - **`cpp.yml`** — cmake configure + build + ctest (JUnit), ccache; `needs:` DAG.
@@ -176,13 +176,13 @@ Surfacing more verified-working CE features:
 - **Selftest:** 113 checks, 9 failures (all expected EE-only 404s). All 20 v0.4.0+v0.5.0
   domain probes pass.
 - **CI templates:** all 22 `.gitlab-ci.yml` files return `valid:true` from the live CI Lint API
-  on 19.0.0 (5 new this release + 17 re-confirmed from v0.4.0).
+  on 19.x (5 new this release + 17 re-confirmed from v0.4.0).
 - **MCP server syntax:** clean on the final 2,766-line file.
 
 ## [0.4.0] — 2026-07-19
 
 The "broaden + deepen" release. Every dimension of the plugin grew, all verified
-live against the same GitLab 19.0.0 CE instance. Tool count 59 → 69, references
+live against the same GitLab 19.x CE instance. Tool count 59 → 69, references
 11 → 14, workflow commands 13 → 23, CI templates 10 → 17.
 
 ### Added — curated MCP tools (10)
@@ -249,7 +249,7 @@ Surfacing verified-working CE features that previously required raw `gitlab_rest
 - **`/gl-secure-files`** — manage CI/CD secure files (list / add via shell / remove).
 - **`/gl-boards-setup`** — issue boards with label / milestone / assignee lists.
 
-### Added — CI templates (7, all `valid:true` on 19.0.0)
+### Added — CI templates (7, all `valid:true` on 19.x)
 
 - **`java-maven.yml`** — Maven verify (JUnit) + package, repo cache per `pom.xml`.
 - **`rust.yml`** — fmt (advisory) + clippy (strict) + test + release build, cargo cache.
@@ -286,11 +286,11 @@ Surfacing verified-working CE features that previously required raw `gitlab_rest
   merge_trains, audit_events, license, group hooks, group wikis, protected
   environments, error-tracking). The 10 new v0.4.0 domain probes all pass.
 - **CI templates:** all 17 `.gitlab-ci.yml` files return `valid:true` from the live
-  CI Lint API on 19.0.0 (7 new this release + 10 re-confirmed).
+  CI Lint API on 19.x (7 new this release + 10 re-confirmed).
 - **MCP server syntax:** `python3 -c "import ast; ast.parse(...)"` clean on the
   final 2,490-line file.
 - **Live probes:** every new tool's read path exercised against a real project
-  (`gregory/archive/hermes-backup`) — endpoints confirmed alive.
+  (`homelab/archive/hermes-backup`) — endpoints confirmed alive.
 
 ## [0.3.0] — 2026-07-15
 
@@ -307,4 +307,4 @@ Surfacing verified-working CE features that previously required raw `gitlab_rest
 ## [0.1.0] — 2026-07-05
 
 - Initial release: 45 curated tools, 8 references, 10 CI templates, 9 workflow
-  commands. Live-verified against GitLab 19.0.0 CE with an admin token.
+  commands. Live-verified against GitLab 19.x CE with an admin token.

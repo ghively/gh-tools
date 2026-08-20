@@ -66,7 +66,7 @@ fallback, and should say so plainly rather than pretend:
 4. **Direct PostgreSQL / Redis administration** — infra-level (`gitlab.rb`, `psql`, `redis-cli`).
 5. **Background migrations status/control** — Admin UI + `gitlab-rake gitlab:background_migrations:*` / Rails console only; no REST/GraphQL.
 
-If the user wants these driven, it's an SSH job on `gh-git`/`git.hively.dev`, gated and confirmed —
+If the user wants these driven, it's an SSH job on `gitlab-host`/`gitlab.example.com`, gated and confirmed —
 not something the MCP REST layer can do. Name it as a hard limit.
 
 ## Admin mode (newer GitLab security feature)
@@ -157,7 +157,7 @@ broadcast message and watching the logs.
 For every "I need to: backup / restore / reconfigure / repair Rails / query the DB directly"
 request, the integration should:
 
-1. **Name the limit clearly**: *"This needs `gitlab-ctl reconfigure` on gh-git — no API exists."*
+1. **Name the limit clearly**: *"This needs `gitlab-ctl reconfigure` on gitlab-host — no API exists."*
 2. **Hand off to the `ansible` agent** for this host: it can run the SSH command in a
    zero-drift, gated way (edit Ansible source → converge).
 3. **Verify after**: many SSH actions have an API-visible effect — `gitlab_status()` for

@@ -20,7 +20,7 @@ metadata:
     category: media
     requires_tools: [radarr_status]
     config:
-      - {key: radarr.host, prompt: Radarr host/IP, default: 192.168.0.133}
+      - {key: radarr.host, prompt: Radarr host/IP, default: 192.0.2.20}
       - {key: radarr.port, prompt: Radarr port, default: 7878}
 required_environment_variables:
   - name: RADARR_API_KEY
@@ -36,9 +36,9 @@ This skill drives a real Radarr movie manager through the **`radarr` MCP
 server** (tools are named `mcp__radarr__*`, shown to you as `radarr_*`).
 The target server, auth, and behavior are already wired up — your job is to
 pick the right tool/endpoint and interpret results. Verified against
-**Radarr 6.3.0.10514** on the homelab NAS (`192.168.0.133:8310`,
-"GH-Storage"). Auth = `X-Api-Key` header (admin API key in 1Password
-"Gregory" vault).
+**Radarr 6.x** on the homelab NAS (`192.0.2.20:8310`,
+"NAS-Host"). Auth = `X-Api-Key` header (admin API key in 1Password
+"Homelab" vault).
 
 ## Mental model
 

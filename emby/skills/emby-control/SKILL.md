@@ -12,7 +12,7 @@ description: >-
   troubleshooting, scheduled tasks, plugins (install/configure/remove),
   collections, playlists, sync/downloads, or anything else the Emby REST API
   exposes. Trigger this skill even when the user just says "my media server",
-  "gh-media", "check Emby", "what's playing", "add this to a collection", or
+  "media-host", "check Emby", "what's playing", "add this to a collection", or
   "why is playback buffering" — do not answer from memory; drive the live
   server through the tools.
 metadata:
@@ -35,8 +35,8 @@ author: ghively
 This skill drives a real Emby media server through the **`emby` MCP server**
 (tools are named `mcp__emby__*`, shown to you as `emby_*`). The target server,
 auth, and behavior are already wired up — your job is to pick the right
-tool/endpoint and interpret results. Verified against **Emby Server 4.7.14.0**
-on Linux (server "gh-media", Emby Premiere active). The live server is now
+tool/endpoint and interpret results. Verified against **Emby Server 4.7.x**
+on Linux (server "media-host", Emby Premiere active). The live server is now
 **4.9.5.0** but was not re-verified (no API key available) — the tools use
 long-stable endpoints and self-discover the API from the live OpenAPI spec, so
 they remain accurate; see the version-delta note in README before relying on

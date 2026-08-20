@@ -3,8 +3,8 @@
 Full control of a ROMarr instance (the *arr for games — Cartridge ecosystem
 by Move Weight) from Claude Code.
 
-Verified against **ROMarr 0.7.0** running as a Docker container on the
-homelab Unraid box GH-Nvidia (`192.168.0.213:6868`).
+Verified against **ROMarr 0.x** running as a Docker container on the
+homelab Unraid box Unraid-Host (`192.0.2.10:6868`).
 
 ## What this plugin does
 

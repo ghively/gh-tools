@@ -1,6 +1,6 @@
 # Unraid GraphQL API conventions & quirks (this box)
 
-Verified against **GH-Nvidia**, Unraid OS **7.3.2**, unraid-api **4.35.1+a9625ae2**.
+Verified against **Unraid-Host**, Unraid OS **7.x**, unraid-api **4.x**.
 The `unraid` MCP server implements the auth/error handling for you; this is
 background for interpreting behavior and crafting `unraid_graphql` queries.
 
@@ -31,7 +31,7 @@ background for interpreting behavior and crafting `unraid_graphql` queries.
   fine over POST regardless). This plugin ships the schema offline instead
   (`references/schema.graphql`, pulled from the open-source
   github.com/unraid/api repo at the **exact tag matching this server's API
-  version**, `v4.35.1`) and exposes it via `unraid_schema_search` /
+  version**, `v4.x`) and exposes it via `unraid_schema_search` /
   `unraid_schema_type`. Re-verify the tag against `unraid_status`'s
   `unraid_api_version` if you ever bump this plugin for a newer server.
 
@@ -69,7 +69,7 @@ prefer this over several separate `unraid_graphql` calls:
 ## Confirmed server-side quirks / bugs (this API version)
 
 These aren't query mistakes — they're genuine behavior on **unraid-api
-4.35.1** worth knowing before you hit them:
+4.x** worth knowing before you hit them:
 
 - **`createNotification`'s returned `id` doesn't match the real file.** It
   returns a UUIDv7-suffixed id (`title_<uuid>.notify`) but the notification is
@@ -116,7 +116,7 @@ These aren't query mistakes — they're genuine behavior on **unraid-api
   register when Connect is active. `servers` (plural, the local-server-list
   view) still works without Connect. See the "Hard limits" section in
   `api-map.md`.
-- **This API version (4.35.1) has no `restart` mutation on `DockerMutations`**
+- **This API version (4.x) has no `restart` mutation on `DockerMutations`**
   — only `start`/`stop` (a native `restart` field was added in a later
   release per the upstream repo's main branch). `unraid_docker_restart`
   composes stop-then-start client-side.

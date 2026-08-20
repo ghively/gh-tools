@@ -53,7 +53,7 @@ decision tree with the test to run for each. Read alongside
   `/groups/:id/epics`, `/projects/:id/approval_rules`, `/vulnerabilities`,
   `/groups/:id/hooks`, `/projects/:id/protected_environments`.
 - **Wrong path encoding.** The project/group argument must be **URL-encoded
-  full path** when it contains slashes: `gregory/sub group/proj` → `gregory/
+  full path** when it contains slashes: `homelab/sub group/proj` → `homelab/
   sub%20group/proj`. The curated tools encode for you; `gitlab_rest` does not.
 - **ID vs IID confusion.** See section below.
 - **Resource genuinely gone.** Deleted project, pruned tag, merged-away branch.
@@ -222,7 +222,7 @@ Some jobs are **not possible via the API on any tier** — the SSH/CLI-only hard
 limits: backup/restore (`gitlab-backup`), `gitlab-ctl` service control, Rails
 console, direct DB/Redis access, background-migration management. Documented in
 `references/admin-and-self-hosting.md`. If a user asks for one of these, say so
-clearly and propose the SSH path (the gh-Nvidia `ansible` agent can drive that
+clearly and propose the SSH path (the unraid-host `ansible` agent can drive that
 for this host), don't burn calls probing the API.
 
 ## Honest-reporting checklist (for every workflow)

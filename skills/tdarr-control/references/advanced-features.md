@@ -2,7 +2,7 @@
 
 Surfaces every Tdarr capability beyond basic transcode. Built from the
 official docs + live inspection of `SettingsGlobalJSONDB` + `NodeJSONDB` on
-Tdarr 2.84.01. Each feature names where to find/configure it.
+Tdarr 2.x. Each feature names where to find/configure it.
 
 ## Staging / review queue (the "accept-before-replace" pattern)
 

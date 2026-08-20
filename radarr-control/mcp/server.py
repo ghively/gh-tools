@@ -9,7 +9,7 @@
 """Radarr MCP server.
 
 Exposes a Radarr movie manager (v3+ REST API) to Claude through the Model
-Context Protocol. Verified against Radarr 6.3.0.10514. Two-layer design,
+Context Protocol. Verified against Radarr 6.x. Two-layer design,
 mirroring the emby/romm/unifi plugins:
 
 * GENERIC passthrough (`radarr_call` / `radarr_list_endpoints`) reaching every

@@ -76,7 +76,7 @@ the confirm-gate protocol: preview → user approves → re-run with confirm=tru
    or `emby_collection("add", collection_id=..., item_ids=..., confirm=true)`.
 3. Verify: `emby_collection("items", collection_id=...)`.
 
-## "Enable Live TV" (currently dep-gated on gh-media)
+## "Enable Live TV" (currently dep-gated on media-host)
 
 M3U Tuner, XmlTV and Emby Guide Data plugins are already installed. Needs: a tuner
 source (M3U playlist URL or HDHomeRun) + a guide source. Add via

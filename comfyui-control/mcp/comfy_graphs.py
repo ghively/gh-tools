@@ -1,7 +1,7 @@
 """Graph builders + PNG workflow extraction for the comfyui MCP server.
 
 Pure stdlib. Every builder returns an API-format graph: {node_id: {class_type,
-inputs}}. Node input names were verified against the live 0.26.0 object_info.
+inputs}}. Node input names were verified against the live 0.x object_info.
 """
 
 import json
@@ -183,7 +183,7 @@ def ltxv_txt2video(checkpoint, t5_name, prompt, negative, width, height,
 def ltxv_img2video(checkpoint, t5_name, image_name, prompt, negative, width,
                    height, frames, fps, seed, steps, cfg, strength=0.9,
                    loop=True, img_compression=35) -> dict:
-    """LTX-Video image-to-video with keyframe guides (verified against 0.26.0
+    """LTX-Video image-to-video with keyframe guides (verified against 0.x
     nodes_lt.py). The input still is pinned at frame 0 via LTXVAddGuide; with
     loop=True a second guide pins the SAME image at frame_idx=-1 (negative
     indices count from the end) -> the clip is a true seamless cycle, no

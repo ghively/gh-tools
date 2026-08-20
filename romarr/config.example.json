@@ -1,6 +1,6 @@
 {
   "_comment": "Copy to config.local.json (git-ignored) and fill in. Every field can also come from env vars (ROMARR_HOST, ROMARR_PORT, ROMARR_HTTPS, ROMARR_API_KEY, ROMARR_VERIFY_SSL, ROMARR_TIMEOUT), which override the file. ROMarr's own UI does not display its API key anywhere (despite what its README says) -- pin one by setting ROMARR_API_KEY in the container's environment and restarting; that value then also works to sign into the web UI via 'Use an API key instead'.",
-  "host": "192.168.0.213",
+  "host": "192.0.2.10",
   "port": 6868,
   "https": false,
   "api_key": "your-romarr-api-key",

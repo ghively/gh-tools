@@ -8,8 +8,8 @@
 # ///
 """GitLab CE MCP server.
 
-Exposes a self-hosted GitLab instance (built and verified against GitLab 19.0.0
-CE at git.hively.dev) to Claude through the Model Context Protocol. The design
+Exposes a self-hosted GitLab instance (built and verified against GitLab 19.x
+CE at gitlab.example.com) to Claude through the Model Context Protocol. The design
 is two-layered:
 
 * A GENERIC passthrough (`gitlab_rest` / `gitlab_graphql` / `gitlab_api_search`)
@@ -2811,8 +2811,8 @@ def _selftest() -> int:  # pragma: no cover
         checks.append((domain, label, verdict))
         print(f"  [{verdict:>26}] {domain}: {label}", file=sys.stderr)
 
-    tp = os.environ.get("GITLAB_TEST_PROJECT", "gregory/hermes-vault")
-    tg = os.environ.get("GITLAB_TEST_GROUP", "gregory")
+    tp = os.environ.get("GITLAB_TEST_PROJECT", "homelab/hermes-vault")
+    tg = os.environ.get("GITLAB_TEST_GROUP", "homelab")
 
     print("== core ==", file=sys.stderr)
     chk("core", "metadata", rest("GET", "/metadata"))

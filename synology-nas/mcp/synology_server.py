@@ -399,7 +399,7 @@ class DSMClient:
         headers = {"X-SYNO-TOKEN": self.synotoken} if self.synotoken else {}
         # The upload CGI ignores identity fields placed inside the multipart body,
         # and format=sid logins set no cookie — api/version/method/_sid must ride
-        # the query string or DSM answers 119 (verified on DSM 7.3.1-86003).
+        # the query string or DSM answers 119 (verified on DSM 7.x).
         query = {
             "api": "SYNO.FileStation.Upload",
             "version": str(ver),
@@ -1228,7 +1228,7 @@ def synology_share_delete(name: str, confirm: bool = False) -> dict:
 def synology_share_set_permissions(share_name: str, permissions: list[dict],
                                    confirm: bool = False) -> dict:
     """Set per-user permissions on a shared folder. `permissions` is a list of
-    objects like {"name":"poomonkey405","is_writable":true} /
+    objects like {"name":"homelab-admin","is_writable":true} /
     {"name":"guest","is_readonly":true} / {"name":"someone","is_deny":true}.
     Requires confirm=True. Uses password-confirm elevation."""
     if not confirm:

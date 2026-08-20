@@ -3,7 +3,7 @@ name: synology-control
 description: >-
   Control and administer a Synology DiskStation NAS (DSM 7.x) end-to-end via the
   synology MCP server. Use this whenever the user wants to inspect, configure, or
-  operate their Synology / DSM / DiskStation / NAS — including "gh-storage" and the
+  operate their Synology / DSM / DiskStation / NAS — including "nas-host" and the
   DS1817+ — for ANY of: system health/CPU/RAM/temperature, storage & volumes &
   disks & SMART, shared folders & permissions, File Station browsing/upload/
   download/search, Download Station tasks, installed packages & services, users &
@@ -19,7 +19,7 @@ metadata:
     category: infrastructure
     requires_tools: [synology_status]
     config:
-      - {key: synology.host, prompt: Synology DSM host/IP, default: 192.168.0.133}
+      - {key: synology.host, prompt: Synology DSM host/IP, default: 192.0.2.20}
       - {key: synology.username, prompt: Synology DSM admin username}
 required_environment_variables:
   - name: SYNOLOGY_PASSWORD
@@ -30,7 +30,7 @@ required_environment_variables:
     required_for: completing 2FA login
     optional: true
 version: 0.2.1
-author: poomonkey405
+author: ghively
 ---
 
 # Synology DSM control

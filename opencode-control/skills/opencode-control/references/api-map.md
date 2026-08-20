@@ -1,6 +1,6 @@
 # opencode HTTP API — full surface map
 
-Enumerated live from `GET /doc` (OpenAPI 3.1) on opencode **1.18.3**. **188 operations** across 49 domains.
+Enumerated live from `GET /doc` (OpenAPI 3.1) on opencode **1.x**. **188 operations** across 49 domains.
 There are two parallel surfaces: the **legacy** unprefixed API (what the stable SDK uses) and a newer **`/api/*` v2** API. Both work; curated tools use legacy, passthrough (`oc_call`) reaches either.
 
 Reach anything here with `oc_call(method, path, params, body)`; find operations with `oc_discover(query)`; inspect shapes with `oc_schema(operationId)`.

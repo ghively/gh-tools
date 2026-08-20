@@ -180,7 +180,7 @@ too binary for a masked variable.
   org-wide job templates.
 - **`include: remote:`** — a URL. Avoid for security (the remote can change).
 - **`include: template:`** — GitLab's built-in templates (`Security/SAST.gitlab-ci.yml` etc.).
-- **`include: component:`** — CI Catalog components: `git.hively.dev/<path>@<version>`. Publish
+- **`include: component:`** — CI Catalog components: `gitlab.example.com/<path>@<version>`. Publish
   your own via `git push` to a project with the catalog feature on; version by tag.
 
 ## CE vs EE (CI/CD)

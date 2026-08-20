@@ -1,6 +1,6 @@
-# TROUBLESHOOTING.md — Emby Server Troubleshooting (Emby 4.7.14.0, Linux)
+# TROUBLESHOOTING.md — Emby Server Troubleshooting (Emby 4.7.x, Linux)
 
-> **Live-verified deltas for gh-media (4.7.14.0):** `GET /System/Logs` and
+> **Live-verified deltas for media-host (4.7.x):** `GET /System/Logs` and
 > `GET /System/Logs/Log?Name=...` both work (34 log files present).
 > `GET /System/Logs/{Name}` and `/System/Logs/{Name}/Lines` 500 on this build —
 > use the classic `?Name=` route (the `emby_logs` tool does). A 500 with
@@ -172,7 +172,7 @@ Sources:
 - Encoders: on Linux via VAAPI/QSV/NVENC, Emby 4.7-era hardware ENCODING is H.264-focused;
   decode covers H.264/HEVC/MPEG2/VC1/VP8/VP9 (per official Linux hw-accel article).
 - Hardware transcoding requires an active **Emby Premiere** license — without it Emby
-  silently uses software encoding. (gh-media: Premiere is ACTIVE.)
+  silently uses software encoding. (media-host: Premiere is ACTIVE.)
 - Windows-only but documented: hw-accel fails under active RDP sessions (Hwa-Fails-with-RDP).
 - Verification via API: on current 4.8/4.9 servers `TranscodingInfo` includes
   `VideoDecoderIsHardware`, `VideoEncoderIsHardware`, `VideoDecoderHwAccel`,

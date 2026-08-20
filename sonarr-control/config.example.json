@@ -1,6 +1,6 @@
 {
-  "_comment": "Copy to config.local.json (git-ignored) and fill in. Every field can also come from env vars (SONARR_HOST, SONARR_PORT, SONARR_HTTPS, SONARR_API_KEY, SONARR_URL_BASE, SONARR_VERIFY_SSL, SONARR_TIMEOUT), which override the file. Create the API key in Sonarr under Settings > General > Security > API Key (grants full admin). host/port/url_base together form the base URL; if Sonarr is at http://nas:8989/sonarr use url_base=\"/sonarr\". Secrets normally come from 1Password (Gregory vault item 'Sonarr API Key (GH-Storage)').",
-  "host": "192.168.0.213",
+  "_comment": "Copy to config.local.json (git-ignored) and fill in. Every field can also come from env vars (SONARR_HOST, SONARR_PORT, SONARR_HTTPS, SONARR_API_KEY, SONARR_URL_BASE, SONARR_VERIFY_SSL, SONARR_TIMEOUT), which override the file. Create the API key in Sonarr under Settings > General > Security > API Key (grants full admin). host/port/url_base together form the base URL; if Sonarr is at http://nas:8989/sonarr use url_base=\"/sonarr\". Secrets normally come from 1Password (Homelab vault item 'Sonarr API Key (NAS-Host)').",
+  "host": "192.0.2.10",
   "port": 8989,
   "https": false,
   "url_base": "",

@@ -1,6 +1,6 @@
 {
-  "_comment": "Copy to config.local.json (git-ignored) and fill in. Every field can also come from env vars (SABNZBD_HOST, SABNZBD_PORT, SABNZBD_HTTPS, SABNZBD_API_KEY, SABNZBD_URL_BASE, SABNZBD_VERIFY_SSL, SABNZBD_TIMEOUT), which override the file. Create the API key in SABnzbd under Config > General > API Key (grants full control). host/port/url_base together form the base URL; if SABnzbd is at http://nas:8080/sabnzbd use url_base=\"/sabnzbd\". API key normally comes from 1Password (Gregory vault item 'SABnzbd API Key').",
-  "host": "192.168.0.213",
+  "_comment": "Copy to config.local.json (git-ignored) and fill in. Every field can also come from env vars (SABNZBD_HOST, SABNZBD_PORT, SABNZBD_HTTPS, SABNZBD_API_KEY, SABNZBD_URL_BASE, SABNZBD_VERIFY_SSL, SABNZBD_TIMEOUT), which override the file. Create the API key in SABnzbd under Config > General > API Key (grants full control). host/port/url_base together form the base URL; if SABnzbd is at http://nas:8080/sabnzbd use url_base=\"/sabnzbd\". API key normally comes from 1Password (Homelab vault item 'SABnzbd API Key').",
+  "host": "192.0.2.10",
   "port": 8080,
   "https": false,
   "url_base": "",

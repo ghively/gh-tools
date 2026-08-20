@@ -1,7 +1,7 @@
 # Projection-mapping content (research-backed, 2026-07)
 
 Guidance for batch-generating stills and GIF/video loops to feed a projection
-rig (Gene's: vpt9 control-panel, 1080p projector, gh-nvidia renders).
+rig (Gene's: vpt9 control-panel, 1080p projector, unraid-host renders).
 Read together with `projection-styles.md` (style arsenal + motion map) and
 `texture-research.md` (the owner's methodology doc: sampler matrix, anti-trope
 prompting, loop taxonomy, Electric Sheep lore).
@@ -122,7 +122,7 @@ the peaks (see the energy-ladder doctrine in projection-styles.md).
 
 ## Tagging + the vpt9 media library (rules v2, verified live 2026-07-16)
 The vpt9 control-plane library (`library_url` in config, currently
-`http://192.168.0.214:8080`) stores ALL metadata **inside the files** as XMP
+`http://192.0.2.11:8080`) stores ALL metadata **inside the files** as XMP
 `dc:Subject` keywords. **Use the curated tools:**
 - `comfy_library_collections()` — existing collections + counts + top loose
   tags. Always check first; REUSE collections.

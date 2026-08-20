@@ -1,6 +1,6 @@
 {
   "name": "sonarr-control",
-  "description": "Full control of a Sonarr TV-series manager instance (v3+ REST API) from Claude Code. Bundles an MCP server authenticated with a Sonarr API key (X-Api-Key header), exposing both a generic passthrough reaching every /api/v3 endpoint and curated tools for status, library (list/get/lookup/add/update/delete series, with seasons and episodes), wanted missing/cutoff (per-episode), calendar, queue, history, blocklist, commands (search/refresh/rescan), quality profiles, root folders, languages, tags, notifications, download clients, indexers, import lists, manual import, logs, system tasks & backups. Writes are confirm-gated. Tested against Sonarr 4.0.18.2978.",
+  "description": "Full control of a Sonarr TV-series manager instance (v3+ REST API) from Claude Code. Bundles an MCP server authenticated with a Sonarr API key (X-Api-Key header), exposing both a generic passthrough reaching every /api/v3 endpoint and curated tools for status, library (list/get/lookup/add/update/delete series, with seasons and episodes), wanted missing/cutoff (per-episode), calendar, queue, history, blocklist, commands (search/refresh/rescan), quality profiles, root folders, languages, tags, notifications, download clients, indexers, import lists, manual import, logs, system tasks & backups. Writes are confirm-gated. Tested against Sonarr 4.x.",
   "version": "0.3.0",
   "author": {
     "name": "Gene Hively"

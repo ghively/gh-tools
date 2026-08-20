@@ -1,6 +1,6 @@
 # Tool-scoping, agent modes, the persistent web server & web-UI routing
 
-Operationally verified on opencode **1.18.3** (2026-07-17) while building a
+Operationally verified on opencode **1.x** (2026-07-17) while building a
 multi-agent fleet with per-plugin MCP servers. These are the sharp edges.
 
 ## Restrict an agent's tools (scope it to one MCP server)

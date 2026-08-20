@@ -1,6 +1,6 @@
 # Writing SearXNG engines — the complete knowledgebase
 
-How to add **any search resource** to SearXNG. Grounded in the SearXNG 2026.5.7
+How to add **any search resource** to SearXNG. Grounded in a recent SearXNG release
 source (`/usr/local/searxng/searx/engines/`), which ships every engine as a
 worked example. Official reference: https://docs.searxng.org/dev/engines/index.html
 

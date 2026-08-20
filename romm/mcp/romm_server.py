@@ -10,20 +10,20 @@
 """RomM (rommapp) MCP server.
 
 Exposes a RomM ROM-library server to Claude through the Model Context
-Protocol. Tested against RomM 5.0.0. The design is two-layered, mirroring
+Protocol. Tested against RomM 5.x. The design is two-layered, mirroring
 the Synology/UniFi/GitLab/Emby plugins in this repo:
 
 * A GENERIC passthrough (`romm_call` / `romm_endpoints` / `romm_schema`)
   that can reach *any* of the server's REST operations. The endpoint
   catalog is discovered live from the server's own OpenAPI document
-  (`/openapi.json`, 189 operations across 27 tags on 5.0.0), so it is
+  (`/openapi.json`, 189 operations across 27 tags on 5.x), so it is
   always accurate for the connected version.
 * CURATED tools for the common jobs (status, platforms, ROM search &
   metadata editing, collections, users & permissions, saves/states,
   firmware, tasks, config, activity, music, feeds, exports, uploads and
   downloads) so day-to-day tasks are one call with correct params.
 
-Auth model (proven live against 5.0.0):
+Auth model (proven live against 5.x):
 * Every REST request carries `Authorization: Bearer rmm_...` (a RomM API
   key created in the web UI under Settings). 403 = missing/invalid key.
 * Library SCANS are NOT reachable over REST: `POST /api/tasks/run/
@@ -531,7 +531,7 @@ def romm_tasks() -> str:
 @mcp.tool()
 @_tool_error
 def romm_task_run(task_name: str, kwargs_json: str = "", confirm: bool = False) -> str:
-    """Run a manual task. Available (5.0.0): cleanup_orphaned_resources,
+    """Run a manual task. Available (5.x): cleanup_orphaned_resources,
     cleanup_missing_roms, sync_folder_scan, recompute_save_content_hashes,
     update_launchbox_metadata, update_switch_titledb, convert_images_to_webp.
     NOTE: scan_library is NOT runnable here — use romm_scan (Socket.IO).
@@ -752,7 +752,7 @@ def romm_roms(
         genres/franchises/companies/regions/languages/statuses/tags:
             comma-separated value filters.
         order_by: fs_size_bytes | created_at | first_release_date | name ...
-            — default created_at. WARNING (verified live on 5.0.0):
+            — default created_at. WARNING (verified live on 5.x):
             order_by="name" with no platform_id returns an EMPTY result
             (total:0) — a server-side bug in the global name-sort query.
             It works fine once platform_id is set, or with any other
@@ -809,7 +809,7 @@ def romm_rom_files(rom_id: int) -> str:
     """List all files of a ROM (multi-file/folder ROMs, hashes, sizes).
 
     Note: NOT /api/roms/{id}/files — that endpoint takes a *file* id (and
-    500s on 5.0.0); the reliable file list is embedded in the ROM detail.
+    500s on 5.x); the reliable file list is embedded in the ROM detail.
 
     Args:
         rom_id: RomM rom id.
@@ -959,7 +959,7 @@ def romm_rom_notes(
         confirm: required True for delete.
     """
     if action == "list":
-        # GET /api/roms/{id}/notes 500s on 5.0.0; the ROM detail reliably
+        # GET /api/roms/{id}/notes 500s on 5.x; the ROM detail reliably
         # embeds the same data as all_user_notes — fall back to it.
         try:
             return _dump(_req("GET", f"/api/roms/{rom_id}/notes"))
@@ -1225,7 +1225,7 @@ def romm_export(fmt: str, platform_ids: list[int], local_export: bool = False,
                 confirm: bool = False) -> str:
     """Export library metadata as gamelist.xml (EmulationStation) or Pegasus.
 
-    IMPORTANT (verified live on 5.0.0): this ALWAYS writes the export files
+    IMPORTANT (verified live on 5.x): this ALWAYS writes the export files
     into the platform directories on the server's disk — nothing is
     returned for download. `local_export` only controls whether the XML
     references local file paths (True) or RomM URLs (False).

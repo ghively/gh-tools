@@ -22,7 +22,7 @@ metadata:
     category: infrastructure
     requires_tools: [unifi_status]
     config:
-      - {key: unifi.host, prompt: UniFi console host/IP, default: 192.168.0.1}
+      - {key: unifi.host, prompt: UniFi console host/IP, default: 192.0.2.1}
 required_environment_variables:
   - name: UNIFI_PASSWORD
     prompt: UniFi LOCAL admin password (cloud/SSO accounts with MFA cannot log in via the API)

@@ -1,15 +1,15 @@
 # SABnzbd API map
 
-Verified live on SABnzbd 5.0.4 (2026-07-19). Hand-enumerated from the
+Verified live on SABnzbd 5.x (2026-07-19). Hand-enumerated from the
 official SABnzbd API wiki + live probes — SABnzbd has no OpenAPI.
 
 ## 1Password
 
-- Vault: `Gregory`
-- Item: `SABnzbd API Key` (id `vgghtwb3lj7etzjpoqdarnhtay`)
+- Vault: `Homelab`
+- Item: `SABnzbd API Key` (id `<item-id>`)
 - Field: `credential` (API key)
-- Read with: `op item get vgghtwb3lj7etzjpoqdarnhtay --vault Gregory --field credential --reveal`
-- (No URL on the item — the URL is non-secret config: `http://192.168.0.133:8080`)
+- Read with: `op item get <item-id> --vault Homelab --field credential --reveal`
+- (No URL on the item — the URL is non-secret config: `http://192.0.2.20:8080`)
 
 ## Auth
 

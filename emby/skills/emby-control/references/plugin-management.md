@@ -1,6 +1,6 @@
-# PLUGIN-MANAGEMENT.md — Emby Plugins: API Management & Development Primer (Emby 4.7.14.0, Linux)
+# PLUGIN-MANAGEMENT.md — Emby Plugins: API Management & Development Primer (Emby 4.7.x, Linux)
 
-> **Live-verified delta for gh-media (IMPORTANT):** the official docs describe
+> **Live-verified delta for media-host (IMPORTANT):** the official docs describe
 > `GET/POST /Plugins/{Id}/Configuration`, but on this server it returns
 > **HTTP 500 for ALL 18 installed plugins** — modern Emby-authored plugins do
 > not implement the legacy configuration class. The WORKING mechanism is named
@@ -35,7 +35,7 @@ Auth: admin API key (`X-Emby-Token`). Two services are involved: **PackageServic
 `PackageInfo` fields: `name`, `guid`, `overview`, `shortDescription`, `category`,
 `targetFilename` (the DLL name), `owner`, `versions[]` (each with version string and
 `classification` Release/Beta/Dev), `isPremium` (Premiere-gated), `adult`.
-(gh-media's catalog exposes 133 packages.)
+(media-host's catalog exposes 133 packages.)
 
 Install flow:
 1. `GET /Packages` → find package, note `name` + `guid`.
@@ -86,7 +86,7 @@ For betas or catalog-absent plugins (official Plugins article):
 - Catalog categories per the official article: Channels, Content Providers, Live TV,
   Metadata, Notifications, Social Integration.
 
-Installed on gh-media (2026-07): Bluray Folder Support, Cinema Intros, DLNA, Dvd Folder
+Installed on media-host (2026-07): Bluray Folder Support, Cinema Intros, DLNA, Dvd Folder
 Support, Emby Guide Data, Fanart.tv, M3U TV Tuner, MovieDb, MusicBrainz, Nfo Metadata,
 OMDb, Open Subtitles, Port Mapper, Studio Images, TheAudioDb, TheTVDB, Webhooks, XmlTV.
 
@@ -106,7 +106,7 @@ Sources:
   .NET Core/Mono hosts). IDE: Visual Studio 2017+ (or `dotnet` CLI) with the .NET Core SDK.
 - NuGet: reference **`MediaBrowser.Server.Core`** ("core components required to build
   plugins for Emby Server"; depends on `MediaBrowser.Common`). Match the package version to
-  your target server — for a 4.7.14.0 server use a 4.7.x package version (packages exist per
+  your target server — for a 4.7.x server use a 4.7.x package version (packages exist per
   server release; latest is 4.9.x): https://www.nuget.org/packages/MediaBrowser.Server.Core
 - A plugin **is just the compiled DLL** dropped into the server's plugins folder —
   on Linux **`/var/lib/emby/plugins/`** — followed by a server restart. No manifest files,
@@ -212,7 +212,7 @@ Two generations:
    community "Developer API" forum, https://emby.media/community/forum/47-developer-api/,
    is the primary support channel — Emby staff, e.g. Luke, respond there).
 
-### Version compatibility notes (4.7.14.0)
+### Version compatibility notes (4.7.x)
 
 - Compile against the 4.7.x `MediaBrowser.Server.Core` package; plugins built against
   newer SDKs may reference APIs that don't exist on 4.7 and will fail to load (check

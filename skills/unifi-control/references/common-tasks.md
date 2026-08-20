@@ -59,7 +59,7 @@ unifi_clients(active_only=False)     # note the client's _id
 obj = unifi_call("rest/user/<_id>")["data"][0]
 obj["name"] = "Living Room TV"
 obj["use_fixedip"] = True
-obj["fixed_ip"] = "192.168.0.50"
+obj["fixed_ip"] = "192.0.2.50"
 obj["network_id"] = "<lan network _id>"     # required with fixed IP
 unifi_call("rest/user/<_id>", method="PUT", json=obj)   # confirm first
 ```
@@ -97,7 +97,7 @@ unifi_port_forward_set_enabled("<_id>", enabled=True, confirm=True)
 # create one (confirm first):
 unifi_call("rest/portforward", method="POST", json={
   "name":"Web","enabled":True,"proto":"tcp","src":"any",
-  "dst_port":"443","fwd":"192.168.0.20","fwd_port":"443"})
+  "dst_port":"443","fwd":"192.0.2.40","fwd_port":"443"})
 ```
 
 ## Traffic rules (block apps/domains, e.g. parental controls)
@@ -114,8 +114,8 @@ unifi_networks()                      # list LAN/VLAN/WAN + _id, subnet, DHCP
 # create a VLAN (confirm first):
 unifi_call("rest/networkconf", method="POST", json={
   "name":"IoT","purpose":"corporate","vlan_enabled":True,"vlan":30,
-  "ip_subnet":"192.168.30.1/24","dhcpd_enabled":True,
-  "dhcpd_start":"192.168.30.6","dhcpd_stop":"192.168.30.254"})
+  "ip_subnet":"198.51.100.1/24","dhcpd_enabled":True,
+  "dhcpd_start":"198.51.100.6","dhcpd_stop":"198.51.100.254"})
 ```
 
 ## Restart / locate a device

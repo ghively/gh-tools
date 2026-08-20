@@ -3,7 +3,7 @@ name: unraid-control
 description: >-
   Control and administer an Unraid server (Unraid OS 7.x) end-to-end via the
   unraid MCP server. Use this whenever the user wants to inspect, configure,
-  or operate their Unraid server — including "GH-Nvidia" — for ANY of: system
+  or operate their Unraid server — including "Unraid-Host" — for ANY of: system
   health/CPU/RAM/temperature, the array & disks & parity checks, Docker
   containers (list/logs/stats/start/stop/update), virtual machines, shares,
   notifications, UPS monitoring, network interfaces, users & API keys,
@@ -19,13 +19,13 @@ metadata:
     category: infrastructure
     requires_tools: [unraid_status]
     config:
-      - {key: unraid.host, prompt: Unraid server host/IP, default: 192.168.0.213}
+      - {key: unraid.host, prompt: Unraid server host/IP, default: 192.0.2.10}
 required_environment_variables:
   - name: UNRAID_API_KEY
     prompt: Unraid API key (Settings -> Management Access -> API Keys, role ADMIN)
     required_for: authenticating every unraid_* call (x-api-key header)
 version: 0.1.0
-author: poomonkey405
+author: ghively
 ---
 
 # Unraid control

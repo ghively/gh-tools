@@ -1,6 +1,6 @@
 {
   "_comment": "Copy this file to config.local.json and fill in your Emby server details. config.local.json is git-ignored so your API key never gets committed. Every field can also be supplied via environment variables (EMBY_HOST, EMBY_PORT, EMBY_HTTPS, EMBY_API_KEY, EMBY_VERIFY_SSL, EMBY_TIMEOUT, EMBY_DEFAULT_USER), which override the file. Create an API key in the Emby dashboard under Advanced > API Keys — it grants server-admin access. default_user is optional: the username whose view is used for user-scoped queries (watched status, resume points); if empty the first admin user is used.",
-  "host": "192.168.0.144",
+  "host": "192.0.2.30",
   "port": 8096,
   "https": false,
   "api_key": "your-emby-api-key",

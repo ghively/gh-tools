@@ -1,7 +1,7 @@
 # Library + node configuration deep dive
 
 Everything you can configure per-library and per-node on Tdarr 2.x. Built
-from the docs + live inspection of Tdarr 2.84.01 config collections.
+from the docs + live inspection of Tdarr 2.x config collections.
 
 ## Library anatomy
 
@@ -96,7 +96,7 @@ Health-check ffmpeg args (per node hardware type) — see
 
 ## Node anatomy
 
-A node is one row in `NodeJSONDB`. Key fields (live values from gh-nvidia's
+A node is one row in `NodeJSONDB`. Key fields (live values from unraid-host's
 `kind-koi` node in parens):
 
 | Field | Purpose | Current value |
@@ -120,7 +120,7 @@ A node is one row in `NodeJSONDB`. Key fields (live values from gh-nvidia's
 
 ## Node types
 
-### Mapped (default; what gh-nvidia has)
+### Mapped (default; what unraid-host has)
 
 Same filesystem view as the server (or via `pathTranslators` mapping).
 Required for any plugin that touches files via the server's filesystem
@@ -200,7 +200,7 @@ Common pattern: GPU-heavy at night, none during work hours.
 `scheduleEnabled=false` makes Tdarr use `workerLimits` (a static dict)
 instead. `ignoreSchedules=true` (global) overrides ALL schedules.
 
-## gh-nvidia node setup checklist (action items from the live audit)
+## unraid-host node setup checklist (action items from the live audit)
 
 Your live node `kind-koi` currently has:
 - `gpuSelect: '-'` — **no GPU selected**. Set to `nvenc` to use the RTX 3060.
@@ -221,7 +221,7 @@ To get Tdarr actually transcoding with your GPU:
    docker exec -it tdarr_node ffmpeg -hide_banner -encoders | grep nvenc
    ```
 4. **Pick a library + plugin stack** (see `workflows.md` for recommendations
-   and `plugins.md` for the catalog). For gh-nvidia homelab: `MC93_Migz1FFMPEG`
+   and `plugins.md` for the catalog). For unraid-host homelab: `MC93_Migz1FFMPEG`
    (NVENC HEVC) + the Migz cleanup suite.
 5. **Run `Scan (Find new)`** on the library. Files appear in the transcode queue.
 6. **Watch the queue drain** via `tdarr_nodes()` + `tdarr_performance_stats()`.

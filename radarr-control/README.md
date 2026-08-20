@@ -2,7 +2,7 @@
 
 Full control of a Radarr movie manager (v3+ REST API) from Claude Code / opencode.
 
-Verified against **Radarr 6.3.0.10514** on the homelab NAS (`192.168.0.133:8310`).
+Verified against **Radarr 6.x** on the homelab NAS (`192.0.2.20:8310`).
 
 ## What this plugin does
 
@@ -29,13 +29,13 @@ or POST /command only runs after explicit user approval.
 ## Configuration
 
 1. Create an API key in Radarr under **Settings > General > Security > API Key**.
-2. Store it in 1Password (vault: `Gregory`, item: `Radarr API Key (GH-Storage)`),
+2. Store it in 1Password (vault: `Homelab`, item: `Radarr API Key (NAS-Host)`),
    with the URL in the `serverurl` field.
 3. Copy `config.example.json` → `config.local.json` (git-ignored) and fill in.
    The `api_key` should normally be retrieved from 1Password, not hardcoded.
 
 ```bash
-op item get '<item-id>' --vault Gregory --field credential --reveal
+op item get '<item-id>' --vault Homelab --field credential --reveal
 ```
 
 Env vars (`RADARR_HOST`, `RADARR_PORT`, `RADARR_HTTPS`, `RADARR_URL_BASE`,

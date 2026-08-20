@@ -41,7 +41,7 @@ metadata:
     category: media
     requires_tools: [tdarr_status]
     config:
-      - {key: tdarr.host, prompt: Tdarr host/IP, default: gh-nvidia}
+      - {key: tdarr.host, prompt: Tdarr host/IP, default: unraid-host}
       - {key: tdarr.port, prompt: Tdarr port, default: 8265}
 required_environment_variables:
   - name: TDARR_API_KEY
@@ -55,8 +55,8 @@ author: ghively
 # Tdarr control
 
 This skill drives a real Tdarr transcoding server through the **`tdarr` MCP
-server** (tools shown as `tdarr_*`). **LIVE-VERIFIED on Tdarr 2.84.01** at
-`gh-nvidia:8265`.
+server** (tools shown as `tdarr_*`). **LIVE-VERIFIED on Tdarr 2.x** at
+`unraid-host:8265`.
 
 This skill is ALSO a deep Tdarr / transcoding knowledge base. **Read the
 relevant reference before answering** codec/workflow/plugin/feature
@@ -277,7 +277,7 @@ node config (workerLimits, schedule, gpuSelect, etc.).
 User wants...
 │
 ├── "Make my library smaller" / "compress everything"
-│   → Workflow 1 (Standardize-on-HEVC). For gh-nvidia (RTX 3060), use
+│   → Workflow 1 (Standardize-on-HEVC). For unraid-host (RTX 3060), use
 │     MC93_Migz1FFMPEG (NVENC) at CQ 21, 10-bit. Skip files already HEVC/AV1.
 │     See references/workflows.md.
 │
@@ -315,7 +315,7 @@ User wants...
 │
 ├── "Which plugin should I install?"
 │   → Use references/plugins.md (classic) or references/flow-plugin-catalog.md
-│     (flows). Default recommendation for gh-nvidia:
+│     (flows). Default recommendation for unraid-host:
 │     MC93_Migz1FFMPEG (NVENC HEVC) + the Migz2-6 cleanup suite.
 │
 ├── "Build me a custom transcode plugin"
@@ -339,7 +339,7 @@ User wants...
 │     (00-08 night=3, 08-23 day=0, 23-24=3). See library-and-nodes.md.
 │
 ├── "Convert to AV1"
-│   → CAUTION: gh-nvidia's RTX 3060 (Ampere) has NO AV1 encode (NVENC AV1 is
+│   → CAUTION: unraid-host's RTX 3060 (Ampere) has NO AV1 encode (NVENC AV1 is
 │     RTX 40+ Ada only). AV1 would require libsvtav1 (CPU, slow: single-digit
 │     fps at 1080p). Recommend HEVC instead — similar compression, much faster
 │     on this hardware.
@@ -409,7 +409,7 @@ User wants...
     → customFunction flow node (arbitrary JS) OR runCli (any shell command).
 ```
 
-## gh-nvidia specifics (action items!)
+## unraid-host specifics (action items!)
 
 The live audit found your `kind-koi` node has **`gpuSelect: '-'`** (no GPU
 selected) and **all workerLimits = 0**. So nothing would actually transcode
@@ -449,7 +449,7 @@ See `library-and-nodes.md` for the full checklist.
 
 Three verification buckets. Trust a tool only as far as its bucket allows.
 
-**LIVE-VERIFIED on Tdarr 2.84.01** (exercised against the live server on
+**LIVE-VERIFIED on Tdarr 2.x** (exercised against the live server on
 2026-07-20; smoke-test reads + reversible backup write proof PASSED):
 - Reads: `tdarr_status`, `tdarr_full_status`, `tdarr_nodes`,
   `tdarr_db_statuses`, `tdarr_performance_stats`, `tdarr_res_stats`,

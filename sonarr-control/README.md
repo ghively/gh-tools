@@ -2,7 +2,7 @@
 
 Full control of a Sonarr TV-series manager (v3+ REST API) from Claude Code / opencode.
 
-Verified against **Sonarr 4.0.18.2978** on the homelab NAS (`192.168.0.133:8989`).
+Verified against **Sonarr 4.x** on the homelab NAS (`192.0.2.20:8989`).
 
 ## What this plugin does
 
@@ -27,12 +27,12 @@ A two-layer MCP server for Sonarr:
 ## Configuration
 
 1. Create an API key in Sonarr under **Settings > General > Security > API Key**.
-2. Store it in 1Password (vault: `Gregory`, item: `Sonarr API Key (GH-Storage)`),
+2. Store it in 1Password (vault: `Homelab`, item: `Sonarr API Key (NAS-Host)`),
    with the URL in the `serverurl` field.
 3. Copy `config.example.json` → `config.local.json` (git-ignored).
 
 ```bash
-op item get '<item-id>' --vault Gregory --field credential --reveal
+op item get '<item-id>' --vault Homelab --field credential --reveal
 ```
 
 Env vars (`SONARR_HOST`, `SONARR_PORT`, `SONARR_HTTPS`, `SONARR_URL_BASE`,

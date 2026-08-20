@@ -4,7 +4,7 @@ A Claude Code plugin that gives Claude deep, honest control of an **Emby media
 server**: an MCP server with a generic passthrough reaching the server's entire
 REST surface (~484 operations, discovered live from its own OpenAPI spec) plus
 57 curated tools, a control skill with official-docs references, and
-slash-command workflows. Built and live-verified against **Emby Server 4.7.14.0**
+slash-command workflows. Built and live-verified against **Emby Server 4.7.x**
 on Linux following the deep-integration-builder methodology in this repo. (The
 current live server is now **4.9.5.0** — see the version-delta note below.)
 
@@ -94,8 +94,8 @@ proves all 44 gate checks hold.
 
 ## Version delta: verified on 4.7.14, live box now 4.9.5.0
 
-Everything above was **live-verified against Emby Server 4.7.14.0**. The live
-server (`gh-media`) has since been upgraded to **4.9.5.0**, and there is **no
+Everything above was **live-verified against Emby Server 4.7.x**. The live
+server (`media-host`) has since been upgraded to **4.9.5.0**, and there is **no
 API key available**, so the 4.9 box was **not** re-tested — this release is
 code + docs only, validated **offline** (`py_compile`, `json.tool`, and an MCP
 handshake booted with `config.example.json` that lists all tools with valid

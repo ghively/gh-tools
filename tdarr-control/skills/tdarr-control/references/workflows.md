@@ -34,7 +34,7 @@ to HEVC, keeping audio + subtitles untouched.
    re-transcode).
 2. `00td_filter_by_resolution` — optional cap (e.g. skip 4K, only process
    1080p).
-3. `MC93_Migz1FFMPEG` — NVIDIA HEVC NVENC transcode (recommended for gh-nvidia).
+3. `MC93_Migz1FFMPEG` — NVIDIA HEVC NVENC transcode (recommended for unraid-host).
    OR `MC93_Migz1FFMPEG_CPU` if no GPU.
    OR `s7x9_winsome_h265_nvenc` (alternative).
    OR `vdka_Tiered_NVENC_CQV_BASED_CONFIGURABLE` (per-resolution CQ values).

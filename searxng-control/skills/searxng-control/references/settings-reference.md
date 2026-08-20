@@ -1,6 +1,6 @@
-# SearXNG `settings.yml` reference (grounded in the live 2026.5.7 config)
+# SearXNG `settings.yml` reference (grounded in a recent live config)
 
-The complete control surface. On gh-arm it lives at `/etc/searxng/settings.yml`
+The complete control surface. On arm-host it lives at `/etc/searxng/settings.yml`
 (1981 lines) inside the `searxng` container (Docker volume `searxng-data`). Edit
 with the `searx_setting_set` / `searx_engine_*` tools (they preserve comments and
 auto-backup); **a container restart applies changes.** Top-level sections below,

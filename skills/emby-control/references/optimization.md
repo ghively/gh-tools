@@ -1,6 +1,6 @@
-# OPTIMIZATION.md — Emby Server Performance & Optimization (Emby 4.7.14.0, Linux)
+# OPTIMIZATION.md — Emby Server Performance & Optimization (Emby 4.7.x, Linux)
 
-> **Live facts for gh-media:** Premiere is ACTIVE (hardware transcoding is
+> **Live facts for media-host:** Premiere is ACTIVE (hardware transcoding is
 > licensed). Transcode temp is `/var/emby-transcode-temp`. Check current
 > encoding settings with `emby_get_config("encoding")`; live transcode load
 > with `emby_sessions(active_only=true)` (Transcoding block includes

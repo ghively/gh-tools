@@ -2,7 +2,7 @@
 
 Full control of a SABnzbd usenet downloader (v4+/5+ HTTP API) from Claude Code / opencode.
 
-Verified against **SABnzbd 5.0.4** on the homelab NAS (`192.168.0.133:8080`).
+Verified against **SABnzbd 5.x** on the homelab NAS (`192.0.2.20:8080`).
 
 ## What this plugin does
 
@@ -33,11 +33,11 @@ A two-layer MCP server for SABnzbd:
 ## Configuration
 
 1. Get the API key from SABnzbd **Config > General > API Key**.
-2. Store it in 1Password (vault: `Gregory`, item: `SABnzbd API Key`).
+2. Store it in 1Password (vault: `Homelab`, item: `SABnzbd API Key`).
 3. Copy `config.example.json` → `config.local.json` (git-ignored).
 
 ```bash
-op item get '<item-id>' --vault Gregory --field credential --reveal
+op item get '<item-id>' --vault Homelab --field credential --reveal
 ```
 
 Env vars (`SABNZBD_HOST`, `SABNZBD_PORT`, `SABNZBD_HTTPS`, `SABNZBD_URL_BASE`,

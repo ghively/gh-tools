@@ -8,7 +8,7 @@ authoritative map of what actually works on this instance and the honest triage
 flow when a call doesn't.
 
 Verified against docs.gitlab.com tier badges for GitLab ~19.x and live-probed
-against `git.hively.dev` (19.0.0, `enterprise: false`).
+against `gitlab.example.com` (19.x, `enterprise: false`).
 
 ## How to tell which tier you're on (diagnostic flow)
 
@@ -184,7 +184,7 @@ ceiling rather than claim full coverage:
 | Service Desk | works if incoming email configured | custom address per project |
 | Security scanning jobs (SAST/Secret-Detection) | **run and produce artifacts** | findings hit MR widget + vulnerability DB |
 | Container Scanning | runs (Free) | findings persisted to DB (Ultimate) |
-| Dependency proxy | images + packages (works on `gregory` group) | — |
+| Dependency proxy | images + packages (works on `homelab` group) | — |
 | Work items | work item types & basic CRUD | custom work item types, rollup widgets |
 
 ## The security-scanning reality on CE (the key recipe)

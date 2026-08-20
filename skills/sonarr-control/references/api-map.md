@@ -1,15 +1,15 @@
 # Sonarr API map
 
-Verified live on Sonarr 4.0.18.2978 (2026-07-19). Hand-enumerated — Sonarr
+Verified live on Sonarr 4.x (2026-07-19). Hand-enumerated — Sonarr
 publishes no OpenAPI document. Sonarr's surface is parallel to Radarr's
 with TV-specific resources (series/seasons/episodes) and language profiles.
 
 ## 1Password
 
-- Vault: `Gregory`
-- Item: `Sonarr API Key (GH-Storage)` (id `ravq52fc24jbotc2zgaeu4ynce`)
-- Fields: `credential` (API key), `serverurl` (e.g. `http://192.168.0.133:8989`)
-- Read with: `op item get ravq52fc24jbotc2zgaeu4ynce --vault Gregory --field credential --reveal`
+- Vault: `Homelab`
+- Item: `Sonarr API Key (NAS-Host)` (id `<item-id>`)
+- Fields: `credential` (API key), `serverurl` (e.g. `http://192.0.2.20:8989`)
+- Read with: `op item get <item-id> --vault Homelab --field credential --reveal`
 
 ## Auth
 

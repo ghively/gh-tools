@@ -23,7 +23,7 @@ in the repo under `.gitlab/agents/<name>/config.yaml`.
       --namespace gitlab-agent \
       --create-namespace \
       --set config.token=<relay-the-token-here> \
-      --set config.kasAddress=wss://git.hively.dev/-/kubernetes-agent/
+      --set config.kasAddress=wss://gitlab.example.com/-/kubernetes-agent/
     ```
     (KAS address from `gitlab_status().metadata.kas.externalUrl`.)
 5. **Seed the agent config**: `write_files(project, [{action:"create",

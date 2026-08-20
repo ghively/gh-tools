@@ -22,10 +22,10 @@ delete side; pushes use format-specific protocols documented here.
 | Format | Push | Pull | Notes |
 |---|---|---|---|
 | **generic** | `PUT /projects/:id/packages/generic/:name/:ver/:file` | `GET /projects/:id/packages/generic/:name/:ver/:file` | the universal fallback — any file, any version |
-| **npm** | npm CLI configured against `https://git.hively.dev/api/v4/projects/:id/packages/npm/` | same | scope with `@scope:registry=...` |
-| **pypi** | twine upload | pip install `--index-url https://git.hively.dev/api/v4/projects/:id/packages/pypi/simple` | needs `~/.pypirc` |
+| **npm** | npm CLI configured against `https://gitlab.example.com/api/v4/projects/:id/packages/npm/` | same | scope with `@scope:registry=...` |
+| **pypi** | twine upload | pip install `--index-url https://gitlab.example.com/api/v4/projects/:id/packages/pypi/simple` | needs `~/.pypirc` |
 | **maven** | mvn deploy | mvn dependency get | `<repository>` URL with basic auth |
-| **nuget** | dotnet nuget push | dotnet add package | source URL `https://git.hively.dev/api/v4/projects/:id/packages/nuget/index.json` |
+| **nuget** | dotnet nuget push | dotnet add package | source URL `https://gitlab.example.com/api/v4/projects/:id/packages/nuget/index.json` |
 | **conda** | anaconda upload | conda install | less common |
 | **composer** (PHP) | not user-pushable; tagged releases create packages | composer require | from git tags |
 | **conan** (C++) | conan upload | conan install | recipe + binary packages |
@@ -40,7 +40,7 @@ delete side; pushes use format-specific protocols documented here.
 curl --request PUT \
   --header "PRIVATE-TOKEN: <token>" \
   --upload-file path/to/file.tgz \
-  "https://git.hively.dev/api/v4/projects/<id>/packages/generic/<name>/<version>/<filename>"
+  "https://gitlab.example.com/api/v4/projects/<id>/packages/generic/<name>/<version>/<filename>"
 ```
 Then `packages(project, action="get", package_id=N)` lists it, and anyone with read access
 can pull via the matching GET URL. Use generic packages for: build artifacts you want to
@@ -87,9 +87,9 @@ The container registry runs on a separate endpoint (port `5050` here). Push via 
 docker:
 
 ```
-docker login git.hively.dev:5050 -u <username> -p <token>
-docker tag myimage:latest git.hively.dev:5050/gregory/myproj/myimage:latest
-docker push git.hively.dev:5050/gregory/myproj/myimage:latest
+docker login gitlab.example.com:5050 -u <username> -p <token>
+docker tag myimage:latest gitlab.example.com:5050/myteam/myproj/myimage:latest
+docker push gitlab.example.com:5050/myteam/myproj/myimage:latest
 ```
 Read/manage via the `container_registry` MCP tool:
 - `container_registry(action="repositories", scope_id=<pid>)` — list image repos.
@@ -116,10 +116,10 @@ The dependency proxy lets a group pull Docker images through GitLab, caching ups
 images so you don't re-pull from Docker Hub on every job. Read its state via GraphQL:
 
 ```
-dependency_proxy(group="gregory", action="settings")
+dependency_proxy(group="myteam", action="settings")
 # → {enabled: true, identity: null} on this instance
 ```
-Pull through it: `docker pull git.hively.dev:5050/gregory/<upstream-image>:tag` (GitLab
+Pull through it: `docker pull gitlab.example.com:5050/myteam/<upstream-image>:tag` (GitLab
 fetches and caches on first pull). Purge the cache:
 `dependency_proxy(group, action="purge_cache", confirm=true)`.
 

@@ -1,6 +1,6 @@
 {
   "_comment": "Copy this file to config.local.json and fill in your UniFi console details. config.local.json is git-ignored so your password never gets committed. Every field can also be supplied via environment variables (UNIFI_HOST, UNIFI_PORT, UNIFI_HTTPS, UNIFI_USERNAME, UNIFI_PASSWORD, UNIFI_API_KEY, UNIFI_SITE, UNIFI_VERIFY_SSL, UNIFI_TIMEOUT), which override the file. Use a LOCAL admin account (Ubiquiti cloud/SSO accounts with MFA cannot log in via the API). api_key is optional and only needed for the official Integration API.",
-  "host": "192.168.0.1",
+  "host": "192.0.2.1",
   "port": 443,
   "https": true,
   "verify_ssl": false,

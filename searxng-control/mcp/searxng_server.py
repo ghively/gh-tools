@@ -10,7 +10,7 @@
 """SearXNG MCP server.
 
 Drives a self-hosted SearXNG metasearch instance through the Model Context
-Protocol. Verified live against SearXNG 2026.5.7 (Granian) running in Docker
+Protocol. Verified live against a recent SearXNG release (Granian) running in Docker
 on an aarch64 host. Three-layered, mirroring the other gh-tools plugins:
 
 * GENERIC HTTP passthrough (`searx_http` / `searx_endpoints`) — reaches any
@@ -34,7 +34,7 @@ trusted tailnet). The config layer authenticates via SSH key to the host and
 writable). No secrets are stored in this file.
 
 Config (env overrides the git-ignored config.local.json):
-  base_url        HTTP endpoint, e.g. http://gh-arm:8888   (required)
+  base_url        HTTP endpoint, e.g. http://arm-host:8888   (required)
   ssh_host        host running the container                (config layer only)
   ssh_user        optional ssh user
   container       docker container name (default: searxng)

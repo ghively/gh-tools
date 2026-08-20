@@ -5,7 +5,7 @@ description: >
   repository files, branches, merge requests, issues, CI/CD pipelines, runners,
   users/admin, groups, search, releases, webhooks, packages, and the full REST +
   GraphQL surface via generic passthrough. Use whenever the user asks to inspect or
-  manage anything on their GitLab server (git.hively.dev).
+  manage anything on their GitLab server (gitlab.example.com).
 metadata:
   hermes:
     tags: [gitlab, ci-cd, devops, git, mcp, self-hosted]
@@ -18,12 +18,12 @@ required_environment_variables:
     prompt: GitLab Personal Access Token (api scope; admin recommended for full instance control)
     required_for: authenticating gitlab_* REST + GraphQL calls
 version: 0.5.1
-author: poomonkey405
+author: ghively
 ---
 
 # Controlling GitLab CE
 
-Built and live-verified against GitLab **19.0.0 CE** at `https://git.hively.dev`
+Built and live-verified against GitLab **19.x CE** at `https://gitlab.example.com`
 with an **admin** token — instance administration works, not just project access.
 
 ## Layered approach — pick the right tool
@@ -94,7 +94,7 @@ Start sessions (or debug auth issues) with `gitlab_status()`.
   discovery path, when GraphQL beats REST (and vice versa), the null-means-unauthorized gotcha,
   and 8 verified query examples + 4 mutation examples.
 - `references/templates.md` — the **bulletproof templates** catalog: `templates/ci/*.yml`
-  (all live-linted `valid:true` on 19.0.0), project scaffolding, and config presets, with how
+  (all live-linted `valid:true` on 19.x), project scaffolding, and config presets, with how
   to apply each. **Read before scaffolding or adding CI.**
 - `references/workflows.md` — the `/gl-*` **workflow** playbooks and orchestration patterns
   (onboard, ci-bootstrap, audit, cleanup, user-offboard, triage, release, model-registry,
@@ -159,13 +159,13 @@ lists them). On CE a 404 can mean "EE-only" as well as "not found" — check
 
 CE features that DO work here beyond the obvious (verified): secure files,
 ML model registry, CI/CD catalog, work items, alert management, achievements,
-group dependency proxy (enabled on `gregory`), terraform state/module registry,
+group dependency proxy (enabled on `homelab`), terraform state/module registry,
 service desk (needs incoming-email config), direct-transfer imports
 (`bulk_import_enabled` turned on 2026-07-15 — `/bulk_imports` live).
 
 ## Instance facts (as of 2026-07-19)
 
-134 projects, 40 groups (root: `gregory`, user ns `dadmonkey405`), 8 users
+134 projects, 40 groups (root: `homelab`, user ns `homelab-admin`), 8 users
 (6 active), signup disabled, KAS enabled, registry API reachable, direct-transfer
 imports enabled (`bulk_import_enabled: true` since 2026-07-15). Token:
 `hermes-agent-20260625-v2` (admin, `api` scope, expires 2027-06-25).

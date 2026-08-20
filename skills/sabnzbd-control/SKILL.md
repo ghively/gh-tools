@@ -19,7 +19,7 @@ metadata:
     category: media
     requires_tools: [sabnzbd_status]
     config:
-      - {key: sabnzbd.host, prompt: SABnzbd host/IP, default: 192.168.0.133}
+      - {key: sabnzbd.host, prompt: SABnzbd host/IP, default: 192.0.2.20}
       - {key: sabnzbd.port, prompt: SABnzbd port, default: 8080}
 required_environment_variables:
   - name: SABNZBD_API_KEY
@@ -33,8 +33,8 @@ author: ghively
 
 This skill drives a real SABnzbd usenet downloader through the **`sabnzbd`
 MCP server** (tools shown as `sabnzbd_*`). Verified against **SABnzbd
-5.0.4** on the homelab NAS (`192.168.0.133:8080`, "GH-Storage"). Auth =
-`apikey` query parameter (admin API key in 1Password "Gregory" vault,
+5.x** on the homelab NAS (`192.0.2.20:8080`, "NAS-Host"). Auth =
+`apikey` query parameter (admin API key in 1Password "Homelab" vault,
 item `SABnzbd API Key`).
 
 ## Mental model

@@ -1,7 +1,7 @@
 {
   "_comment": "Copy this file to config.local.json (git-ignored) and fill in your instance. Every field can also come from an env var (SEARXNG_BASE_URL, SEARXNG_SSH_HOST, SEARXNG_SSH_USER, SEARXNG_CONTAINER, SEARXNG_SETTINGS_PATH, SEARXNG_VERIFY_SSL, SEARXNG_TIMEOUT), which override the file. The HTTP `base_url` is all you need for search, introspection and diagnostics. The config-management ('tune') tools additionally need `ssh_host` + `container`: they edit settings.yml inside the container over SSH and restart it. Leave ssh_host empty to run in read/search-only mode.",
-  "base_url": "http://gh-arm:8888",
-  "ssh_host": "gh-arm",
+  "base_url": "http://arm-host:8888",
+  "ssh_host": "arm-host",
   "ssh_user": "",
   "container": "searxng",
   "settings_path": "/etc/searxng/settings.yml",

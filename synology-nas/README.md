@@ -1,8 +1,8 @@
 # synology-nas
 
 Full, authenticated control of a Synology DiskStation over the DSM Web API,
-from Claude Code. Built and tested against **gh-storage**, a **DS1817+**
-running **DSM 7.3.1**.
+from Claude Code. Built and tested against **nas-host**, a **DS1817+**
+running **DSM 7.x**.
 
 ## What's inside
 

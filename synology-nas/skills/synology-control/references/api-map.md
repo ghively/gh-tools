@@ -1,6 +1,6 @@
 # Synology DSM API map (this NAS)
 
-Auto-generated from `SYNO.API.Info?query=all` on the live box: **871 APIs** across the domains below. Model DS1817+, DSM 7.3.1.
+Auto-generated from `SYNO.API.Info?query=all` on the live box: **871 APIs** across the domains below. Model DS1817+, DSM 7.x.
 
 Every entry is callable through the `synology_call` MCP tool (`api`, `method`, optional `version`, `params`). Most live at `entry.cgi`. Common methods: `list`, `get`, `info`, `set`, `create`, `delete`, `start`, `stop`, `enable`, `disable`. When unsure of the method, try `list`/`get`; DSM returns error 103 for a wrong method name.
 

@@ -1,7 +1,7 @@
-# GitLab 19.0.0 CE — enumerated API surface
+# GitLab 19.x CE — enumerated API surface
 
 Enumerated from the live instance (GraphQL introspection) plus the version-pinned
-v19.0.0 REST resource index. REST base: `/api/v4`. GraphQL: `POST /api/graphql`.
+v19.x REST resource index. REST base: `/api/v4`. GraphQL: `POST /api/graphql`.
 
 ## REST — project-scoped resources
 

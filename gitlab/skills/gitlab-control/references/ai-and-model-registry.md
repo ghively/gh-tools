@@ -1,6 +1,6 @@
 # ML Model Registry, experiment tracking, CI Catalog — and the honest AI story
 
-Verified live against `git.hively.dev` (GitLab 19.0.0 **CE**). The ML/model side works on CE;
+Verified live against `gitlab.example.com` (GitLab 19.x **CE**). The ML/model side works on CE;
 GitLab **Duo / AI is EE-gated and 404s here**. Tools: `model_registry`, `ci_catalog`.
 
 ## What works on CE (verified live)
@@ -19,7 +19,7 @@ GitLab has a built-in model registry + experiment tracking, **MLflow-compatible*
 - **Artifacts**: `model_registry(project, action="packages")` → `packages?package_type=ml_model`.
 
 **Logging a model from CI** (the intended workflow): point an MLflow client at the tracking URI
-`https://git.hively.dev/api/v4/projects/<id>/ml/mlflow`, authenticate with a token in
+`https://gitlab.example.com/api/v4/projects/<id>/ml/mlflow`, authenticate with a token in
 `MLFLOW_TRACKING_TOKEN` (a masked CI/CD variable), and `mlflow.log_model(...)` /
 `mlflow.register_model(...)` from a `templates/ci/python.yml`-style job. The models then appear
 via `model_registry(..., action="models")`.
@@ -28,7 +28,7 @@ via `model_registry(..., action="models")`.
 Reusable pipeline **components** published across the instance (CE). Verified:
 `ci_catalog(action="list")` → `{ciCatalogResources:{count,nodes:{id,name,description,webPath,
 starCount}}}`. Per-project: `ci_catalog(action="resource"/"versions", project=...)`. Use a
-component in `.gitlab-ci.yml`: `include: - component: git.hively.dev/<path>@<version>`.
+component in `.gitlab-ci.yml`: `include: - component: gitlab.example.com/<path>@<version>`.
 
 Also CE-available (from the prior build's verified notes): work items, secure files, service
 desk (needs incoming-email), terraform state/module registry, direct-transfer imports
@@ -56,7 +56,7 @@ EE license + Duo add-on.
 ## ML model lifecycle (the intended workflow)
 
 1. **Train in CI** (a `templates/ci/python.yml`-style job): point an MLflow client at
-   `MLFLOW_TRACKING_URI=https://git.hively.dev/api/v4/projects/<id>/ml/mlflow`, authenticate
+   `MLFLOW_TRACKING_URI=https://gitlab.example.com/api/v4/projects/<id>/ml/mlflow`, authenticate
    with `MLFLOW_TRACKING_TOKEN` (a masked CI/CD variable — `ci_variables(..., action="create",
    params={masked: true})`), and:
    ```python
@@ -88,7 +88,7 @@ A project becomes a catalog resource when:
    job template).
 3. A version is cut (git tag `vX.Y.Z`).
 
-Consumers include it: `include: - component: git.hively.dev/<group>/<proj>/<component>@<version>`.
+Consumers include it: `include: - component: gitlab.example.com/<group>/<proj>/<component>@<version>`.
 Inspect via `ci_catalog(action="list")` (instance) / `ci_catalog(action="resource"|"versions",
 project=...)`. Use cases: org-wide deploy components, security scanning wrappers, language-
 specific test templates — anything you'd otherwise copy-paste across projects.

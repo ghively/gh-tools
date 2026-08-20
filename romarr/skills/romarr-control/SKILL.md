@@ -21,7 +21,7 @@ metadata:
     category: media
     requires_tools: [romarr_status]
     config:
-      - {key: romarr.host, prompt: ROMarr host/IP, default: 192.168.0.213}
+      - {key: romarr.host, prompt: ROMarr host/IP, default: 192.0.2.10}
       - {key: romarr.port, prompt: ROMarr port, default: 6868}
 required_environment_variables:
   - name: ROMARR_API_KEY
@@ -34,9 +34,9 @@ author: ghively
 # ROMarr control
 
 This skill drives a real ROMarr instance through the **`romarr` MCP server**
-(tools shown as `romarr_*`). Verified against **ROMarr 0.7.0** running as a
-Docker container ("ROMarr") on the homelab Unraid box GH-Nvidia
-(`192.168.0.213:6868`), part of the **Cartridge** stack (Prowlarr for
+(tools shown as `romarr_*`). Verified against **ROMarr 0.x** running as a
+Docker container ("ROMarr") on the homelab Unraid box Unraid-Host
+(`192.0.2.10:6868`), part of the **Cartridge** stack (Prowlarr for
 indexing, SABnzbd for usenet, RomM as the library backend).
 
 ## Mental model
@@ -114,7 +114,7 @@ count, queue size.
 | Import a finished download (write) | `romarr_import(payload=, confirm=)` — body shape unverified, probe first |
 | Escape hatch | `romarr_call(method, path, params=, body=, confirm=)`, `romarr_endpoints(search=)` |
 
-## Known quirks (verified live, 2026-08-07/08, ROMarr 0.7.0)
+## Known quirks (verified live, 2026-08-07/08, ROMarr 0.x)
 
 - **No API key in the UI.** The project README says "the API key is
   generated on first run and shown under Settings > General" — the actual

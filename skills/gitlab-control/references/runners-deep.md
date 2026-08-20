@@ -31,7 +31,7 @@ token** directly.
 ```
 runners(action="create", params={
   "runner_type": "instance_type",
-  "description": "gh-nvidia docker runner",
+  "description": "unraid-host docker runner",
   "tag_list": ["docker", "linux", "gpu"],
   "run_untagged": false,
   "locked": false
@@ -40,12 +40,12 @@ runners(action="create", params={
 Response includes `token` — **the only time it's ever returned**. Relay it
 immediately (same rule as access-token secrets). Configure the runner binary:
 ```
-gitlab-runner register-v2 --token <returned-token> --url https://git.hively.dev
+gitlab-runner register-v2 --token <returned-token> --url https://gitlab.example.com
 ```
 or use it directly in a `config.toml`:
 ```toml
 [[runners]]
-  url = "https://git.hively.dev"
+  url = "https://gitlab.example.com"
   token = "<returned-token>"
   executor = "docker"
 ```

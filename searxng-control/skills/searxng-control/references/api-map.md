@@ -1,4 +1,4 @@
-# SearXNG HTTP surface (live-enumerated, verified 2026.5.7)
+# SearXNG HTTP surface (live-enumerated, verified against a recent release)
 
 SearXNG has **no OpenAPI document** — this is the hand-enumerated route map,
 proven with live calls. Reach any of these with `searx_http(path, params_json,

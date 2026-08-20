@@ -148,7 +148,7 @@ These are critical for backward compatibility — you can mix classic plugins
 | `detectNonTdarrNvenc` | Detect NVENC processes from OTHER apps (avoid double-booking the GPU). |
 | `runAutomation` | Generic automation runner. |
 
-`detectNonTdarrNvenc` is gold for shared GPUs (gh-nvidia has ComfyUI +
+`detectNonTdarrNvenc` is gold for shared GPUs (unraid-host has ComfyUI +
 Ollama + Tdarr all competing for the RTX 3060). It lets the flow check
 "is something else using NVENC right now?" and wait or skip.
 

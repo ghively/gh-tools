@@ -6,7 +6,7 @@ Severity: data loss (romm's PostgreSQL database)
 
 ## Summary
 
-While live-testing the new share-management tools on the Unraid box GH-Nvidia,
+While live-testing the new share-management tools on the Unraid box Unraid-Host,
 `unraid_share_create`/`_delete` applied share changes via `emcmd changeShare`.
 That makes emhttpd "Restart services", which reloads the `/mnt/user` FUSE (shfs)
 layer. romm's PostgreSQL container bind-mounts its data directory through a

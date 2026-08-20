@@ -1,14 +1,14 @@
 # Radarr API map
 
-Verified live on Radarr 6.3.0.10514 (2026-07-19). Hand-enumerated — Radarr
+Verified live on Radarr 6.x (2026-07-19). Hand-enumerated — Radarr
 publishes no OpenAPI document.
 
 ## 1Password
 
-- Vault: `Gregory`
-- Item: `Radarr API Key (GH-Storage)` (id `urdunwlckr2lq6kyuzwpp2hilq`)
-- Fields: `credential` (API key), `serverurl` (e.g. `http://192.168.0.133:8310`)
-- Read with: `op item get urdunwlckr2lq6kyuzwpp2hilq --vault Gregory --field credential --reveal`
+- Vault: `Homelab`
+- Item: `Radarr API Key (NAS-Host)` (id `<item-id>`)
+- Fields: `credential` (API key), `serverurl` (e.g. `http://192.0.2.20:8310`)
+- Read with: `op item get <item-id> --vault Homelab --field credential --reveal`
 
 ## Auth
 
