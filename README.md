@@ -37,6 +37,16 @@ and neither one's files are touched by the other's tooling.
 | `tdarr-control` | Tdarr transcoding server | 65-endpoint passthrough + 50 curated tools + 3,700+ line knowledge base |
 | `deep-integration-builder` | — (methodology) | the skill + command used to build the others |
 
+There's also **`agent-opencode/`** at the repo root — a separate, ~215-file
+agent-engineering skill library (13 skill pillars covering the agent SDLC,
+workflow commands, specialist subagents, and a deterministic safety floor),
+ported from Claude Code to [OpenCode](https://opencode.ai). It isn't one of
+the 15 infrastructure-control plugins above and has its own `README.md` and
+`LICENSE`; see that directory for what it covers and how to install it.
+
+**On authorship:** this repo was built collaboratively with Claude Code — 63
+of its 88 commits carry a `Co-Authored-By: Claude` trailer, visible in `git log`.
+
 ## Quick start — one dependency
 
 The entire fleet needs exactly one thing installed: [`uv`](https://docs.astral.sh/uv/).
