@@ -7,7 +7,17 @@ config.local.json
 __pycache__/
 *.pyc
 .venv/
+venv/
 .uv/
+
+# Node (agent-opencode/ plugins)
+node_modules/
+dist/
+build/
+coverage/
+
+# OS / editor cruft
+.DS_Store
 
 # Scratch / logs / session memory (local-only, never published)
 *.log
