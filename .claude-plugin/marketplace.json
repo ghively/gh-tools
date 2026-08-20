@@ -1,6 +1,6 @@
 {
   "name": "gh-tools",
-  "description": "Local marketplace: the synology-nas control plugin plus the deep-integration-builder methodology used to create it.",
+  "description": "Local marketplace of 15 deep infrastructure-control plugins for a home lab (Synology, GitLab CE, UniFi, Emby, RomM, Unraid, ComfyUI, OpenCode, SearXNG, the *arr stack, SABnzbd, Tdarr) plus the deep-integration-builder methodology used to build them.",
   "owner": {
     "name": "Gene Hively"
   },
