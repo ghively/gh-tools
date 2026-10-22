@@ -47,6 +47,19 @@ the 15 infrastructure-control plugins above and has its own `README.md` and
 **On authorship:** this repo was built collaboratively with Claude Code — 63
 of its 88 commits carry a `Co-Authored-By: Claude` trailer, visible in `git log`.
 
+## Try it without any account
+
+```bash
+python3 examples/mock-walkthrough/run_demo.py   # real MCP server vs. a local mock API
+python3 scripts/mcp_handshake_test.py           # all 14 servers: handshake + tools/list
+```
+
+The walkthrough checks a safe read, a write refused without confirmation (proven from the
+mock's request log), a rejected API key, a 429, and an approved, reversible write. Both run in
+CI on every push. See [examples/mock-walkthrough](examples/mock-walkthrough/README.md).
+Tool counts above are the surface each server exposes; which operations were exercised against
+live systems is documented per plugin, not implied by the count.
+
 ## Quick start — one dependency
 
 The entire fleet needs exactly one thing installed: [`uv`](https://docs.astral.sh/uv/).

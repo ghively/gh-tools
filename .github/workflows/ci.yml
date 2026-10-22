@@ -1,0 +1,23 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  mcp-handshake:
+    name: Every MCP server boots, handshakes and lists tools (no credentials)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: python3 scripts/mcp_handshake_test.py
+  mock-walkthrough:
+    name: sabnzbd-control end-to-end against a mock API (read, denied write, 401, 429, approved write)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: python3 examples/mock-walkthrough/run_demo.py
