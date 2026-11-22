@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: No real credentials committed
+        run: |
+          if git ls-files | grep -E '(^|/)config\.local\.json$|(^|/)\.env$'; then
+            echo "A credentials file is tracked by git. Remove it." && exit 1
+          fi
+
+      - name: Plugin manifests are valid JSON
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, sys
+          bad = []
+          files = [p for p in pathlib.Path('.').rglob('*.json')
+                   if ('.claude-plugin' in p.parts or p.name == '.mcp.json')
+                   and 'node_modules' not in p.parts]
+          for p in files:
+              try:
+                  json.loads(p.read_text())
+              except Exception as e:
+                  bad.append(f"{p}: {e}")
+          print(f"checked {len(files)} manifest files")
+          if bad:
+              print("\n".join(bad)); sys.exit(1)
+          PY
+
+      - name: Hermes skills mirror is up to date
+        run: python3 scripts/sync_hermes_skills.py --check
+
+      - name: Every MCP server boots and lists its tools
+        run: python3 scripts/mcp_handshake_test.py
