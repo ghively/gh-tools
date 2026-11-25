@@ -1,5 +1,11 @@
 # gh-tools — deep infrastructure control for Claude Code and Hermes Agent
 
+**For enterprise readers:** this is a worked example of giving an AI agent real
+control of real systems without losing track of what it can do. Every plugin
+starts from the system's full API, ships a small curated tool set on top, is
+tested live, and ends with an honest report of what works, what's fixable and
+what's a hard limit.
+
 One methodology, 15 plugins: enumerate the system's full API surface, build a
 generic passthrough + curated tools, live-verify everything, and report honestly
 (works / fixable / hard limit). Each plugin lives in its own directory (see its
@@ -19,23 +25,30 @@ This repo works as-is with two agent runtimes:
 Both sides read from the same per-plugin source (`mcp/*.py`, `config.local.json`)
 and neither one's files are touched by the other's tooling.
 
+**Infrastructure and platforms**
+
 | Plugin | Controls | Highlights |
 |---|---|---|
 | `synology-nas` | Synology DS1817+ (DSM 7.3) | all ~870 SYNO.* APIs + 64 curated tools |
 | `gitlab` | Self-hosted GitLab CE 19.x | REST+GraphQL over 177 resource groups, 75 curated tools |
 | `unifi-network` (`unifi/`) | Ubiquiti UniFi console (UDR7) | v1/v2/UniFi-OS APIs, ~35 curated tools |
+| `unraid-control` | Unraid server (7.x) | full GraphQL schema passthrough, 87 tools incl. SSH env-var editing |
+| `opencode-control` | OpenCode coding agent | 188-op passthrough + 49 curated tools, HTTP + ACP |
+| `comfyui-control` | ComfyUI generation server | full API passthrough + image/video generation suite |
+| `searxng-control` | Self-hosted SearXNG | search + 249-engine inventory + settings.yml tuning over SSH |
+| `deep-integration-builder` | — (methodology) | the skill + command used to build the others |
+
+**Media stack** (home media server tools)
+
+| Plugin | Controls | Highlights |
+|---|---|---|
 | `emby` | Emby media server | ~484-op REST passthrough, 54 curated tools |
 | `romm` | RomM ROM-library server | ~189-op REST passthrough, ~70 curated tools |
 | `romarr` | ROMarr (the *arr for games) | 59-op REST passthrough, 51 curated tools, found a real credential-leak bug |
-| `unraid-control` | Unraid server (7.x) | full GraphQL schema passthrough, 87 tools incl. SSH env-var editing |
-| `comfyui-control` | ComfyUI generation server | full API passthrough + image/video generation suite |
-| `opencode-control` | OpenCode coding agent | 188-op passthrough + 49 curated tools, HTTP + ACP |
-| `searxng-control` | Self-hosted SearXNG | search + 249-engine inventory + settings.yml tuning over SSH |
 | `radarr-control` | Radarr movie manager | 467-op passthrough, 65 curated tools |
 | `sonarr-control` | Sonarr TV manager | 463-op passthrough, 69 curated tools |
 | `sabnzbd-control` | SABnzbd usenet downloader | 25 curated tools, double-gated lifecycle control |
 | `tdarr-control` | Tdarr transcoding server | 65-endpoint passthrough + 50 curated tools + 3,700+ line knowledge base |
-| `deep-integration-builder` | — (methodology) | the skill + command used to build the others |
 
 There's also **`agent-opencode/`** at the repo root — a separate, ~215-file
 agent-engineering skill library (13 skill pillars covering the agent SDLC,
@@ -64,6 +77,20 @@ Each plugin reads its credentials from a git-ignored `config.local.json`
 (`config.example.json` shows the shape). No secrets live in this repo —
 `scripts/pull_secrets.py` fills them from the 1Password Homelab vault
 (`--dry-run` to preview the item mapping first).
+
+## Security model
+
+- **No secrets in the repo.** Each plugin reads credentials from a git-ignored
+  `config.local.json`; `config.example.json` shows the shape. CI fails if a
+  `config.local.json` is ever committed.
+- **Secrets come from a vault at runtime.** `scripts/pull_secrets.py` builds the
+  local config files from 1Password (`--dry-run` previews the mapping first).
+- **Changes need an explicit yes.** Tools that change or delete something take a
+  `confirm` flag that defaults to `false`, so the agent has to ask before it acts.
+  All 14 MCP servers follow this pattern.
+- **Tested without touching anything.** `scripts/mcp_handshake_test.py` boots every
+  server against the example configs and lists its tools, with no network calls.
+  CI runs it on every push.
 
 ---
 
